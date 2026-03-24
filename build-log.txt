@@ -1,0 +1,59 @@
+
+> zebra-admin@1.0.0 build D:\Z\ZebraOps\ZebraAdmin
+> tsc -b && vite build
+
+[36mvite v6.4.1 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 4461 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                        [39m[1m[2m    1.05 kB[22m[1m[22m[2m │ gzip:   0.53 kB[22m
+[2mdist/[22m[35massets/index-BtUMQ1mg.css         [39m[1m[2m   17.38 kB[22m[1m[22m[2m │ gzip:   4.43 kB[22m
+[2mdist/[22m[36massets/menu-BZ8bA2Jr.js           [39m[1m[2m    0.21 kB[22m[1m[22m[2m │ gzip:   0.16 kB[22m
+[2mdist/[22m[36massets/user-osUzBn_e.js           [39m[1m[2m    0.21 kB[22m[1m[22m[2m │ gzip:   0.16 kB[22m
+[2mdist/[22m[36massets/role-Byh37fCU.js           [39m[1m[2m    0.21 kB[22m[1m[22m[2m │ gzip:   0.16 kB[22m
+[2mdist/[22m[36massets/group-BvOnkYF5.js          [39m[1m[2m    0.22 kB[22m[1m[22m[2m │ gzip:   0.16 kB[22m
+[2mdist/[22m[36massets/repos-Cel9_a5i.js          [39m[1m[2m    0.23 kB[22m[1m[22m[2m │ gzip:   0.16 kB[22m
+[2mdist/[22m[36massets/500-CrDOro5y.js            [39m[1m[2m    0.51 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mdist/[22m[36massets/404-Bo9kA_db.js            [39m[1m[2m    0.52 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mdist/[22m[36massets/403-BTnbu-nO.js            [39m[1m[2m    0.53 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mdist/[22m[36massets/tasks-UGOHurYc.js          [39m[1m[2m    2.00 kB[22m[1m[22m[2m │ gzip:   1.10 kB[22m
+[2mdist/[22m[36massets/job-D003gwOb.js            [39m[1m[2m    2.12 kB[22m[1m[22m[2m │ gzip:   1.11 kB[22m
+[2mdist/[22m[36massets/groups-CauePIcm.js         [39m[1m[2m    2.14 kB[22m[1m[22m[2m │ gzip:   1.07 kB[22m
+[2mdist/[22m[36massets/author-CThgQJG9.js         [39m[1m[2m    2.17 kB[22m[1m[22m[2m │ gzip:   1.08 kB[22m
+[2mdist/[22m[36massets/vendor-DpZ4xLUv.js         [39m[1m[2m    2.17 kB[22m[1m[22m[2m │ gzip:   1.13 kB[22m
+[2mdist/[22m[36massets/positions-CD4MzqVC.js      [39m[1m[2m    2.20 kB[22m[1m[22m[2m │ gzip:   1.12 kB[22m
+[2mdist/[22m[36massets/build-DriZ3dmb.js          [39m[1m[2m    2.22 kB[22m[1m[22m[2m │ gzip:   1.15 kB[22m
+[2mdist/[22m[36massets/k8s-8Jhhfuji.js            [39m[1m[2m    2.22 kB[22m[1m[22m[2m │ gzip:   1.15 kB[22m
+[2mdist/[22m[36massets/deployment-B8omNQgG.js     [39m[1m[2m    2.24 kB[22m[1m[22m[2m │ gzip:   1.16 kB[22m
+[2mdist/[22m[36massets/whitelist-C5IEk4dy.js      [39m[1m[2m    2.25 kB[22m[1m[22m[2m │ gzip:   1.16 kB[22m
+[2mdist/[22m[36massets/functions-BwQ33mXt.js      [39m[1m[2m    2.28 kB[22m[1m[22m[2m │ gzip:   1.11 kB[22m
+[2mdist/[22m[36massets/component-BRR5MZ_W.js      [39m[1m[2m    2.28 kB[22m[1m[22m[2m │ gzip:   1.11 kB[22m
+[2mdist/[22m[36massets/dept-DLJG0s1i.js           [39m[1m[2m    2.30 kB[22m[1m[22m[2m │ gzip:   1.20 kB[22m
+[2mdist/[22m[36massets/registry-BiUalKa4.js       [39m[1m[2m    2.31 kB[22m[1m[22m[2m │ gzip:   1.18 kB[22m
+[2mdist/[22m[36massets/env-CtACwS7a.js            [39m[1m[2m    2.32 kB[22m[1m[22m[2m │ gzip:   1.14 kB[22m
+[2mdist/[22m[36massets/roles-DxMGHYSm.js          [39m[1m[2m    2.34 kB[22m[1m[22m[2m │ gzip:   1.10 kB[22m
+[2mdist/[22m[36massets/menus-BRzDNAPD.js          [39m[1m[2m    2.36 kB[22m[1m[22m[2m │ gzip:   1.11 kB[22m
+[2mdist/[22m[36massets/author-Dii55eOo.js         [39m[1m[2m    2.37 kB[22m[1m[22m[2m │ gzip:   1.11 kB[22m
+[2mdist/[22m[36massets/groups-Bu-qIn9P.js         [39m[1m[2m    2.37 kB[22m[1m[22m[2m │ gzip:   1.11 kB[22m
+[2mdist/[22m[36massets/linux-CGd7qnTF.js          [39m[1m[2m    2.50 kB[22m[1m[22m[2m │ gzip:   1.24 kB[22m
+[2mdist/[22m[36massets/applications-Db-t3lJj.js   [39m[1m[2m    2.68 kB[22m[1m[22m[2m │ gzip:   1.38 kB[22m
+[2mdist/[22m[36massets/repos-Dj4KBjY7.js          [39m[1m[2m    2.70 kB[22m[1m[22m[2m │ gzip:   1.36 kB[22m
+[2mdist/[22m[36massets/routes-S-sRY4s9.js         [39m[1m[2m    2.84 kB[22m[1m[22m[2m │ gzip:   1.36 kB[22m
+[2mdist/[22m[36massets/roles-Bbrz0Orx.js          [39m[1m[2m    2.95 kB[22m[1m[22m[2m │ gzip:   1.42 kB[22m
+[2mdist/[22m[36massets/menus-DdQEbucz.js          [39m[1m[2m    3.17 kB[22m[1m[22m[2m │ gzip:   1.50 kB[22m
+[2mdist/[22m[36massets/users-DNikT6sk.js          [39m[1m[2m    3.72 kB[22m[1m[22m[2m │ gzip:   1.69 kB[22m
+[2mdist/[22m[36massets/users-BtQD4ZRz.js          [39m[1m[2m    3.91 kB[22m[1m[22m[2m │ gzip:   1.74 kB[22m
+[2mdist/[22m[36massets/index-DlJ9Jr-H.js          [39m[1m[2m    4.28 kB[22m[1m[22m[2m │ gzip:   1.73 kB[22m
+[2mdist/[22m[36massets/index-pNB3TKk5.js          [39m[1m[2m    4.34 kB[22m[1m[22m[2m │ gzip:   1.56 kB[22m
+[2mdist/[22m[36massets/vendor-react-CRToJimR.js   [39m[1m[2m   88.18 kB[22m[1m[22m[2m │ gzip:  29.78 kB[22m
+[2mdist/[22m[36massets/vendor-utils-DxSIu-5q.js   [39m[1m[2m   95.73 kB[22m[1m[22m[2m │ gzip:  33.10 kB[22m
+[2mdist/[22m[36massets/index-DRrev3rj.js          [39m[1m[2m  243.32 kB[22m[1m[22m[2m │ gzip:  79.11 kB[22m
+[2mdist/[22m[36massets/vendor-charts-B0_Af9Qa.js  [39m[1m[2m  391.29 kB[22m[1m[22m[2m │ gzip: 102.28 kB[22m
+[2mdist/[22m[36massets/vendor-antd-DUKlh7zN.js    [39m[1m[33m1,890.86 kB[39m[22m[2m │ gzip: 592.43 kB[22m
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[32m✓ built in 27.26s[39m
