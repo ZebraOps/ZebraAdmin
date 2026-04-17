@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Popconfirm, Space, message } from 'antd';
+import { Button, Space, message } from 'antd';
+import CountdownButton from '@/components/CountdownButton';
+import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/rbac/group';
@@ -13,10 +15,7 @@ export default function SystemGroups() {
   const [editRecord, setEditRecord] = useState<SysGroupItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const handleDelete = async (id: number) => {
-    try { await api.deleteGroup(id); message.success(t('common.deleteSuccess', { defaultValue: '删除成功' })); actionRef.current?.reload(); }
-    catch { message.error(t('common.deleteFailed', { defaultValue: '删除失败' })); }
-  };
+
 
   const columns: ProColumns<SysGroupItem>[] = [
     { title: t('common.name', { defaultValue: '名称' }), dataIndex: 'name' },
@@ -25,9 +24,9 @@ export default function SystemGroups() {
       title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <Popconfirm key="del" title={t('common.deleteConfirm', { defaultValue: '确认删除？' })} onConfirm={() => handleDelete(row.id!)}>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
-        </Popconfirm>
+        <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
+          onConfirm={async () => { await api.deleteGroup(row.id!); message.success(t('common.deleteSuccess', { defaultValue: '删除成功' })); actionRef.current?.reload(); }}
+        />
       ]
     }
   ];
@@ -47,13 +46,15 @@ export default function SystemGroups() {
         search={false} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
       />
       <ModalForm<SysGroupItem>
+        key={editRecord?.id ?? 'new'}
         title={editRecord ? t('common.edit', { defaultValue: '编辑' }) : t('common.add', { defaultValue: '新增' })}
-        open={modalOpen} onOpenChange={setModalOpen} initialValues={editRecord ?? {}}
+        open={modalOpen} onOpenChange={setModalOpen}
+        modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '' }} initialValues={editRecord ?? {}}
         onFinish={async (values) => {
           try {
             if (editRecord?.id) await api.updateGroup(editRecord.id as number, values as any); else await api.createGroup(values as any);
             message.success(t('common.saveSuccess', { defaultValue: '保存成功' })); actionRef.current?.reload(); return true;
-          } catch { message.error(t('common.saveFailed', { defaultValue: '保存失败' })); return false; }
+          } catch (e: any) { if (!isHandledError(e)) message.error(t('common.saveFailed', { defaultValue: '保存失败' })); return false; }
         }}
       >
         <ProFormText name="name" label={t('common.name', { defaultValue: '名称' })} rules={[{ required: true }]} />

@@ -1,27 +1,41 @@
 import { useRef, useState } from 'react';
-import { ProTable, ModalForm, ProFormText, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Popconfirm, Tag, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
+import { ProTable, ModalForm, ProFormText, ProFormSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { Button, Tag, Row, Col, message } from 'antd';
+import CountdownButton from '@/components/CountdownButton';
+import { isHandledError } from '@/service/request';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import * as api from '@/service/api/gateway/whitelist';
-import type { Whitelist } from '@/service/api/gateway/whitelist';
+import type { Whitelist, WhitelistForm } from '@/service/api/gateway/whitelist';
+
+const METHOD_COLORS: Record<string, string> = { GET: 'success', POST: 'processing', PUT: 'warning', DELETE: 'error', PATCH: 'purple', '*': 'default' };
+const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', '*'].map(m => ({ label: m, value: m }));
 
 export default function GatewayWhitelist() {
-  const { t } = useTranslation();
   const actionRef = useRef<ActionType>(null);
-  const [editRecord, setEditRecord] = useState<Whitelist | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const columns: ProColumns<Whitelist>[] = [
-    { title: '路径', dataIndex: 'path', render: (val) => val ? <Tag>{String(val)}</Tag> : '-' },
-    { title: '描述', dataIndex: 'description' },
-    { title: '创建时间', dataIndex: 'createdAt', valueType: 'dateTime' },
-    { title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
+    {
+      title: '方法', dataIndex: 'method', width: 100, valueType: 'select',
+      valueEnum: {
+        GET: { text: 'GET' },
+        POST: { text: 'POST' },
+        PUT: { text: 'PUT' },
+        DELETE: { text: 'DELETE' },
+        PATCH: { text: 'PATCH' },
+        '*': { text: '*' }
+      },
+      render: (_, row) => <Tag color={METHOD_COLORS[row.method] ?? 'default'}>{row.method}</Tag>
+    },
+    { title: '路径', dataIndex: 'path', render: (_, row) => <Tag>{row.path}</Tag> },
+    { title: '描述', dataIndex: 'description', render: v => v || '—' },
+    { title: '创建时间', dataIndex: 'CreatedAt', valueType: 'dateTime', width: 170 },
+    {
+      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 80,
       render: (_, row) => [
-        <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <Popconfirm key="del" title={t('common.deleteConfirm', { defaultValue: '确认删除？' })} onConfirm={() => api.deleteWhitelist(row.id).then(() => { message.success('删除成功'); actionRef.current?.reload(); })}>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
-        </Popconfirm>
+        <CountdownButton key="del" icon={<DeleteOutlined />}
+          onConfirm={async () => { await api.deleteWhitelist(row.ID); message.success('删除成功'); actionRef.current?.reload(); }}
+        />
       ]
     }
   ];
@@ -29,28 +43,38 @@ export default function GatewayWhitelist() {
   return (
     <>
       <ProTable<Whitelist>
-        rowKey="id" actionRef={actionRef} columns={columns}
-        request={async () => { try { const res = await api.fetchWhitelists({}); return { data: (res as any)?.data?.list ?? (res as any)?.data ?? [], success: true, total: 0 }; } catch { return { data: [], success: false, total: 0 }; } }}
-        headerTitle={t('route.gateway_whitelist', { defaultValue: '白名单管理' })}
-        toolBarRender={() => [<Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>{t('common.add', { defaultValue: '新增' })}</Button>]}
-        search={false} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
+        rowKey="ID" actionRef={actionRef} columns={columns}
+        request={async (params) => {
+          try {
+            const query: Record<string, unknown> = {};
+            if (params.method) query.method = params.method;
+            if (params.path) query.path = params.path;
+            const res = await api.fetchWhitelists(query);
+            const list = Array.isArray(res) ? res : [];
+            return { data: list, success: true, total: list.length };
+          } catch { return { data: [], success: false, total: 0 }; }
+        }}
+        headerTitle="白名单管理"
+        toolBarRender={() => [
+          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>新增白名单</Button>
+        ]}
+        search={{ labelWidth: 80 }} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
       />
-      <ModalForm<{ path: string; description?: string }>
-        title={editRecord ? t('common.edit', { defaultValue: '编辑' }) : t('common.add', { defaultValue: '新增' })}
-        open={modalOpen} onOpenChange={setModalOpen} initialValues={editRecord ?? {}}
+      <ModalForm<WhitelistForm>
+        title="新增白名单"
+        open={modalOpen} onOpenChange={setModalOpen}
+        modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '' }}
         onFinish={async (values) => {
           try {
-            if (editRecord?.id) {
-              await api.deleteWhitelist(editRecord.id);
-              await api.createWhitelist(values);
-            } else {
-              await api.createWhitelist(values);
-            }
+            await api.createWhitelist(values);
             message.success('保存成功'); actionRef.current?.reload(); return true;
-          } catch { message.error('保存失败'); return false; }
+          } catch (e: any) { if (!isHandledError(e)) message.error('保存失败'); return false; }
         }}
       >
-        <ProFormText name="path" label="路径" rules={[{ required: true }]} />
+        <Row gutter={16}>
+          <Col span={8}><ProFormSelect name="method" label="HTTP 方法" options={METHOD_OPTIONS} rules={[{ required: true }]} /></Col>
+          <Col span={16}><ProFormText name="path" label="路径" placeholder="如 /rbac/login/access-token 或 /swagger/*" rules={[{ required: true }]} /></Col>
+        </Row>
         <ProFormText name="description" label="描述" />
       </ModalForm>
     </>

@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import { message as antMessage } from 'antd';
 import { localStg } from '@/utils/storage';
 
 export interface ServiceResponse<T = unknown> {
@@ -104,7 +105,17 @@ instance.interceptors.response.use(
     if (error.response?.status === 401) {
       forceLogout();
     }
-    return Promise.reject(error);
+    // 统一提取后端 {code, message} 格式的错误信息
+    const serverData = error.response?.data as { code?: number; message?: string; detail?: string } | undefined;
+    const msg = serverData?.message || serverData?.detail || error.message || '请求失败';
+
+    // 权限不足时弹窗提示，并标记已处理，业务代码不再重复提示
+    if (error.response?.status === 400 || error.response?.status === 403) {
+      antMessage.error(msg);
+      return Promise.reject({ code: serverData?.code ?? error.response?.status, message: msg, _handled: true });
+    }
+
+    return Promise.reject({ code: serverData?.code ?? error.response?.status, message: msg });
   }
 );
 
@@ -137,6 +148,11 @@ function forceLogout() {
   if (!window.location.pathname.startsWith('/login')) {
     window.location.href = '/login';
   }
+}
+
+/** 判断是否已在拦截器中处理过的错误（400/403权限不足等） */
+export function isHandledError(error: unknown): boolean {
+  return (error as any)?._handled === true;
 }
 
 /** Generic request helper with typed response */

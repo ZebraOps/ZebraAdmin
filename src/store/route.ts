@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { RouteItem } from '@/service/api/route';
+import { staticMenus } from '@/router/menus';
 
 export interface MenuNode {
   key: string;
@@ -8,6 +9,18 @@ export interface MenuNode {
   path?: string;
   order?: number;
   children?: MenuNode[];
+}
+
+/** 从静态菜单树中按 key 查找图标 */
+function findIconByKey(key: string, menus: MenuNode[] = staticMenus): string | undefined {
+  for (const m of menus) {
+    if (m.key === key) return m.icon;
+    if (m.children) {
+      const found = findIconByKey(key, m.children);
+      if (found) return found;
+    }
+  }
+  return undefined;
 }
 
 interface RouteState {
@@ -28,7 +41,7 @@ export function transformRoutesToMenus(routes: RouteItem[]): MenuNode[] {
     .map(r => ({
       key: r.name,
       label: r.meta?.title || r.name,
-      icon: r.meta?.icon,
+      icon: r.meta?.icon || findIconByKey(r.name),
       path: r.path,
       order: r.meta?.order,
       children: r.children ? transformRoutesToMenus(r.children) : undefined

@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, ProFormSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Popconfirm, Tag, message } from 'antd';
+import { Button, Tag, message } from 'antd';
+import CountdownButton from '@/components/CountdownButton';
+import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/publish/applications';
@@ -27,9 +29,9 @@ export default function PublishApplications() {
     { title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <Popconfirm key="del" title="确认删除？" onConfirm={() => api.deleteApplication(row.id).then(() => { message.success('删除成功'); actionRef.current?.reload(); })}>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
-        </Popconfirm>
+        <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
+          onConfirm={async () => { await api.deleteApplication(row.id); message.success('删除成功'); actionRef.current?.reload(); }}
+        />
       ]
     }
   ];
@@ -44,13 +46,15 @@ export default function PublishApplications() {
         search={false} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
       />
       <ModalForm<{ name: string; description?: string; repoId?: number }>
+        key={editRecord?.id ?? 'new'}
         title={editRecord ? '编辑应用' : '新增应用'}
-        open={modalOpen} onOpenChange={setModalOpen} initialValues={editRecord ?? {}}
+        open={modalOpen} onOpenChange={setModalOpen}
+        modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '' }} initialValues={editRecord ?? {}}
         onFinish={async (values) => {
           try {
             if (editRecord?.id) await api.updateApplication(editRecord.id, values); else await api.createApplication(values);
             message.success('保存成功'); actionRef.current?.reload(); return true;
-          } catch { message.error('保存失败'); return false; }
+          } catch (e: any) { if (!isHandledError(e)) message.error('保存失败'); return false; }
         }}
       >
         <ProFormText name="name" label="应用名称" rules={[{ required: true }]} />

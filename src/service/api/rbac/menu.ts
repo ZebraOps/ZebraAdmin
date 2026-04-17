@@ -22,8 +22,8 @@ export interface MenuForm {
   icon?: string;
 }
 
-export const fetchMenuTree = () =>
-  http.get<MenuItem[]>('/rbac/menus/tree');
+export const fetchMenuTree = (params?: Record<string, unknown>) =>
+  http.get<MenuItem[]>('/rbac/menus/tree', params);
 
 export const fetchMenus = (params?: Record<string, unknown>) =>
   http.get<{ total: number; records: MenuItem[] }>('/rbac/menus', params);

@@ -2,11 +2,9 @@
 
 [English](./README.en.md) | 中文
 
-基于 React 19 + TypeScript + Vite 构建的现代化运维管理平台前端，是 [ZebraUI](../ZebraUI)（Vue 3 版本）的 React 重构版本。
+基于 React 19 + TypeScript + Vite 构建的现代化运维管理平台前端。
 
-![版本](https://img.shields.io/badge/version-1.0.0-orange)
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)
 ![Vite](https://img.shields.io/badge/Vite-6-646cff?logo=vite)
 ![Ant Design](https://img.shields.io/badge/Ant%20Design-5-0170FE?logo=antdesign)
 
@@ -39,7 +37,8 @@
 ```
 src/
 ├── assets/             # 静态资源
-├── components/         # 公共组件
+├── components/
+│   └── CountdownButton.tsx  # 倒计时确认删除按钮（Popconfirm + 3s 倒计时）
 ├── layouts/            # 布局组件
 │   ├── BaseLayout.tsx  # 主布局（侧边栏 + 顶栏 + 多标签页）
 │   ├── BlankLayout.tsx # 空白布局（登录页等）
@@ -47,12 +46,17 @@ src/
 ├── locales/            # i18n 语言包（zh-CN / en-US）
 ├── router/
 │   ├── routes.tsx      # 路由配置（懒加载）
-│   ├── guard.tsx       # 路由守卫（鉴权 + 动态路由）
-│   └── menus.ts        # 静态菜单兜底数据
+│   ├── guard.tsx       # 路由守卫（鉴权 + 动态菜单注入）
+│   └── menus.ts        # 静态菜单（图标兜底数据源）
 ├── service/
-│   ├── request.ts      # Axios 封装
-│   └── api/            # 模块化 API（org / permission / system / publish / gateway）
-├── store/              # Zustand 状态（auth / tab / app / theme / route）
+│   ├── request/        # Axios 封装（拦截器统一处理 400/403 错误弹窗）
+│   └── api/            # 模块化 API（auth / route / rbac / publish / gateway）
+├── store/              # Zustand 状态
+│   ├── auth.ts         # 登录态、用户信息、权限（functions/menus/components）
+│   ├── route.ts        # 动态菜单、路由转换、图标兜底
+│   ├── tab.ts          # 多标签页管理（首页始终置顶）
+│   ├── app.ts          # 全局应用状态
+│   └── theme.ts        # 主题切换
 ├── typings/            # 全局类型声明
 ├── views/              # 页面视图
 │   ├── home/           # 工作台
@@ -117,6 +121,44 @@ VITE_BASE_URL=http://localhost:8080
 | [ZebraGateway](../ZebraGateway)       | Go，API 网关管理                   |
 | [ZebraDeployment](../ZebraDeployment) | Docker Compose 部署脚本            |
 
+## 🔐 权限体系集成
+
+前端与 ZebraRBAC + ZebraGateway 深度集成，实现三级权限控制：
+
+### 鉴权流程
+
+```
+登录 → POST /rbac/login/access-token → JWT Token
+    │
+请求 → Authorization: Bearer <token>
+    │
+    ▼
+ZebraGateway（:8080）
+    ├── 白名单放行
+    ├── JWT 验证 + RBAC 权限校验
+    ├── 路径重写（/rbac/* → /api/*）
+    └── 反向代理到上游服务
+```
+
+### 三级权限模型
+
+| 级别     | 控制粒度               | 前端实现                                       |
+| -------- | ---------------------- | ---------------------------------------------- |
+| 功能权限 | API 接口（Method+URI） | 网关层拦截，前端无感知                         |
+| 菜单权限 | 页面可见性             | 动态菜单 `getUserRoutes`，路由守卫自动注入     |
+| 组件权限 | 按钮/元素可见性        | `userInfo.permissions.components.xxx` 条件渲染 |
+
+### 动态菜单
+
+- 登录后调用 `GET /rbac/route/getUserRoutes` 获取当前用户可见菜单
+- 后端自动补全祖先菜单（子菜单有权限则父菜单自动可见）
+- 图标优先取后端返回值，为空时从静态菜单 `menus.ts` 兜底
+- 首页（`/home`）对所有角色始终可见
+
+### 公共组件
+
+- **CountdownButton**：替代原生 Popconfirm 的删除确认组件，点击"确定"后 3 秒倒计时自动执行，防止误操作
+
 ## 🎨 主题与国际化
 
 - 支持 **亮色 / 暗色** 主题切换（顶栏一键切换，基于 Ant Design `ConfigProvider` + CSS 设计变量）
@@ -126,13 +168,3 @@ VITE_BASE_URL=http://localhost:8080
 ## 📄 License
 
 [MIT](./LICENSE)
-
----
-
-> **注意：** 本项目由 [ZebraUI](../ZebraUI)（Vue 3 + Naive UI）重构而来，保持功能对等。UI 组件库已从 Arco Design 迁移至 **Ant Design 5 + Pro Components**。
-> },
-> ]);
-
-```
-
-```

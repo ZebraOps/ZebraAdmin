@@ -37,7 +37,11 @@ export const useTabStore = create<TabState>((set, get) => ({
       if (exists) {
         return { activeTabId: id };
       }
-      return { tabs: [...state.tabs, tab], activeTabId: id };
+      // 首页 tab 始终在第一位
+      const newTabs = id === '/home'
+        ? [tab, ...state.tabs]
+        : [...state.tabs, tab];
+      return { tabs: newTabs, activeTabId: id };
     });
   },
 

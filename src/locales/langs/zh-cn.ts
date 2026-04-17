@@ -44,6 +44,12 @@ const zhCN = {
     update: '更新',
     updateSuccess: '更新成功',
     userCenter: '个人中心',
+    myRoles: '我的角色',
+    myComponents: '我的组件权限',
+    noRoleData: '暂无角色数据',
+    noComponentData: '暂无组件权限数据',
+    allComponents: '全部组件权限',
+    superAdmin: '超级管理员',
     yesOrNo: {
       yes: '是',
       no: '否'

@@ -1,52 +1,95 @@
-import { useRef, useState } from 'react';
-import { ProTable, ModalForm, ProFormText, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Popconfirm, message } from 'antd';
+import { useRef, useState, useEffect } from 'react';
+import { ProTable, ModalForm, ProFormText, ProFormSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { Button, Tag, message } from 'antd';
+import CountdownButton from '@/components/CountdownButton';
+import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/rbac/component';
+import * as groupApi from '@/service/api/rbac/group';
+import type { Component, ComponentForm } from '@/service/api/rbac/component';
+import type { Group } from '@/service/api/rbac/group';
 
-interface ComponentItem { id?: number; name?: string; remark?: string; [key: string]: unknown; }
+const STATUS_MAP: Record<string, { label: string; color: string }> = {
+  '0': { label: '启用', color: 'success' },
+  '1': { label: '禁用', color: 'error' },
+};
 
 export default function PermissionComponent() {
   const { t } = useTranslation();
   const actionRef = useRef<ActionType>(null);
-  const [editRecord, setEditRecord] = useState<ComponentItem | null>(null);
+  const [editRecord, setEditRecord] = useState<Component | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
 
-  const columns: ProColumns<ComponentItem>[] = [
-    { title: t('common.name', { defaultValue: '名称' }), dataIndex: 'name' },
-    { title: t('common.remark', { defaultValue: '备注' }), dataIndex: 'remark' },
-    { title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
+  useEffect(() => {
+    groupApi.fetchGroups({ size: 200 }).then((res: any) => {
+      setGroups(res?.records ?? []);
+    }).catch(() => {});
+  }, []);
+
+  const columns: ProColumns<Component>[] = [
+    { title: '组件名称', dataIndex: 'component_name' },
+    {
+      title: '分组', dataIndex: 'group', search: false,
+      render: (_, row) => row.group ? <Tag>{row.group}</Tag> : '-'
+    },
+    {
+      title: '状态', dataIndex: 'status', valueType: 'select',
+      valueEnum: { '0': { text: '启用', status: 'Success' }, '1': { text: '禁用', status: 'Error' } },
+      render: (_, row) => { const s = STATUS_MAP[String(row.status)]; return s ? <Tag color={s.color}>{s.label}</Tag> : '-'; }
+    },
+    { title: '创建时间', dataIndex: 'ctime', valueType: 'dateTime', search: false },
+    {
+      title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <Popconfirm key="del" title={t('common.deleteConfirm', { defaultValue: '确认删除？' })} onConfirm={() => (api as any).deleteComponent(row.id!).then(() => { message.success('删除成功'); actionRef.current?.reload(); })}>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
-        </Popconfirm>
+        <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
+          onConfirm={async () => { await api.deleteComponent(row.component_id); message.success('删除成功'); actionRef.current?.reload(); }}
+        />
       ]
     }
   ];
 
   return (
     <>
-      <ProTable<ComponentItem>
-        rowKey="id" actionRef={actionRef} columns={columns}
-        request={async () => { try { const res = await (api as any).fetchComponents({}); return { data: (res as any)?.data?.list ?? (res as any)?.data ?? [], success: true, total: 0 }; } catch { return { data: [], success: false, total: 0 }; } }}
+      <ProTable<Component>
+        rowKey="component_id" actionRef={actionRef} columns={columns}
+        request={async (params) => {
+          try {
+            const query: Record<string, unknown> = {
+              current: ((params.current ?? 1) - 1) * (params.pageSize ?? 20),
+              size: params.pageSize ?? 20,
+            };
+            if (params.component_name) query.name = params.component_name;
+            if (params.status !== undefined && params.status !== '') query.status = params.status;
+            const res = await api.fetchComponents(query);
+            return { data: res?.records ?? [], success: true, total: res?.total ?? 0 };
+          } catch { return { data: [], success: false, total: 0 }; }
+        }}
         headerTitle={t('route.permission_component', { defaultValue: '组件管理' })}
-        toolBarRender={() => [<Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>{t('common.add', { defaultValue: '新增' })}</Button>]}
-        search={false} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
+        toolBarRender={() => [
+          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>{t('common.add', { defaultValue: '新增' })}</Button>
+        ]}
+        search={{ labelWidth: 80 }} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
       />
-      <ModalForm<ComponentItem>
+      <ModalForm<ComponentForm>
+        key={editRecord?.component_id ?? 'new'}
         title={editRecord ? t('common.edit', { defaultValue: '编辑' }) : t('common.add', { defaultValue: '新增' })}
-        open={modalOpen} onOpenChange={setModalOpen} initialValues={editRecord ?? {}}
+        open={modalOpen} onOpenChange={setModalOpen}
+        initialValues={editRecord ? { component_name: editRecord.component_name, group_id: editRecord.group_id } : {}}
+        modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '' }}
         onFinish={async (values) => {
           try {
-            if (editRecord?.id) await (api as any).updateComponent(editRecord.id as number, values); else await (api as any).createComponent(values);
+            if (editRecord?.component_id) await api.updateComponent(editRecord.component_id, values);
+            else await api.createComponent(values);
             message.success('保存成功'); actionRef.current?.reload(); return true;
-          } catch { message.error('保存失败'); return false; }
+          } catch (e: any) { if (!isHandledError(e)) message.error('保存失败'); return false; }
         }}
       >
-        <ProFormText name="name" label={t('common.name', { defaultValue: '名称' })} rules={[{ required: true }]} />
-        <ProFormText name="remark" label={t('common.remark', { defaultValue: '备注' })} />
+        <ProFormText name="component_name" label="组件名称" rules={[{ required: true }]} />
+        <ProFormSelect name="group_id" label="分组" rules={[{ required: true }]}
+          options={groups.map(g => ({ label: g.group_name, value: g.group_id }))} />
       </ModalForm>
     </>
   );

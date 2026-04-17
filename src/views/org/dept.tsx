@@ -1,61 +1,149 @@
-import { useRef, useState } from 'react';
-import { ProTable, ModalForm, ProFormText, ProFormSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Popconfirm, Tag, message } from 'antd';
+import { useRef, useState, useCallback } from 'react';
+import { ProTable, ModalForm, ProFormText, ProFormDigit, ProFormTreeSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { Button, Tag, message } from 'antd';
+import CountdownButton from '@/components/CountdownButton';
+import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import * as api from '@/service/api/rbac/group';
-import type { Group, GroupForm } from '@/service/api/rbac/group';
+import { useAuthStore } from '@/store/auth';
+import * as api from '@/service/api/rbac/org';
+import type { OrgNode, OrgForm } from '@/service/api/rbac/org';
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  '0': { label: '启用', color: 'green' },
-  '1': { label: '禁用', color: 'red' },
+const ORG_TYPE_MAP: Record<number, { label: string; color: string }> = {
+  1: { label: '公司', color: 'blue' },
+  2: { label: '部门', color: 'green' },
+  3: { label: '团队', color: 'orange' },
 };
+
+/** 将树节点转为 TreeSelect 数据 */
+function toTreeSelectData(nodes: OrgNode[]): any[] {
+  return nodes.map(n => ({
+    title: n.org_name,
+    value: n.org_id,
+    children: n.children?.length ? toTreeSelectData(n.children) : undefined,
+  }));
+}
 
 export default function OrgDept() {
   const actionRef = useRef<ActionType>(null);
-  const [editRecord, setEditRecord] = useState<Group | null>(null);
+  const [editRecord, setEditRecord] = useState<OrgNode | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [treeData, setTreeData] = useState<OrgNode[]>([]);
+  const [parentId, setParentId] = useState<number | null>(null);
+  const [expandedKeys, setExpandedKeys] = useState<number[]>([]);
+  const { userInfo } = useAuthStore();
+  const canAddOrg = userInfo?.permissions?.all || userInfo?.permissions?.components?.orgAddBtn;
 
-  const columns: ProColumns<Group>[] = [
-    { title: '分组名称', dataIndex: 'group_name' },
-    { title: '描述', dataIndex: 'description', render: v => v || '—' },
-    { title: '状态', dataIndex: 'status', render: (_, row) => { const m = STATUS_MAP[String((row as any).status)] ?? { label: String((row as any).status), color: 'default' }; return <Tag color={m.color}>{m.label}</Tag>; } },
+  /** 收集所有节点 key */
+  const collectKeys = (nodes: OrgNode[]): number[] =>
+    nodes.flatMap(n => [n.org_id, ...(n.children?.length ? collectKeys(n.children) : [])]);
+
+  const loadTree = useCallback(async () => {
+    try {
+      const res = await api.fetchOrgTree();
+      const data = Array.isArray(res) ? res : (res as any)?.data ?? [];
+      setTreeData(data);
+      setExpandedKeys(collectKeys(data));
+      return data;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const columns: ProColumns<OrgNode>[] = [
+    { title: '组织名称', dataIndex: 'org_name', width: 200 },
+    { title: '组织编码', dataIndex: 'org_code', width: 140 },
+    {
+      title: '类型', dataIndex: 'org_type', width: 80,
+      render: (_, row) => {
+        const m = ORG_TYPE_MAP[row.org_type ?? 1] ?? { label: String(row.org_type), color: 'default' };
+        return <Tag color={m.color}>{m.label}</Tag>;
+      }
+    },
+    { title: '排序', dataIndex: 'order_num', width: 60 },
     { title: '创建时间', dataIndex: 'ctime', width: 160, render: v => v || '—' },
-    { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 140,
+    {
+      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 200,
       render: (_, row) => [
-        <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
-        <Popconfirm key="del" title="确认删除该分组？" onConfirm={() => api.deleteGroup(row.group_id).then(() => { message.success('删除成功'); actionRef.current?.reload(); }).catch(() => message.error('删除失败'))}>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
-        </Popconfirm>
+        <Button
+          key="addChild" type="link" size="small" icon={<PlusOutlined />}
+          onClick={() => { setEditRecord(null); setParentId(row.org_id); setModalOpen(true); }}
+        >
+          子级
+        </Button>,
+        <Button
+          key="edit" type="link" size="small" icon={<EditOutlined />}
+          onClick={() => { setEditRecord(row); setParentId(row.parent_id ?? null); setModalOpen(true); }}
+        >
+          编辑
+        </Button>,
+        <CountdownButton key="del" icon={<DeleteOutlined />}
+          onConfirm={async () => { await api.deleteOrg(row.org_id); message.success('删除成功'); actionRef.current?.reload(); }}
+        />
       ]
     }
   ];
 
   return (
     <>
-      <ProTable<Group>
-        rowKey="group_id" actionRef={actionRef} columns={columns}
-        request={async (params) => {
-          try { const res = await api.fetchGroups(params); return { data: (res as any)?.records ?? [], success: true, total: (res as any)?.total ?? 0 }; }
-          catch { return { data: [], success: false, total: 0 }; }
+      <ProTable<OrgNode>
+        rowKey="org_id" actionRef={actionRef} columns={columns}
+        request={async () => {
+          const data = await loadTree();
+          return { data, success: true, total: data.length };
         }}
-        headerTitle="分组管理"
-        toolBarRender={() => [<Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>新增分组</Button>]}
+        pagination={false}
+        search={false}
+        expandable={{
+          expandedRowKeys: expandedKeys,
+          onExpandedRowsChange: (keys) => setExpandedKeys(keys as number[]),
+          childrenColumnName: 'children',
+        }}
+        headerTitle="组织管理"
+        toolBarRender={() => [
+          canAddOrg && (
+            <Button
+              key="add" type="primary" icon={<PlusOutlined />}
+              onClick={() => { setEditRecord(null); setParentId(null); setModalOpen(true); }}
+            >
+              新增组织
+            </Button>
+          )
+        ]}
         scroll={{ x: 'max-content' }}
       />
-      <ModalForm<GroupForm>
-        title={editRecord ? '编辑分组' : '新增分组'}
-        open={modalOpen} onOpenChange={setModalOpen}
-        initialValues={editRecord ? { group_name: editRecord.group_name, description: editRecord.description, status: editRecord.status } : {}}
+      <ModalForm<OrgForm>
+        key={editRecord?.org_id ?? 'new'}
+        title={editRecord ? '编辑组织' : '新增组织'}
+        open={modalOpen}
+        onOpenChange={(open) => { if (!open) { setEditRecord(null); setParentId(null); } setModalOpen(open); }}
+        modalProps={{ destroyOnClose: true, transitionName: '', maskTransitionName: '' }}
+        initialValues={
+          editRecord
+            ? { org_name: editRecord.org_name, org_code: editRecord.org_code, org_type: editRecord.org_type ?? 1, parent_id: editRecord.parent_id, order_num: editRecord.order_num ?? 0 }
+            : { org_type: 1, parent_id: parentId, order_num: 0 }
+        }
         onFinish={async (values) => {
           try {
-            if (editRecord) await api.updateGroup(editRecord.group_id, values); else await api.createGroup(values);
-            message.success('保存成功'); actionRef.current?.reload(); return true;
-          } catch { message.error('保存失败'); return false; }
+            const payload = { ...values, parent_id: values.parent_id || null };
+            if (editRecord) await api.updateOrg(editRecord.org_id, payload);
+            else await api.createOrg(payload);
+            message.success('保存成功');
+            actionRef.current?.reload();
+            return true;
+          } catch (e: any) {
+            if (!isHandledError(e)) message.error('保存失败');
+            return false;
+          }
         }}
       >
-        <ProFormText name="group_name" label="分组名称" rules={[{ required: true }]} />
-        <ProFormText name="description" label="描述" />
-        <ProFormSelect name="status" label="状态" options={[{ label: '启用', value: '0' }, { label: '禁用', value: '1' }]} />
+        <ProFormText name="org_name" label="组织名称" rules={[{ required: true, message: '请输入组织名称' }]} />
+        <ProFormText name="org_code" label="组织编码" rules={[{ required: true, message: '请输入组织编码' }]} />
+        <ProFormTreeSelect
+          name="parent_id" label="上级组织"
+          fieldProps={{ treeData: toTreeSelectData(treeData), allowClear: true, placeholder: '无（顶级组织）', treeDefaultExpandAll: true }}
+        />
+        <ProFormDigit name="org_type" label="组织类型" fieldProps={{ precision: 0 }} tooltip="1-公司 2-部门 3-团队" />
+        <ProFormDigit name="order_num" label="排序号" fieldProps={{ precision: 0 }} />
       </ModalForm>
     </>
   );

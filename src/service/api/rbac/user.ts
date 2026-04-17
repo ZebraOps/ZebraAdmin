@@ -30,6 +30,7 @@ export interface UserForm {
   department?: string;
   superuser?: string;
   status?: string;
+  avatar?: string;
   role_ids?: number[];
   job_ids?: number[];
 }

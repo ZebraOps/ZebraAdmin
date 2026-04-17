@@ -33,37 +33,37 @@ export const deleteRole = (id: number) =>
   http.delete(`/rbac/roles/${id}`);
 
 export const fetchRoleUsers = (id: number) =>
-  http.get<{ items: unknown[]; total: number }>(`/rbac/roles/${id}/users`);
+  http.get<import('./user').User[]>(`/rbac/roles/${id}/users`);
 
 export const addRoleUsers = (id: number, userIds: number[]) =>
-  http.post(`/rbac/roles/${id}/users`, { userIds });
+  http.post(`/rbac/roles/${id}/users`, userIds);
 
 export const removeRoleUsers = (id: number, userIds: number[]) =>
-  http.delete(`/rbac/roles/${id}/users`, { userIds });
+  http.delete(`/rbac/roles/${id}/users`, userIds);
 
 export const fetchRoleMenus = (id: number) =>
-  http.get<unknown[]>(`/rbac/roles/${id}/menus`);
+  http.get<import('./menu').MenuItem[]>(`/rbac/roles/${id}/menus`);
 
 export const addRoleMenus = (id: number, menuIds: number[]) =>
-  http.post(`/rbac/roles/${id}/menus`, { menuIds });
+  http.post(`/rbac/roles/${id}/menus`, menuIds);
 
 export const removeRoleMenus = (id: number, menuIds: number[]) =>
-  http.delete(`/rbac/roles/${id}/menus`, { menuIds });
+  http.delete(`/rbac/roles/${id}/menus`, menuIds);
 
 export const fetchRoleComponents = (id: number) =>
-  http.get<unknown[]>(`/rbac/roles/${id}/components`);
+  http.get<import('./component').Component[]>(`/rbac/roles/${id}/components`);
 
 export const addRoleComponents = (id: number, componentIds: number[]) =>
-  http.post(`/rbac/roles/${id}/components`, { componentIds });
+  http.post(`/rbac/roles/${id}/components`, componentIds);
 
 export const removeRoleComponents = (id: number, componentIds: number[]) =>
-  http.delete(`/rbac/roles/${id}/components`, { componentIds });
+  http.delete(`/rbac/roles/${id}/components`, componentIds);
 
 export const fetchRoleFunctions = (id: number) =>
-  http.get<unknown[]>(`/rbac/roles/${id}/functions`);
+  http.get<import('./function').FunctionItem[]>(`/rbac/roles/${id}/functions`);
 
 export const addRoleFunctions = (id: number, functionIds: number[]) =>
-  http.post(`/rbac/roles/${id}/functions`, { functionIds });
+  http.post(`/rbac/roles/${id}/functions`, functionIds);
 
 export const removeRoleFunctions = (id: number, functionIds: number[]) =>
-  http.delete(`/rbac/roles/${id}/functions`, { functionIds });
+  http.delete(`/rbac/roles/${id}/functions`, functionIds);

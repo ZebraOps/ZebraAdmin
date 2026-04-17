@@ -44,6 +44,12 @@ const enUS = {
     update: 'Update',
     updateSuccess: 'Updated successfully',
     userCenter: 'User Center',
+    myRoles: 'My Roles',
+    myComponents: 'My Component Permissions',
+    noRoleData: 'No role data',
+    noComponentData: 'No component permission data',
+    allComponents: 'All Components',
+    superAdmin: 'Super Administrator',
     yesOrNo: {
       yes: 'Yes',
       no: 'No'

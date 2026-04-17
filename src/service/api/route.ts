@@ -22,10 +22,10 @@ export interface UserRoutesData {
 }
 
 export const fetchGetConstantRoutes = () =>
-  http.get<RouteItem[]>('/route/getConstantRoutes');
+  http.get<RouteItem[]>('/rbac/route/getConstantRoutes');
 
 export const fetchGetUserRoutes = () =>
-  http.get<UserRoutesData>('/route/getUserRoutes');
+  http.get<UserRoutesData>('/rbac/route/getUserRoutes');
 
 export const fetchIsRouteExist = (routeName: string) =>
-  http.get<boolean>('/route/isRouteExist', { routeName });
+  http.get<boolean>('/rbac/route/isRouteExist', { routeName });

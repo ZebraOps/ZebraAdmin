@@ -4,12 +4,13 @@ import { Spin } from 'antd';
 import { useAuthStore } from '@/store/auth';
 import { useRouteStore, transformRoutesToMenus } from '@/store/route';
 import { fetchGetUserRoutes } from '@/service/api/route';
+import { staticMenus } from '@/router/menus';
 
 /** Pages that don't require authentication */
 const PUBLIC_PATHS = ['/login', '/403', '/404', '/500'];
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isLogin } = useAuthStore();
+  const { isLogin, userInfo } = useAuthStore();
   const { isInitialized, setMenus, setInitialized, setHomeRoute } = useRouteStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,21 +27,34 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // Logged in - init routes if not yet
     if (!isInitialized) {
-      fetchGetUserRoutes()
-        .then(({ routes, home }) => {
-          const menus = transformRoutesToMenus(routes);
-          setMenus(menus);
-          setHomeRoute(home);
-          setInitialized(true);
-          // If at root or login, redirect to home
-          if (location.pathname === '/' || location.pathname === '/login') {
-            navigate(`/${home}`, { replace: true });
-          }
-        })
-        .catch(() => {
-          setInitialized(true);
-          // Fall back to local static menus on error
-        });
+      // 超级管理员直接使用完整的静态菜单
+      if (userInfo?.menus?.all) {
+        setMenus(staticMenus);
+        setHomeRoute('home');
+        setInitialized(true);
+        if (location.pathname === '/' || location.pathname === '/login') {
+          navigate('/home', { replace: true });
+        }
+      } else {
+        fetchGetUserRoutes()
+          .then(({ routes, home }) => {
+            const menus = transformRoutesToMenus(routes);
+            // 首页菜单始终展示，不受角色权限控制
+            const homeMenu: import('@/store/route').MenuNode = {
+              key: 'home', label: 'route.home', icon: 'mdi:monitor-dashboard', path: '/home', order: 1
+            };
+            const hasHome = menus.some(m => m.key === 'home');
+            setMenus(hasHome ? menus : [homeMenu, ...menus]);
+            setHomeRoute(home);
+            setInitialized(true);
+            if (location.pathname === '/' || location.pathname === '/login') {
+              navigate(`/${home}`, { replace: true });
+            }
+          })
+          .catch(() => {
+            setInitialized(true);
+          });
+      }
     }
 
     if (isPublic && location.pathname === '/login') {

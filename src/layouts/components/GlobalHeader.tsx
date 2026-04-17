@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { App, Button, Tooltip, Dropdown, Avatar, Space, type MenuProps } from 'antd';
+import multiavatar from '@multiavatar/multiavatar';
+import { App, Button, Tooltip, Dropdown, Space, Modal, Tag, Typography, Empty, type MenuProps } from 'antd';
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -28,6 +29,7 @@ export default function GlobalHeader() {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
+  const [permissionModalOpen, setPermissionModalOpen] = useState(false);
 
   // Sync fullscreen state with browser events
   useEffect(() => {
@@ -53,6 +55,7 @@ export default function GlobalHeader() {
       key: 'profile',
       icon: <UserOutlined />,
       label: t('common.userCenter'),
+      onClick: () => setPermissionModalOpen(true),
     },
     { type: 'divider' },
     {
@@ -78,6 +81,15 @@ export default function GlobalHeader() {
     background: 'transparent',
     boxShadow: 'none',
   };
+
+  const roleNames = userInfo?.roles?.all
+    ? [t('common.superAdmin', { defaultValue: '超级管理员' })]
+    : (userInfo?.roles?.data ?? []);
+
+  const isAllPermissions = userInfo?.permissions?.all ?? false;
+  const componentNames = Object.entries(userInfo?.permissions?.components ?? {})
+    .filter(([, enabled]) => Boolean(enabled))
+    .map(([name]) => name);
 
   return (
     <>
@@ -145,10 +157,9 @@ export default function GlobalHeader() {
 
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <Space style={{ cursor: 'pointer', padding: '4px 8px', borderRadius: 6 }}>
-              <Avatar
-                size={28}
-                style={{ background: 'linear-gradient(135deg, #f97316, #fbbf24)', fontSize: 11, fontWeight: 700 }}
-                icon={<UserOutlined />}
+              <span
+                style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', display: 'inline-flex', flexShrink: 0 }}
+                dangerouslySetInnerHTML={{ __html: multiavatar((userInfo?.userName || 'Admin') + (userInfo?.avatar || '')) }}
               />
               <span style={{ fontSize: 13, color: 'var(--zb-text-1)', fontWeight: 500 }}>
                 {userInfo?.userName || 'Admin'}
@@ -157,6 +168,55 @@ export default function GlobalHeader() {
           </Dropdown>
         </Space>
       </div>
+
+      <Modal
+        title={t('common.userCenter', { defaultValue: '个人中心' })}
+        open={permissionModalOpen}
+        onCancel={() => setPermissionModalOpen(false)}
+        footer={null}
+        transitionName=""
+        maskTransitionName=""
+        destroyOnClose
+        width={680}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span
+              style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', display: 'inline-flex', flexShrink: 0 }}
+              dangerouslySetInnerHTML={{ __html: multiavatar((userInfo?.userName || 'Admin') + (userInfo?.avatar || '')) }}
+            />
+            <div>
+              <Typography.Text strong>{userInfo?.userName || 'Admin'}</Typography.Text>
+              {userInfo?.email && (
+                <div>
+                  <Typography.Text type="secondary">{userInfo.email}</Typography.Text>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Typography.Text strong>{t('common.myRoles', { defaultValue: '我的角色' })}</Typography.Text>
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {roleNames.length > 0
+                ? roleNames.map(role => <Tag key={role}>{role}</Tag>)
+                : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('common.noRoleData', { defaultValue: '暂无角色数据' })} />}
+            </div>
+          </div>
+
+          <div>
+            <Typography.Text strong>{t('common.myComponents', { defaultValue: '我的组件权限' })}</Typography.Text>
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {isAllPermissions && (
+                <Tag color="gold">{t('common.allComponents', { defaultValue: '全部组件权限' })}</Tag>
+              )}
+              {componentNames.length > 0
+                ? componentNames.map(name => <Tag color="processing" key={name}>{name}</Tag>)
+                : !isAllPermissions && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('common.noComponentData', { defaultValue: '暂无组件权限数据' })} />}
+            </div>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

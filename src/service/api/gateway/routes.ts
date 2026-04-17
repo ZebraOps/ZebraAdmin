@@ -1,29 +1,25 @@
 import http from '../../request';
 
 export interface GatewayRoute {
-  id: number;
-  name: string;
-  uri: string;
-  predicates?: unknown[];
-  filters?: unknown[];
-  order?: number;
+  ID: number;
+  prefix: string;
+  target: string;
+  rewrite?: string;
   enabled: boolean;
   description?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  CreatedAt?: string;
+  UpdatedAt?: string;
 }
 
 export interface GatewayRouteForm {
-  name: string;
-  uri: string;
-  predicates?: unknown[];
-  filters?: unknown[];
-  order?: number;
+  prefix: string;
+  target: string;
+  rewrite?: string;
   description?: string;
 }
 
 export const fetchGatewayRoutes = (params?: Record<string, unknown>) =>
-  http.get<{ items: GatewayRoute[]; total: number }>('/admin/routes', params);
+  http.get<GatewayRoute[]>('/admin/routes', params);
 
 export const createGatewayRoute = (data: GatewayRouteForm) =>
   http.post<GatewayRoute>('/admin/routes', data);
@@ -39,6 +35,7 @@ export const enableGatewayRoute = (id: number) =>
 
 export const disableGatewayRoute = (id: number) =>
   http.post(`/admin/routes/${id}/disable`);
+
 
 export const reloadGatewayRoutes = () =>
   http.post('/admin/routes/reload');

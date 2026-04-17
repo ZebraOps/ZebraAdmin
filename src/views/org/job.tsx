@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Popconfirm, message } from 'antd';
+import { Button, message } from 'antd';
+import CountdownButton from '@/components/CountdownButton';
+import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import * as api from '@/service/api/rbac/job';
 import type { Job, JobForm } from '@/service/api/rbac/job';
@@ -18,9 +20,9 @@ export default function OrgJob() {
     { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
-        <Popconfirm key="del" title="确认删除该岗位？" onConfirm={() => api.deleteJob(row.job_id).then(() => { message.success('删除成功'); actionRef.current?.reload(); }).catch(() => message.error('删除失败'))}>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
-        </Popconfirm>
+        <CountdownButton key="del" icon={<DeleteOutlined />}
+          onConfirm={async () => { await api.deleteJob(row.job_id); message.success('删除成功'); actionRef.current?.reload(); }}
+        />
       ]
     }
   ];
@@ -38,14 +40,16 @@ export default function OrgJob() {
         scroll={{ x: 'max-content' }}
       />
       <ModalForm<JobForm>
+        key={editRecord?.job_id ?? 'new'}
         title={editRecord ? '编辑岗位' : '新增岗位'}
         open={modalOpen} onOpenChange={setModalOpen}
+        modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '' }}
         initialValues={editRecord ? { job_name: editRecord.job_name, job_code: editRecord.job_code, description: editRecord.description } : {}}
         onFinish={async (values) => {
           try {
             if (editRecord) await api.updateJob(editRecord.job_id, values); else await api.createJob(values);
             message.success('保存成功'); actionRef.current?.reload(); return true;
-          } catch { message.error('保存失败'); return false; }
+          } catch (e: any) { if (!isHandledError(e)) message.error('保存失败'); return false; }
         }}
       >
         <ProFormText name="job_name" label="岗位名称" rules={[{ required: true }]} />

@@ -4,7 +4,8 @@ import { UserOutlined, LockOutlined, BulbOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { useAuthStore } from '@/store/auth';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import type { ProFormInstance } from '@ant-design/pro-components';
 import { useThemeStore } from '@/store/theme';
 
 interface LoginFormValues {
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(true);
   const isDark = themeScheme === 'dark';
+  const formRef = useRef<ProFormInstance>();
 
   const handleSubmit = async (values: LoginFormValues) => {
     setLoading(true);
@@ -58,14 +60,27 @@ export default function LoginPage() {
         }}
       />
 
-      {/* Amber glow orb */}
+      {/* Amber glow orb — floating */}
       <div
         aria-hidden
         style={{
-          position: 'absolute', top: '2%', left: '50%', transform: 'translateX(-50%)',
-          width: 640, height: 320,
-          background: 'radial-gradient(ellipse, rgba(249,115,22,.12) 0%, transparent 70%)',
-          pointerEvents: 'none'
+          position: 'absolute', top: '0%', left: '50%', transform: 'translateX(-50%)',
+          width: 640, height: 360,
+          background: 'radial-gradient(ellipse, rgba(249,115,22,.14) 0%, transparent 70%)',
+          pointerEvents: 'none',
+          animation: 'zb-float 6s ease-in-out infinite',
+        }}
+      />
+
+      {/* Secondary glow — bottom right */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute', bottom: '-10%', right: '10%',
+          width: 400, height: 300,
+          background: 'radial-gradient(ellipse, rgba(251,191,36,.06) 0%, transparent 70%)',
+          pointerEvents: 'none',
+          animation: 'zb-float 8s ease-in-out infinite 2s',
         }}
       />
 
@@ -81,7 +96,7 @@ export default function LoginPage() {
 
       {/* Card */}
       <div
-        className="zb-animate-in"
+        className="zb-animate-blur"
         style={{
           width: '100%', maxWidth: 400, margin: '0 16px',
           background: isDark ? 'rgba(17,17,17,0.92)' : 'rgba(255,255,255,0.95)',
@@ -93,43 +108,57 @@ export default function LoginPage() {
             ? '0 0 0 1px rgba(249,115,22,.08), 0 24px 48px rgba(0,0,0,.6)'
             : '0 24px 48px rgba(0,0,0,.08)',
           padding: '40px 36px',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
+        {/* Noise overlay */}
+        <div className="zb-noise" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+
+        {/* Top accent stripe */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+          background: 'linear-gradient(90deg, transparent, #f97316, transparent)',
+          opacity: 0.6,
+        }} />
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+        <div style={{ textAlign: 'center', marginBottom: 32, position: 'relative' }}>
           <div
+            className="zb-animate-scale zb-pulse-glow"
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 44, height: 44, borderRadius: 8,
-              background: '#f97316',
-              boxShadow: '0 6px 20px rgba(249,115,22,.4)',
+              width: 48, height: 48, borderRadius: 10,
+              background: 'linear-gradient(135deg, #f97316, #ea580c)',
+              boxShadow: '0 6px 24px rgba(249,115,22,.45)',
               fontFamily: 'var(--zb-font-mono)',
-              fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px',
-              marginBottom: 14,
+              fontSize: 17, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px',
+              marginBottom: 16,
             }}
           >
             ZB
           </div>
-          <h1 style={{
-            margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: '0.08em',
+          <h1 className="zb-animate-in zb-delay-1" style={{
+            margin: 0, fontSize: 20, fontWeight: 700, letterSpacing: '0.1em',
             fontFamily: 'var(--zb-font-mono)',
             color: isDark ? '#f0f0f0' : '#111',
             textTransform: 'uppercase',
           }}>
             ZEBRAOPS
           </h1>
-          <p style={{
-            margin: '6px 0 0', fontSize: 11,
+          <p className="zb-animate-in zb-delay-2" style={{
+            margin: '8px 0 0', fontSize: 11,
             fontFamily: 'var(--zb-font-mono)',
             color: isDark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.35)',
-            letterSpacing: '0.04em',
+            letterSpacing: '0.12em',
           }}>
             {t('page.login.welcomeBack', { defaultValue: 'SIGN IN TO YOUR ACCOUNT' })}
           </p>
         </div>
 
         {/* Form */}
+        <div className="zb-animate-in zb-delay-3">
         <ProForm<LoginFormValues>
+          formRef={formRef}
           submitter={{
             render: (_, dom) => dom[1],
             submitButtonProps: {
@@ -137,13 +166,15 @@ export default function LoginPage() {
               size: 'large',
               loading,
               block: true,
+              className: 'zb-btn-glow',
               style: {
-                borderRadius: 6, height: 42,
+                borderRadius: 8, height: 44,
                 fontFamily: 'var(--zb-font-mono)', fontSize: 12, fontWeight: 600,
-                letterSpacing: '0.08em',
-                background: '#f97316',
+                letterSpacing: '0.1em',
+                background: 'linear-gradient(135deg, #f97316, #ea580c)',
                 border: 'none',
-                boxShadow: loading ? 'none' : '0 4px 16px rgba(249,115,22,.35)',
+                boxShadow: loading ? 'none' : '0 4px 20px rgba(249,115,22,.35)',
+                transition: 'all 200ms ease',
               },
               children: t('page.login.login', { defaultValue: 'SIGN IN' }),
             },
@@ -156,6 +187,7 @@ export default function LoginPage() {
               size: 'large',
               prefix: <UserOutlined style={{ color: '#f97316' }} />,
               style: { borderRadius: 6, fontFamily: 'var(--zb-font-mono)', fontSize: 13 },
+              onPressEnter: () => formRef.current?.submit(),
             }}
             placeholder={t('page.login.usernamePlaceholder', { defaultValue: '请输入用户名' })}
             rules={[{ required: true, message: t('page.login.usernameRequired', { defaultValue: '请输入用户名' }) }]}
@@ -166,6 +198,7 @@ export default function LoginPage() {
               size: 'large',
               prefix: <LockOutlined style={{ color: '#f97316' }} />,
               style: { borderRadius: 6, fontFamily: 'var(--zb-font-mono)', fontSize: 13 },
+              onPressEnter: () => formRef.current?.submit(),
             }}
             placeholder={t('page.login.passwordPlaceholder', { defaultValue: '请输入密码' })}
             rules={[{ required: true, message: t('page.login.passwordRequired', { defaultValue: '请输入密码' }) }]}
@@ -180,6 +213,7 @@ export default function LoginPage() {
             </Checkbox>
           </div>
         </ProForm>
+        </div>
       </div>
     </div>
   );

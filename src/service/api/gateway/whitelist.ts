@@ -1,16 +1,23 @@
 import http from '../../request';
 
 export interface Whitelist {
-  id: number;
+  ID: number;
+  method: string;
   path: string;
   description?: string;
-  createdAt?: string;
+  CreatedAt?: string;
+}
+
+export interface WhitelistForm {
+  method: string;
+  path: string;
+  description?: string;
 }
 
 export const fetchWhitelists = (params?: Record<string, unknown>) =>
-  http.get<{ items: Whitelist[]; total: number }>('/admin/whitelists', params);
+  http.get<Whitelist[]>('/admin/whitelists', params);
 
-export const createWhitelist = (data: { path: string; description?: string }) =>
+export const createWhitelist = (data: WhitelistForm) =>
   http.post<Whitelist>('/admin/whitelists', data);
 
 export const deleteWhitelist = (id: number) =>

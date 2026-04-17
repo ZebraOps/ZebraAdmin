@@ -49,7 +49,7 @@ declare namespace App {
       };
       permissions: {
         all: boolean;
-        functions: string[];
+        functions: Array<{ method: string; uri: string }>;
         components: Record<string, unknown>;
       };
     }

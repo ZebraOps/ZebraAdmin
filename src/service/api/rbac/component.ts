@@ -1,19 +1,27 @@
 import http from '../../request';
 
 export interface Component {
-  id: number;
-  name: string;
-  code: string;
-  description?: string;
+  component_id: number;
+  component_name: string;
+  status?: string;
+  group?: string;
+  group_id?: number;
+  ctime?: string;
+  utime?: string;
+}
+
+export interface ComponentForm {
+  component_name: string;
+  group_id: number;
 }
 
 export const fetchComponents = (params?: Record<string, unknown>) =>
-  http.get<{ items: Component[]; total: number }>('/rbac/components', params);
+  http.get<{ total: number; records: Component[] }>('/rbac/components', params);
 
-export const createComponent = (data: { name: string; code: string; description?: string }) =>
+export const createComponent = (data: ComponentForm) =>
   http.post<Component>('/rbac/components', data);
 
-export const updateComponent = (id: number, data: Partial<{ name: string; code: string; description: string }>) =>
+export const updateComponent = (id: number, data: Partial<ComponentForm & { status?: string }>) =>
   http.put<Component>(`/rbac/components/${id}`, data);
 
 export const deleteComponent = (id: number) =>
