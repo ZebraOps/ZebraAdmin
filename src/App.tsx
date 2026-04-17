@@ -21,18 +21,18 @@ function App() {
         algorithm: darkMode ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
           colorPrimary: primaryColor,
-          borderRadius: 6,
-          fontFamily: "'IBM Plex Sans', 'PingFang SC', system-ui, sans-serif",
+          borderRadius: 5,
+          fontFamily: "'Outfit', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif",
         },
         components: {
           Layout: {
-            siderBg: darkMode ? '#0d0d0d' : '#fafafa',
-            headerBg: darkMode ? 'rgba(10,10,10,0.88)' : 'rgba(255,255,255,0.92)',
-            bodyBg: darkMode ? '#0a0a0a' : '#f4f4f5',
+            siderBg: darkMode ? '#0c0c0e' : '#fafafa',
+            headerBg: darkMode ? 'rgba(9,9,11,0.85)' : 'rgba(255,255,255,0.88)',
+            bodyBg: darkMode ? '#09090b' : '#f8f8f8',
           },
           Menu: {
-            darkItemBg: '#0d0d0d',
-            darkSubMenuItemBg: '#111111',
+            darkItemBg: '#0c0c0e',
+            darkSubMenuItemBg: '#0f0f11',
           },
         },
       }}

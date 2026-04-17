@@ -43,7 +43,7 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: isDark ? '#0a0a0a' : '#f4f4f5',
+        background: isDark ? '#09090b' : '#f8f8f8',
         position: 'relative',
         overflow: 'hidden',
         fontFamily: 'var(--zb-font-sans)',
@@ -60,13 +60,13 @@ export default function LoginPage() {
         }}
       />
 
-      {/* Amber glow orb — floating */}
+      {/* Teal glow orb — floating */}
       <div
         aria-hidden
         style={{
           position: 'absolute', top: '0%', left: '50%', transform: 'translateX(-50%)',
           width: 640, height: 360,
-          background: 'radial-gradient(ellipse, rgba(249,115,22,.14) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse, rgba(20,184,166,.10) 0%, transparent 70%)',
           pointerEvents: 'none',
           animation: 'zb-float 6s ease-in-out infinite',
         }}
@@ -78,7 +78,7 @@ export default function LoginPage() {
         style={{
           position: 'absolute', bottom: '-10%', right: '10%',
           width: 400, height: 300,
-          background: 'radial-gradient(ellipse, rgba(251,191,36,.06) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse, rgba(45,212,191,.05) 0%, transparent 70%)',
           pointerEvents: 'none',
           animation: 'zb-float 8s ease-in-out infinite 2s',
         }}
@@ -99,14 +99,14 @@ export default function LoginPage() {
         className="zb-animate-blur"
         style={{
           width: '100%', maxWidth: 400, margin: '0 16px',
-          background: isDark ? 'rgba(17,17,17,0.92)' : 'rgba(255,255,255,0.95)',
+          background: isDark ? 'rgba(15,15,17,0.92)' : 'rgba(255,255,255,0.95)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          border: `1px solid ${isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.07)'}`,
-          borderRadius: 12,
+          border: `1px solid ${isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.06)'}`,
+          borderRadius: 10,
           boxShadow: isDark
-            ? '0 0 0 1px rgba(249,115,22,.08), 0 24px 48px rgba(0,0,0,.6)'
-            : '0 24px 48px rgba(0,0,0,.08)',
+            ? '0 0 0 1px rgba(20,184,166,.06), 0 24px 48px rgba(0,0,0,.6)'
+            : '0 24px 48px rgba(0,0,0,.06)',
           padding: '40px 36px',
           position: 'relative',
           overflow: 'hidden',
@@ -118,8 +118,8 @@ export default function LoginPage() {
         {/* Top accent stripe */}
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-          background: 'linear-gradient(90deg, transparent, #f97316, transparent)',
-          opacity: 0.6,
+          background: 'linear-gradient(90deg, transparent, #14b8a6, transparent)',
+          opacity: 0.5,
         }} />
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32, position: 'relative' }}>
@@ -128,8 +128,8 @@ export default function LoginPage() {
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 48, height: 48, borderRadius: 10,
-              background: 'linear-gradient(135deg, #f97316, #ea580c)',
-              boxShadow: '0 6px 24px rgba(249,115,22,.45)',
+              background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
+              boxShadow: '0 6px 24px rgba(20,184,166,.35)',
               fontFamily: 'var(--zb-font-mono)',
               fontSize: 17, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px',
               marginBottom: 16,
@@ -146,6 +146,14 @@ export default function LoginPage() {
             ZEBRAOPS
           </h1>
           <p className="zb-animate-in zb-delay-2" style={{
+            margin: '6px 0 0', fontSize: 10,
+            fontFamily: 'var(--zb-font-mono)',
+            color: isDark ? 'rgba(255,255,255,.25)' : 'rgba(0,0,0,.30)',
+            letterSpacing: '0.18em',
+          }}>
+            黑白分明，运维有道
+          </p>
+          <p className="zb-animate-in zb-delay-3" style={{
             margin: '8px 0 0', fontSize: 11,
             fontFamily: 'var(--zb-font-mono)',
             color: isDark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.35)',
@@ -156,7 +164,7 @@ export default function LoginPage() {
         </div>
 
         {/* Form */}
-        <div className="zb-animate-in zb-delay-3">
+        <div className="zb-animate-in zb-delay-4">
         <ProForm<LoginFormValues>
           formRef={formRef}
           submitter={{
@@ -171,9 +179,9 @@ export default function LoginPage() {
                 borderRadius: 8, height: 44,
                 fontFamily: 'var(--zb-font-mono)', fontSize: 12, fontWeight: 600,
                 letterSpacing: '0.1em',
-                background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
                 border: 'none',
-                boxShadow: loading ? 'none' : '0 4px 20px rgba(249,115,22,.35)',
+                boxShadow: loading ? 'none' : '0 4px 20px rgba(20,184,166,.30)',
                 transition: 'all 200ms ease',
               },
               children: t('page.login.login', { defaultValue: 'SIGN IN' }),
@@ -185,7 +193,7 @@ export default function LoginPage() {
             name="userName"
             fieldProps={{
               size: 'large',
-              prefix: <UserOutlined style={{ color: '#f97316' }} />,
+              prefix: <UserOutlined style={{ color: '#14b8a6' }} />,
               style: { borderRadius: 6, fontFamily: 'var(--zb-font-mono)', fontSize: 13 },
               onPressEnter: () => formRef.current?.submit(),
             }}
@@ -196,7 +204,7 @@ export default function LoginPage() {
             name="password"
             fieldProps={{
               size: 'large',
-              prefix: <LockOutlined style={{ color: '#f97316' }} />,
+              prefix: <LockOutlined style={{ color: '#14b8a6' }} />,
               style: { borderRadius: 6, fontFamily: 'var(--zb-font-mono)', fontSize: 13 },
               onPressEnter: () => formRef.current?.submit(),
             }}

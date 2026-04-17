@@ -25,7 +25,7 @@ function computeDarkMode(scheme: ThemeScheme): boolean {
 
 const savedDark = localStg.get<boolean>('darkMode');
 const savedScheme = localStg.get<ThemeScheme>('themeScheme') ?? 'light';
-const savedPrimaryColor = localStg.get<string>('primaryColor') ?? '#165DFF';
+const savedPrimaryColor = localStg.get<string>('primaryColor') ?? '#14B8A6';
 const initialScheme: ThemeScheme = savedScheme;
 const initialDark = savedDark !== null ? savedDark : computeDarkMode(initialScheme);
 

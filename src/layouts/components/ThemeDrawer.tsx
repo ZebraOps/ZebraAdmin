@@ -6,14 +6,14 @@ import { useThemeStore } from '@/store/theme';
 import { useAppStore } from '@/store/app';
 
 const PRESET_COLORS = [
-  '#165DFF',
+  '#14B8A6',
   '#0FC6C2',
-  '#7B61FF',
+  '#6366F1',
   '#10B981',
-  '#F97316',
+  '#F59E0B',
   '#EF4444',
-  '#EC4899',
-  '#EAB308',
+  '#8B5CF6',
+  '#3B82F6',
 ];
 
 export default function ThemeDrawer() {

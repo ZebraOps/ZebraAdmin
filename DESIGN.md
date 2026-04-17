@@ -1,105 +1,86 @@
-# Design System Strategy: The Monochromatic Precision Engine
+# Design System: ZEBRA INK — 黑白分明，运维有道
 
 ## 1. Overview & Creative North Star
 
-The Creative North Star for this design system is **"The Kinetic Architect."**
+**"ZEBRA INK"** — Pure monochrome contrast with a surgical teal signal.
 
-In the high-stakes world of enterprise DevOps, "trust" is not a decorative blue box; it is the absence of friction and the presence of absolute structural clarity. This system moves beyond the "SaaS template" by utilizing **Kinetic Asymmetry** and **Rhythmic Contrast**. We draw inspiration from the zebra—not as a literal pattern, but as a metaphor for high-contrast legibility and organized complexity. By pairing the utilitarian rigor of `Inter` with the architectural geometry of `Space Grotesk`, we create a UI that feels like a high-end command center: authoritative, dense, and intellectually premium.
+Like zebra stripes: maximum legibility, zero ambiguity. This system draws from the zebra metaphor — not as decoration, but as a design principle: **high contrast equals high clarity**. In the ops world, every pixel must earn its place.
 
-## 2. Colors & Surface Philosophy
+### Core Palette
 
-The palette is rooted in the depth of `surface` (#0b1326). It is an "ink-pool" environment where data sits on top of the UI rather than being buried within it.
+| Token             | Light     | Dark      | Purpose                                 |
+| ----------------- | --------- | --------- | --------------------------------------- |
+| `--zb-accent`     | `#14B8A6` | `#14B8A6` | Primary signal — teal "alive/go/active" |
+| `--zb-accent-dim` | `#0D9488` | `#0D9488` | Pressed/hover state                     |
+| `--zb-accent2`    | `#2DD4BF` | `#2DD4BF` | Highlights, gradients                   |
+| `--zb-bg`         | `#F8F8F8` | `#09090B` | Page background                         |
+| `--zb-surface`    | `#FFFFFF` | `#0F0F11` | Card/panel surface                      |
+| `--zb-surface2`   | `#F3F3F3` | `#141416` | Secondary surface                       |
+| `--zb-text-1`     | `#0A0A0A` | `#FAFAFA` | Primary text                            |
+| `--zb-text-2`     | `#525252` | `#71717A` | Secondary text                          |
+| `--zb-text-3`     | `#A3A3A3` | `#3F3F46` | Tertiary/muted text                     |
 
-### The "No-Line" Rule
+### Semantic Colors
 
-**Standard 1px borders are strictly prohibited for layout sectioning.** To define the boundaries of the DevOps pipeline or a resource monitor, use background shifts.
+| Purpose | Color     | Usage                                 |
+| ------- | --------- | ------------------------------------- |
+| Success | `#10B981` | Emerald — deploy OK, healthy          |
+| Warning | `#F59E0B` | Amber — degraded, attention           |
+| Danger  | `#EF4444` | Red — failure, critical               |
+| Info    | `#6366F1` | Indigo — informational, deploy counts |
 
-- Place a `surface_container_low` card atop a `surface` background.
+### Design Principles
 
-- The human eye perceives the change in luminosity as a structural boundary, creating a cleaner, "high-end editorial" feel that reduces cognitive noise in data-dense views.
+1. **Black & White First** — Color is signal, not decoration. Monochrome surfaces provide structure.
+2. **Teal = Alive** — The single accent communicates "active, online, operational."
+3. **Precision over Personality** — Tight radii (3px/5px/8px), no rounded-full except avatars.
+4. **Zebra Stripes** — Subtle diagonal stripe patterns (`--zb-stripe`) as brand signature in backgrounds.
+5. **Data Density** — JetBrains Mono for numbers/data, Outfit for body text. Tabular nums everywhere.
 
-### Surface Hierarchy & Nesting
+## 2. Typography
 
-Treat the UI as a series of physical layers.
+| Role         | Font           | Weight  | Size    | Tracking    |
+| ------------ | -------------- | ------- | ------- | ----------- |
+| Display      | Outfit         | 700     | 20-36px | -0.02em     |
+| Body         | Outfit         | 400-500 | 13.5px  | 0           |
+| Labels       | JetBrains Mono | 600     | 10-11px | 0.06-0.14em |
+| Data/Numbers | JetBrains Mono | 500-700 | 11-36px | -0.02em     |
+| Code         | JetBrains Mono | 400     | 12-13px | 0           |
 
-- **Base:** `surface_dim` (#0b1326)
+Chinese fallback: `PingFang SC` → `Noto Sans SC` → `system-ui`
 
-- **Navigation/Sidebars:** `surface_container` (#171f33)
+## 3. Surfaces & Elevation
 
-- **Primary Work Area:** `surface_container_high` (#222a3d)
+Use tonal layering, not box-shadow depth:
 
-- **Floating Modals/Command Palettes:** `surface_container_highest` (#2d3449)
+- `--zb-bg` → base canvas
+- `--zb-surface` → primary cards
+- `--zb-surface2` → inset/nested areas, table headers
 
-This nesting ensures that as a user drills deeper into technical logs, the UI physically "lifts" toward them.
+Borders: 1px `--zb-border` (8% opacity light, 6% dark). No heavy outlines.
 
-### The "Glass & Gradient" Rule
+Shadows reserved for floating elements (dropdowns, modals): very subtle, mostly blur.
 
-To elevate the enterprise experience, use **Backdrop Blurs** for sticky headers and sidebars. Use `surface_container` at 80% opacity with a `20px` blur.
+## 4. Signature Elements
 
-- **Signature Textures:** For primary action states, apply a subtle linear gradient from `primary` (#66d8d2) to `on_primary_container` (#00908b) at a 135-degree angle. This adds "soul" to the technical tool.
+- **Zebra Stripe Pattern**: `--zb-stripe` — 135° diagonal, 3px transparent / 3px teal-tinted repeating gradient.
+- **Accent Top Bar**: 2px gradient line on card hover — `transparent → teal → transparent`.
+- **Active Sidebar Indicator**: 3px right-edge bar with teal glow shadow.
+- **Status Dots**: 6px circles with matching 2px glow rings.
+- **Logo Block**: Rounded 3px square, teal gradient background, "ZB" in JetBrains Mono.
 
-## 3. Typography: The Editorial Tech-Stack
-
-We use a dual-typeface system to balance high-tech precision with editorial authority.
-
-- **Display & Headlines (Space Grotesk):** This is our "Architectural" layer. Use `display-md` and `headline-sm` for page titles and major metric callouts. The geometric nature of Space Grotesk mirrors the logic of code.
-
-- **Body & Data (Inter):** This is our "Functional" layer. Inter is chosen for its exceptional legibility at small sizes.
-
-- **Data Density:** Use `body-sm` (0.75rem) for log streams and metadata, utilizing the `label-md` weight for keys to create a clear "Key: Value" visual rhythm.
-
-- **Editorial Spacing:** Maintain generous tracking (letter-spacing) on `label-sm` elements (e.g., `0.05em`) to ensure that even at the highest density, the UI feels "airy" and expensive.
-
-## 4. Elevation & Depth
-
-We eschew the "material" look for a "tonal layering" approach.
-
-- **The Layering Principle:** Depth is achieved via tokens. A "Top-Tier" card should be `surface_container_highest` (#2d3449).
-
-- **Ambient Shadows:** If a floating element (like a context menu) requires a shadow, use a `24px` blur with 6% opacity, using the `on_secondary_fixed_variant` (#38485d) color as the shadow tint. This mimics natural light reflecting off a dark surface.
-
-- **The "Ghost Border" Fallback:** In extremely dense data tables where cell separation is required, use the `outline_variant` (#45464d) at **15% opacity**. It should be felt, not seen.
-
-- **The Zebra Accent:** Use the "Zebra Stripe" only in high-value areas like the `primary_container` background or a loading state. This is achieved by a 45-degree CSS linear gradient using `surface_bright` and `surface_container` in 4px increments.
-
-## 5. Components
-
-### Buttons & Actions
-
-- **Primary:** A solid block of `primary` (#66d8d2) with `on_primary` (#003735) text. Radius: `md` (0.375rem).
-
-- **Secondary:** No fill. A `Ghost Border` using `primary` at 30% opacity. On hover, transition to 100% opacity.
-
-- **Tertiary:** Text-only using `secondary` (#b7c8e1) with an underline that only appears on hover.
-
-### Data Inputs & Fields
-
-- **The "Underline" Input:** Instead of a four-sided box, use a `surface_container_highest` background with a 2px bottom-border of `outline_variant`. This maintains the "Zebra" high-contrast theme without cluttering the UI.
-
-### Cards & Monitoring Lists
-
-- **Forbid Dividers:** Use `spacing-6` (1.3rem) to separate list items.
-
-- **Status Indicators:** Use "Glow Indicators" instead of flat icons. A `success` (#green) status should be a 6px circle with a `4px` blur of the same color to simulate a live LED on a server rack.
-
-### The "Zebra" Separator (Signature Component)
-
-- For major vertical sectioning (e.g., separating the Nav from the Stage), use a 2px wide vertical line. The top 10% is `primary`, the middle 80% is `outline_variant` at 20% opacity, and the bottom 10% is `primary`. This creates a "Kinetic Spark" that feels custom and branded.
-
-## 6. Do's and Don'ts
+## 5. Do's & Don'ts
 
 ### Do
 
-- **DO** use `surface_container_lowest` for the code-editor background to create a "sunken" feel.
-
-- **DO** use `spacing-10` and `spacing-12` for "Breathing Room" around major headline groups.
-
-- **DO** use `secondary_fixed_dim` for "de-emphasized" technical metadata.
+- Use pure zinc-neutral surfaces (no warm/cool tint)
+- Use `--zb-stripe` on hero sections and empty states
+- Use `letter-spacing: 0.1em+` on uppercase labels
+- Use `color-mix()` for semantic stat icon backgrounds
 
 ### Don't
 
-- **DON'T** use pure black (#000000). Always use `surface` (#0b1326) to maintain the "Deep Blue" brand essence.
-
-- **DON'T** use 100% opaque borders. They create "visual cages" that trap data and increase user fatigue.
-
-- **DON'T** use `rounded-full` for anything other than status badges or avatars. This system is "Architectural," not "Playful." Stick to `sm` and `md` radii.
+- Use orange or amber as primary accent (legacy "Carbon Amber" deprecated)
+- Use `border-radius` > 8px on anything except modals
+- Use blue as primary — teal is the brand signal
+- Use heavy drop shadows — tonal layering only

@@ -59,7 +59,7 @@ export default function GlobalSider() {
         <div
           style={{
             width: 28, height: 28,
-            background: 'var(--zb-accent)', borderRadius: 4,
+            background: 'linear-gradient(135deg, #14b8a6, #0d9488)', borderRadius: 3,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
             fontFamily: 'var(--zb-font-mono)', fontSize: 10, fontWeight: 700,

@@ -39,12 +39,12 @@ const pieData = [
   { name: '进行中', value: 6 }
 ];
 
-const PIE_COLORS = ['#22c55e', '#ef4444', '#f97316'];
+const PIE_COLORS = ['#10b981', '#ef4444', '#14b8a6'];
 
 const stats = [
-  { title: '应用数量', value: 24, suffix: '个', accent: '#f97316', trend: 12, icon: <AppstoreOutlined /> },
-  { title: '今日构建', value: 8,  suffix: '次', accent: '#22c55e', trend: 5,  icon: <ThunderboltOutlined /> },
-  { title: '今日部署', value: 5,  suffix: '次', accent: '#fbbf24', trend: -2, icon: <CloudUploadOutlined /> },
+  { title: '应用数量', value: 24, suffix: '个', accent: '#14b8a6', trend: 12, icon: <AppstoreOutlined /> },
+  { title: '今日构建', value: 8,  suffix: '次', accent: '#10b981', trend: 5,  icon: <ThunderboltOutlined /> },
+  { title: '今日部署', value: 5,  suffix: '次', accent: '#6366f1', trend: -2, icon: <CloudUploadOutlined /> },
   { title: '告警数量', value: 2,  suffix: '个', accent: '#ef4444', trend: -1, icon: <AlertOutlined /> }
 ];
 
@@ -85,9 +85,9 @@ export default function HomePage() {
   };
 
   const statusIcon = (status: string) => {
-    if (status === 'success') return <CheckCircleFilled style={{ color: '#22c55e', fontSize: 14 }} />;
+    if (status === 'success') return <CheckCircleFilled style={{ color: '#10b981', fontSize: 14 }} />;
     if (status === 'error') return <CloseCircleFilled style={{ color: '#ef4444', fontSize: 14 }} />;
-    return <SyncOutlined spin style={{ color: '#f97316', fontSize: 14 }} />;
+    return <SyncOutlined spin style={{ color: '#14b8a6', fontSize: 14 }} />;
   };
 
   return (
@@ -129,7 +129,7 @@ export default function HomePage() {
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 4,
                     marginTop: 8, fontSize: 11, fontFamily: 'var(--zb-font-mono)',
-                    color: stat.trend > 0 ? '#22c55e' : '#ef4444',
+                    color: stat.trend > 0 ? '#10b981' : '#ef4444',
                   }}>
                     <span>{stat.trend > 0 ? '▲' : '▼'} {Math.abs(stat.trend)}</span>
                     <span style={{ color: 'var(--zb-text-3)' }}>较昨日</span>
@@ -163,11 +163,11 @@ export default function HomePage() {
               </div>
               <div style={{ display: 'flex', gap: 16 }}>
                 <div className="flex items-center gap-1.5">
-                  <div style={{ width: 10, height: 3, borderRadius: 2, background: '#f97316' }} />
+                  <div style={{ width: 10, height: 3, borderRadius: 2, background: '#14b8a6' }} />
                   <span style={{ fontSize: 11, color: 'var(--zb-text-2)', fontFamily: 'var(--zb-font-mono)' }}>构建</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div style={{ width: 10, height: 3, borderRadius: 2, background: '#22c55e' }} />
+                  <div style={{ width: 10, height: 3, borderRadius: 2, background: '#10b981' }} />
                   <span style={{ fontSize: 11, color: 'var(--zb-text-2)', fontFamily: 'var(--zb-font-mono)' }}>部署</span>
                 </div>
               </div>
@@ -176,33 +176,33 @@ export default function HomePage() {
               <AreaChart data={lineData}>
                 <defs>
                   <linearGradient id="gradBuilds" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f97316" stopOpacity={0.2} />
-                    <stop offset="100%" stopColor="#f97316" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="#14b8a6" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="gradDeploys" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#22c55e" stopOpacity={0.15} />
-                    <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--zb-border)" vertical={false} />
-                <XAxis dataKey="month" tick={{ fill: 'var(--zb-text-3)', fontSize: 11, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--zb-text-3)', fontSize: 11, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="month" tick={{ fill: 'var(--zb-text-3)', fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--zb-text-3)', fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={chartTooltipStyle} cursor={{ stroke: 'var(--zb-border)', strokeDasharray: '4 4' }} />
                 <Area
                   type="monotone" dataKey="builds"
                   name={t('page.home.builds', { defaultValue: '构建次数' })}
-                  stroke="#f97316" strokeWidth={2}
+                  stroke="#14b8a6" strokeWidth={2}
                   fill="url(#gradBuilds)"
-                  dot={{ r: 3, fill: '#f97316', strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: '#f97316', stroke: 'rgba(249,115,22,0.3)', strokeWidth: 4 }}
+                  dot={{ r: 3, fill: '#14b8a6', strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#14b8a6', stroke: 'rgba(20,184,166,0.3)', strokeWidth: 4 }}
                 />
                 <Area
                   type="monotone" dataKey="deploys"
                   name={t('page.home.deploys', { defaultValue: '部署次数' })}
-                  stroke="#22c55e" strokeWidth={2}
+                  stroke="#10b981" strokeWidth={2}
                   fill="url(#gradDeploys)"
-                  dot={{ r: 3, fill: '#22c55e', strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: '#22c55e', stroke: 'rgba(34,197,94,0.3)', strokeWidth: 4 }}
+                  dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#10b981', stroke: 'rgba(16,185,129,0.3)', strokeWidth: 4 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -314,15 +314,15 @@ export default function HomePage() {
                     border: '1px solid var(--zb-border)',
                     transition: 'border-color 200ms ease',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(249,115,22,0.2)')}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(20,184,166,0.15)')}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--zb-border)')}
                 >
-                  <div className={`zb-dot ${svc.status === 'online' ? 'zb-dot-green' : 'zb-dot-orange'}`} />
+                  <div className={`zb-dot ${svc.status === 'online' ? 'zb-dot-green' : 'zb-dot-teal'}`} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--zb-text-1)' }}>{svc.name}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div className="zb-num" style={{ fontSize: 13, fontWeight: 600, color: svc.status === 'online' ? '#22c55e' : '#f97316' }}>
+                    <div className="zb-num" style={{ fontSize: 13, fontWeight: 600, color: svc.status === 'online' ? '#10b981' : '#14b8a6' }}>
                       {svc.uptime}
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--zb-text-3)', fontFamily: 'var(--zb-font-mono)', textTransform: 'uppercase' }}>
