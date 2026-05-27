@@ -21,9 +21,12 @@ function onRefreshed(token: string) {
   refreshSubscribers = [];
 }
 
+const rawBaseURL = (import.meta.env.VITE_BASE_URL || '').trim();
+const baseURL = rawBaseURL.replace(/\/$/, '') || '/';
+
 /** Create axios instance */
 const instance: AxiosInstance = axios.create({
-  baseURL: '/',
+  baseURL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
@@ -125,7 +128,7 @@ async function refreshToken(): Promise<string | null> {
 
   try {
     const response = await axios.post<ServiceResponse<{ token: string; refreshToken: string }>>(
-      '/rbac/login/refresh-token',
+      `${baseURL}/rbac/login/refresh-token`,
       { refreshToken: refreshTokenValue }
     );
     const data = response.data;

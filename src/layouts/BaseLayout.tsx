@@ -14,16 +14,24 @@ export default function BaseLayout() {
   const { siderCollapsed, setSiderCollapsed, reloadFlag, isMobile, setIsMobile, mobileSiderOpen, setMobileSiderOpen } = useAppStore();
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const syncMobileState = (mobile: boolean) => {
+      if (mobile !== useAppStore.getState().isMobile) {
+        setIsMobile(mobile);
+      }
+    };
+
+    const handleViewportChange = (event: MediaQueryListEvent) => syncMobileState(event.matches);
+
+    syncMobileState(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleViewportChange);
+
+    return () => mediaQuery.removeEventListener('change', handleViewportChange);
+  }, [setIsMobile]);
 
   return (
     <>
-      <Layout style={{ minHeight: '100vh', background: 'var(--zb-bg)' }}>
+      <Layout className="zb-shell" style={{ minHeight: '100vh', background: 'var(--zb-bg)' }}>
         {!isMobile && (
           <Sider
             collapsed={siderCollapsed}
@@ -38,6 +46,8 @@ export default function BaseLayout() {
               zIndex: 100,
               overflow: 'hidden',
               background: 'var(--zb-sider-bg)',
+              borderRight: '1px solid var(--zb-border)',
+              boxShadow: 'var(--zb-shadow)',
             }}
           >
             <GlobalSider />
@@ -50,35 +60,56 @@ export default function BaseLayout() {
             open={mobileSiderOpen}
             onClose={() => setMobileSiderOpen(false)}
             width={220}
-            styles={{ body: { padding: 0 } }}
+            styles={{
+              body: { padding: 0 },
+              content: { background: 'var(--zb-sider-bg)', boxShadow: 'var(--zb-shadow)' },
+              header: { display: 'none' },
+              mask: { backdropFilter: 'blur(6px)' },
+            }}
             closable={false}
           >
             <GlobalSider />
           </Drawer>
         )}
 
-        <Layout style={{
-          marginLeft: isMobile ? 0 : (siderCollapsed ? 56 : 220),
-          transition: 'margin-left 0.2s',
-          background: 'var(--zb-bg)',
-        }}>
-          <Header style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 99,
-            padding: 0,
-            height: 'auto',
-            lineHeight: 'unset',
-            background: 'var(--zb-header-bg)',
-            borderBottom: '1px solid var(--zb-border)',
-          }}>
-            <GlobalHeader />
-            <GlobalTab />
+        <Layout
+          className="zb-shell__viewport"
+          style={{
+            marginLeft: isMobile ? 0 : (siderCollapsed ? 56 : 220),
+            transition: 'margin-left 0.2s',
+            background: 'transparent',
+          }}
+        >
+          <Header
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 99,
+              padding: 0,
+              height: 'auto',
+              lineHeight: 'unset',
+              background: 'var(--zb-header-bg)',
+              borderBottom: '1px solid var(--zb-border)',
+              backdropFilter: 'blur(14px)',
+              boxShadow: 'var(--zb-shadow-sm)',
+            }}
+          >
+            <div className="zb-shell__header-inner">
+              <GlobalHeader />
+              <GlobalTab />
+            </div>
           </Header>
 
-          <Content style={{ padding: isMobile ? 12 : 16, minHeight: 'calc(100vh - 56px)', background: 'var(--zb-bg)' }}>
-            <GlobalBreadcrumb />
-            {reloadFlag && <Outlet />}
+          <Content
+            className="zb-shell__content"
+            style={{ padding: isMobile ? 12 : 18, minHeight: 'calc(100vh - 56px)', background: 'transparent' }}
+          >
+            <div className="zb-shell__content-inner">
+              <div className="zb-shell__panel">
+                <GlobalBreadcrumb />
+                {reloadFlag && <Outlet />}
+              </div>
+            </div>
           </Content>
         </Layout>
       </Layout>

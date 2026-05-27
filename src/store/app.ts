@@ -44,11 +44,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setIsMobile: (val) => {
-    set({ isMobile: val });
+    const state = get();
+    const nextState: Partial<AppState> = {};
+
+    if (state.isMobile !== val) {
+      nextState.isMobile = val;
+    }
+
     if (val) {
-      set({ siderCollapsed: true });
-    } else {
-      set({ mobileSiderOpen: false });
+      if (!state.siderCollapsed) {
+        nextState.siderCollapsed = true;
+      }
+    } else if (state.mobileSiderOpen) {
+      nextState.mobileSiderOpen = false;
+    }
+
+    if (Object.keys(nextState).length > 0) {
+      set(nextState);
     }
   },
 

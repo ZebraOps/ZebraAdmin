@@ -50,7 +50,9 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'vendor-react': ['react', 'react-dom', 'react-router'],
-            'vendor-antd': ['antd', '@ant-design/pro-components', '@ant-design/icons'],
+            'vendor-antd-core': ['antd'],
+            'vendor-antd-pro': ['@ant-design/pro-components'],
+            'vendor-icons': ['@ant-design/icons', '@iconify/react'],
             'vendor-charts': ['recharts'],
             'vendor-utils': ['axios', 'zustand', 'i18next', 'react-i18next', 'dayjs']
           }
