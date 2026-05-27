@@ -1,16 +1,19 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Switch, Tag, Row, Col, message } from 'antd';
+import { Button, Popconfirm, Switch, Tag, Row, Col, message } from 'antd';
 import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import * as api from '@/service/api/gateway/routes';
 import type { GatewayRoute, GatewayRouteForm } from '@/service/api/gateway/routes';
+import { usePermission } from '@/hooks/usePermission';
 
 export default function GatewayRoutes() {
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<GatewayRoute | null>(null);
+  const { hasComp } = usePermission();
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const handleToggle = async (row: GatewayRoute, checked: boolean) => {
     try {
@@ -48,11 +51,11 @@ export default function GatewayRoutes() {
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
-        <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
-        <CountdownButton key="del" icon={<DeleteOutlined />}
+        hasComp('gateway_route_edit') && <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
+        hasComp('gateway_route_delete') && <CountdownButton key="del" icon={<DeleteOutlined />}
           onConfirm={async () => { await api.deleteGatewayRoute(row.ID); message.success('删除成功'); actionRef.current?.reload(); }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -60,6 +63,23 @@ export default function GatewayRoutes() {
     <>
       <ProTable<GatewayRoute>
         rowKey="ID" actionRef={actionRef} columns={columns}
+        rowSelection={hasComp('gateway_route_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('gateway_route_delete') ? () => (
+          <Popconfirm
+            title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
+            onConfirm={async () => {
+              try {
+                await Promise.all(selectedRowKeys.map(id => api.deleteGatewayRoute(id as number)));
+                message.success(`已删除 ${selectedRowKeys.length} 条`);
+                setSelectedRowKeys([]);
+                actionRef.current?.reload();
+              } catch (e: any) { if (!isHandledError(e)) message.error('批量删除失败'); }
+            }}
+          >
+            <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
+          </Popconfirm>
+        ) : undefined}
+
         request={async (params) => {
           try {
             const query: Record<string, unknown> = {};

@@ -1,15 +1,17 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Drawer, Tabs, Transfer, Tree, Tag, Spin, message } from 'antd';
-import { SettingOutlined } from '@ant-design/icons';
+import { ProTable, ModalForm, ProFormText, ProFormSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { Button, Drawer, Tabs, Transfer, Tree, Tag, Spin, Popconfirm, message } from 'antd';
+import { SettingOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { usePermission } from '@/hooks/usePermission';
+import { isHandledError } from '@/service/request';
 import * as roleApi from '@/service/api/rbac/role';
 import * as menuApi from '@/service/api/rbac/menu';
 import * as componentApi from '@/service/api/rbac/component';
 import * as functionApi from '@/service/api/rbac/function';
 import * as groupApi from '@/service/api/rbac/group';
 import * as userApi from '@/service/api/rbac/user';
-import type { Role } from '@/service/api/rbac/role';
+import type { Role, RoleForm } from '@/service/api/rbac/role';
 import type { MenuItem } from '@/service/api/rbac/menu';
 import type { Component } from '@/service/api/rbac/component';
 import type { FunctionItem } from '@/service/api/rbac/function';
@@ -26,6 +28,7 @@ function buildTreeData(tree: MenuItem[]): any[] {
 
 export default function PermissionAuthor() {
   const { t } = useTranslation();
+  const { hasComp } = usePermission();
   const actionRef = useRef<ActionType>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<Role | null>(null);
@@ -33,6 +36,8 @@ export default function PermissionAuthor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   useEffect(() => {
     groupApi.fetchGroups({ size: 200 }).then((res: any) => {
@@ -144,10 +149,13 @@ export default function PermissionAuthor() {
       valueEnum: { '0': { text: '启用', status: 'Success' }, '1': { text: '禁用', status: 'Error' } },
     },
     {
-      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 120,
+      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 180,
       render: (_, row) => [
-        <Button key="config" type="link" size="small" icon={<SettingOutlined />} onClick={() => openDrawer(row)}>配置权限</Button>
-      ]
+        hasComp('permission_role_edit') && <Button key="config" type="link" size="small" icon={<SettingOutlined />} onClick={() => openDrawer(row)}>配置权限</Button>,
+        hasComp('permission_role_delete') && <Popconfirm key="del" title="确认删除该角色？" onConfirm={async () => { await roleApi.deleteRole(row.role_id); message.success('删除成功'); actionRef.current?.reload(); }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
+        </Popconfirm>
+      ].filter(Boolean)
     }
   ];
 
@@ -155,13 +163,29 @@ export default function PermissionAuthor() {
     <>
       <ProTable<Role>
         rowKey="role_id" actionRef={actionRef} columns={columns}
+        rowSelection={{ selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) }}
+        tableAlertOptionRender={() => (
+          <Popconfirm
+            title={`确认删除选中的 ${selectedRowKeys.length} 个角色？`}
+            onConfirm={async () => {
+              try {
+                await Promise.all(selectedRowKeys.map(id => roleApi.deleteRole(id as number)));
+                message.success(`已删除 ${selectedRowKeys.length} 个`);
+                setSelectedRowKeys([]);
+                actionRef.current?.reload();
+              } catch (e: any) { if (!isHandledError(e)) message.error('批量删除失败'); }
+            }}
+          >
+            <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
+          </Popconfirm>
+        )}
         request={async (params) => {
           try {
             const query: Record<string, unknown> = {
               current: ((params.current ?? 1) - 1) * (params.pageSize ?? 20),
               size: params.pageSize ?? 20,
             };
-            if (params.role_name) query.role_name = params.role_name;
+            if (params.role_name) query.name = params.role_name;
             if (params.group_id !== undefined && params.group_id !== '') query.group_id = params.group_id;
             if (params.status !== undefined && params.status !== '') query.status = params.status;
             const res = await roleApi.fetchRoles(query);
@@ -169,6 +193,9 @@ export default function PermissionAuthor() {
           } catch { return { data: [], success: false, total: 0 }; }
         }}
         headerTitle="角色授权" search={{ labelWidth: 80 }}
+        toolBarRender={() => [
+          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setRoleModalOpen(true)}>新增角色</Button>
+        ]}
         scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
       />
       <Drawer
@@ -235,6 +262,35 @@ export default function PermissionAuthor() {
           ]} />
         </Spin>
       </Drawer>
+      <ModalForm<RoleForm>
+        title="新增角色"
+        open={roleModalOpen}
+        onOpenChange={setRoleModalOpen}
+        initialValues={{ status: '0' }}
+        modalProps={{ onCancel: () => setRoleModalOpen(false), transitionName: '', maskTransitionName: '' }}
+        onFinish={async (values) => {
+          try {
+            await roleApi.createRole(values);
+            message.success('创建成功');
+            actionRef.current?.reload();
+            return true;
+          } catch (e: any) {
+            if (!isHandledError(e)) message.error('创建失败');
+            return false;
+          }
+        }}
+      >
+        <ProFormText name="role_name" label="角色名称" rules={[{ required: true, message: '请输入角色名称' }]} />
+        <ProFormSelect
+          name="group_id" label="分组" rules={[{ required: true, message: '请选择分组' }]}
+          options={groups.map(g => ({ label: g.group_name, value: g.group_id }))}
+        />
+        <ProFormText name="role_desc" label="描述" />
+        <ProFormSelect
+          name="status" label="状态"
+          options={[{ label: '启用', value: '0' }, { label: '禁用', value: '1' }]}
+        />
+      </ModalForm>
     </>
   );
 }

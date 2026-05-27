@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, message } from 'antd';
+import { Button, Popconfirm, message } from 'antd';
 import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { usePermission } from '@/hooks/usePermission';
 import * as api from '@/service/api/rbac/job';
 import type { Job, JobForm } from '@/service/api/rbac/job';
 
@@ -11,19 +12,21 @@ export default function OrgJob() {
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<Job | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const { hasComp } = usePermission();
 
   const columns: ProColumns<Job>[] = [
     { title: '岗位名称', dataIndex: 'job_name' },
     { title: '岗位编码', dataIndex: 'job_code', render: v => v || '—' },
-    { title: '描述', dataIndex: 'description', render: v => v || '—' },
-    { title: '创建时间', dataIndex: 'ctime', width: 160, render: v => v || '—' },
+    { title: '描述', dataIndex: 'description', search: false, render: v => v || '—' },
+    { title: '创建时间', dataIndex: 'ctime', width: 160, search: false, render: v => v || '—' },
     { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
-        <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
-        <CountdownButton key="del" icon={<DeleteOutlined />}
+        hasComp('org_job_edit') && <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
+        hasComp('org_job_delete') && <CountdownButton key="del" icon={<DeleteOutlined />}
           onConfirm={async () => { await api.deleteJob(row.job_id); message.success('删除成功'); actionRef.current?.reload(); }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -31,12 +34,37 @@ export default function OrgJob() {
     <>
       <ProTable<Job>
         rowKey="job_id" actionRef={actionRef} columns={columns}
+        rowSelection={hasComp('org_job_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('org_job_delete') ? () => (
+          <Popconfirm
+            title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
+            onConfirm={async () => {
+              try {
+                await Promise.all(selectedRowKeys.map(id => api.deleteJob(id as number)));
+                message.success(`已删除 ${selectedRowKeys.length} 条`);
+                setSelectedRowKeys([]);
+                actionRef.current?.reload();
+              } catch (e: any) { if (!isHandledError(e)) message.error('批量删除失败'); }
+            }}
+          >
+            <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
+          </Popconfirm>
+        ) : undefined}
+
         request={async (params) => {
-          try { const res = await api.fetchJobs(params); return { data: (res as any)?.records ?? [], success: true, total: (res as any)?.total ?? 0 }; }
+          try {
+            const { current = 1, pageSize = 20 } = params;
+            const query: Record<string, unknown> = { current: (current - 1) * pageSize, size: pageSize };
+            if (params.job_name) query.name = params.job_name;
+            if (params.job_code) query.code = params.job_code;
+            const res = await api.fetchJobs(query);
+            return { data: (res as any)?.records ?? [], success: true, total: (res as any)?.total ?? 0 };
+          }
           catch { return { data: [], success: false, total: 0 }; }
         }}
         headerTitle="岗位管理"
-        toolBarRender={() => [<Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>新增岗位</Button>]}
+        search={{ labelWidth: 80 }}
+        toolBarRender={() => [hasComp('org_job_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>新增岗位</Button>]}
         scroll={{ x: 'max-content' }}
       />
       <ModalForm<JobForm>
@@ -53,7 +81,7 @@ export default function OrgJob() {
         }}
       >
         <ProFormText name="job_name" label="岗位名称" rules={[{ required: true }]} />
-        <ProFormText name="job_code" label="岗位编码" />
+        {editRecord && <ProFormText name="job_code" label="岗位编码" fieldProps={{ readOnly: true }} />}
         <ProFormText name="description" label="描述" />
       </ModalForm>
     </>

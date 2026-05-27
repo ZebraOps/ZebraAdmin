@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, ProFormSelect, ProFormDigit, ProFormTreeSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Tag, message } from 'antd';
+import { Button, Popconfirm, Tag, message } from 'antd';
 import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { usePermission } from '@/hooks/usePermission';
 import * as api from '@/service/api/rbac/menu';
-import type { MenuItem, MenuForm } from '@/service/api/rbac/menu';
+import type { MenuItem, MenuForm, SyncMenuItem } from '@/service/api/rbac/menu';
+import { staticMenus } from '@/router/menus';
+import type { MenuNode } from '@/store/route';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   '0': { label: '启用', color: 'success' },
@@ -23,11 +26,42 @@ function buildTreeSelectData(tree: MenuItem[]): any[] {
 
 export default function PermissionMenus() {
   const { t } = useTranslation();
+  const { hasComp } = usePermission();
   const actionRef = useRef<ActionType>(null);
   const [treeData, setTreeData] = useState<MenuItem[]>([]);
   const [editRecord, setEditRecord] = useState<MenuItem | null>(null);
   const [defaultParentId, setDefaultParentId] = useState<number | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
+  const handleSync = async () => {
+    const items: SyncMenuItem[] = [];
+    function flatten(menus: MenuNode[], parentKey?: string) {
+      menus.forEach((menu, idx) => {
+        items.push({
+          menu_key: menu.key,
+          menu_name: t(menu.label, { defaultValue: menu.key }),
+          path: menu.path,
+          icon: menu.icon,
+          order_num: menu.order ?? idx,
+          parent_key: parentKey,
+        });
+        if (menu.children?.length) flatten(menu.children, menu.key);
+      });
+    }
+    flatten(staticMenus);
+    setSyncLoading(true);
+    try {
+      const res = await api.syncMenus(items);
+      message.success(`同步成功：新增 ${res.created} 项，更新 ${res.updated} 项`);
+      actionRef.current?.reload();
+    } catch (e: any) {
+      if (!isHandledError(e)) message.error('同步失败');
+    } finally {
+      setSyncLoading(false);
+    }
+  };
 
   const columns: ProColumns<MenuItem>[] = [
     { title: '菜单名称', dataIndex: 'menu_name' },
@@ -43,10 +77,10 @@ export default function PermissionMenus() {
       render: (_, row) => [
         <Button key="addChild" type="link" size="small" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setDefaultParentId(row.menu_id); setModalOpen(true); }}>子菜单</Button>,
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setDefaultParentId(undefined); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
+        hasComp('permission_menu_delete') && hasComp('permission_menu_delete') && <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
           onConfirm={async () => { await api.deleteMenu(row.menu_id); message.success('删除成功'); actionRef.current?.reload(); }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -54,6 +88,37 @@ export default function PermissionMenus() {
     <>
       <ProTable<MenuItem>
         rowKey="menu_id" actionRef={actionRef} columns={columns}
+        rowSelection={hasComp('permission_menu_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('permission_menu_delete') ? () => (
+          <Popconfirm
+            title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
+            onConfirm={async () => {
+              try {
+                // 按深度排序，子节点先于父节点删除，避免「存在子菜单不能删除」400 错误
+                const depthMap = new Map<number, number>();
+                const calcDepth = (nodes: MenuItem[], depth: number) => {
+                  nodes.forEach(n => {
+                    depthMap.set(n.menu_id, depth);
+                    if (n.children?.length) calcDepth(n.children, depth + 1);
+                  });
+                };
+                calcDepth(treeData, 0);
+                const sorted = [...selectedRowKeys].sort(
+                  (a, b) => (depthMap.get(b as number) ?? 0) - (depthMap.get(a as number) ?? 0)
+                );
+                for (const id of sorted) {
+                  await api.deleteMenu(id as number);
+                }
+                message.success(`已删除 ${selectedRowKeys.length} 条`);
+                setSelectedRowKeys([]);
+                actionRef.current?.reload();
+              } catch (e: any) { if (!isHandledError(e)) message.error('批量删除失败'); }
+            }}
+          >
+            <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
+          </Popconfirm>
+        ) : undefined}
+
         childrenColumnName="children"
         request={async (params) => {
           try {
@@ -68,7 +133,10 @@ export default function PermissionMenus() {
           } catch { return { data: [], success: false, total: 0 }; }
         }}
         headerTitle={t('route.permission_menus', { defaultValue: '菜单管理' })}
-        toolBarRender={() => [<Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setDefaultParentId(undefined); setModalOpen(true); }}>{t('common.add', { defaultValue: '新增菜单' })}</Button>]}
+        toolBarRender={() => [
+          hasComp('permission_menu_sync') && <Button key="sync" icon={<SyncOutlined />} loading={syncLoading} onClick={handleSync}>同步菜单</Button>,
+          hasComp('permission_menu_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setDefaultParentId(undefined); setModalOpen(true); }}>{t('common.add', { defaultValue: '新增菜单' })}</Button>
+        ]}
         search={{ labelWidth: 80 }} pagination={false} scroll={{ x: 'max-content' }}
       />
       <ModalForm<MenuForm>

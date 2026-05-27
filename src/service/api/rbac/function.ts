@@ -31,3 +31,19 @@ export const updateFunction = (id: number, data: Partial<FunctionForm>) =>
 
 export const deleteFunction = (id: number) =>
   http.delete(`/rbac/functions/${id}`);
+
+export interface SyncFunctionItem {
+  func_name: string;
+  uri: string;
+  method_type: string;
+  group_name: string;
+}
+
+export interface SyncFunctionResult {
+  created: number;
+  updated: number;
+  skipped: number;
+}
+
+export const syncFunctions = (items: SyncFunctionItem[]) =>
+  http.post<SyncFunctionResult>('/rbac/functions/sync', items);

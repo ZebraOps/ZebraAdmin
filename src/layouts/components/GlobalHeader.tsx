@@ -22,7 +22,7 @@ import GlobalSearch from './GlobalSearch';
 export default function GlobalHeader() {
   const { t, i18n } = useTranslation();
   const { modal } = App.useApp();
-  const { siderCollapsed, toggleSiderCollapse, openThemeDrawer } = useAppStore();
+  const { siderCollapsed, toggleSiderCollapse, openThemeDrawer, isMobile, mobileSiderOpen, toggleMobileSider } = useAppStore();
   const { userInfo, logout } = useAuthStore();
   const { themeScheme, setThemeScheme } = useThemeStore();
   const isDark = themeScheme === 'dark';
@@ -106,8 +106,11 @@ export default function GlobalHeader() {
         {/* Left: collapse toggle */}
         <Button
           type="text"
-          icon={siderCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={toggleSiderCollapse}
+          icon={isMobile
+            ? (mobileSiderOpen ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />)
+            : (siderCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)
+          }
+          onClick={isMobile ? toggleMobileSider : toggleSiderCollapse}
           style={btnStyle}
         />
 
@@ -122,14 +125,16 @@ export default function GlobalHeader() {
             />
           </Tooltip>
 
-          <Tooltip title={isFullscreen ? t('icon.fullscreenExit') : t('icon.fullscreen')}>
-            <Button
-              type="text"
-              icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-              onClick={toggleFullscreen}
-              style={btnStyle}
-            />
-          </Tooltip>
+          {!isMobile && (
+            <Tooltip title={isFullscreen ? t('icon.fullscreenExit') : t('icon.fullscreen')}>
+              <Button
+                type="text"
+                icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+                onClick={toggleFullscreen}
+                style={btnStyle}
+              />
+            </Tooltip>
+          )}
 
           <Tooltip title={t('icon.lang')}>
             <Button type="text" icon={<TranslationOutlined />} onClick={toggleLang} style={btnStyle} />
@@ -144,14 +149,16 @@ export default function GlobalHeader() {
             />
           </Tooltip>
 
-          <Tooltip title={t('icon.themeConfig')}>
-            <Button
-              type="text"
-              icon={<SkinOutlined />}
-              onClick={openThemeDrawer}
-              style={btnStyle}
-            />
-          </Tooltip>
+          {!isMobile && (
+            <Tooltip title={t('icon.themeConfig')}>
+              <Button
+                type="text"
+                icon={<SkinOutlined />}
+                onClick={openThemeDrawer}
+                style={btnStyle}
+              />
+            </Tooltip>
+          )}
 
           <div style={{ width: 1, height: 16, background: 'var(--zb-border)', margin: '0 4px' }} />
 
@@ -161,9 +168,11 @@ export default function GlobalHeader() {
                 style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', display: 'inline-flex', flexShrink: 0 }}
                 dangerouslySetInnerHTML={{ __html: multiavatar((userInfo?.userName || 'Admin') + (userInfo?.avatar || '')) }}
               />
-              <span style={{ fontSize: 13, color: 'var(--zb-text-1)', fontWeight: 500 }}>
-                {userInfo?.userName || 'Admin'}
-              </span>
+              {!isMobile && (
+                <span style={{ fontSize: 13, color: 'var(--zb-text-1)', fontWeight: 500 }}>
+                  {userInfo?.userName || 'Admin'}
+                </span>
+              )}
             </Space>
           </Dropdown>
         </Space>

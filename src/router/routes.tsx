@@ -26,13 +26,6 @@ const PermissionGroups = lazy(() => import('@/views/permission/groups'));
 const PermissionMenus = lazy(() => import('@/views/permission/menus'));
 const PermissionRoles = lazy(() => import('@/views/permission/roles'));
 
-// System module
-const SystemAuthor = lazy(() => import('@/views/system/author'));
-const SystemGroups = lazy(() => import('@/views/system/groups'));
-const SystemMenus = lazy(() => import('@/views/system/menus'));
-const SystemRoles = lazy(() => import('@/views/system/roles'));
-const SystemUsers = lazy(() => import('@/views/system/users'));
-
 // Publish module
 const PublishApplications = lazy(() => import('@/views/publish/applications'));
 const PublishRepos = lazy(() => import('@/views/publish/repos'));
@@ -77,12 +70,6 @@ const routeConfig: RouteObject[] = [
       { path: '/permission/groups', element: <RouteOutlet><PermissionGroups /></RouteOutlet> },
       { path: '/permission/menus', element: <RouteOutlet><PermissionMenus /></RouteOutlet> },
       { path: '/permission/roles', element: <RouteOutlet><PermissionRoles /></RouteOutlet> },
-      // System
-      { path: '/system/author', element: <RouteOutlet><SystemAuthor /></RouteOutlet> },
-      { path: '/system/groups', element: <RouteOutlet><SystemGroups /></RouteOutlet> },
-      { path: '/system/menus', element: <RouteOutlet><SystemMenus /></RouteOutlet> },
-      { path: '/system/roles', element: <RouteOutlet><SystemRoles /></RouteOutlet> },
-      { path: '/system/users', element: <RouteOutlet><SystemUsers /></RouteOutlet> },
       // Publish
       { path: '/publish/applications', element: <RouteOutlet><PublishApplications /></RouteOutlet> },
       { path: '/publish/repos', element: <RouteOutlet><PublishRepos /></RouteOutlet> },

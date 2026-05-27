@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { ProTable, ModalForm, ProFormText, ProFormSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Tag, message } from 'antd';
+import { Button, Popconfirm, Tag, message } from 'antd';
 import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -9,6 +9,7 @@ import * as api from '@/service/api/rbac/role';
 import * as groupApi from '@/service/api/rbac/group';
 import type { Role, RoleForm } from '@/service/api/rbac/role';
 import type { Group } from '@/service/api/rbac/group';
+import { usePermission } from '@/hooks/usePermission';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   '0': { label: '启用', color: 'success' },
@@ -19,7 +20,9 @@ export default function PermissionRoles() {
   const { t } = useTranslation();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<Role | null>(null);
+  const { hasComp } = usePermission();
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
 
   useEffect(() => {
@@ -49,10 +52,10 @@ export default function PermissionRoles() {
     { title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
+        hasComp('permission_role_delete') && <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
           onConfirm={async () => { await api.deleteRole(row.role_id); message.success('删除成功'); actionRef.current?.reload(); }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -60,6 +63,23 @@ export default function PermissionRoles() {
     <>
       <ProTable<Role>
         rowKey="role_id" actionRef={actionRef} columns={columns}
+        rowSelection={hasComp('permission_role_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('permission_role_delete') ? () => (
+          <Popconfirm
+            title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
+            onConfirm={async () => {
+              try {
+                await Promise.all(selectedRowKeys.map(id => api.deleteRole(id as number)));
+                message.success(`已删除 ${selectedRowKeys.length} 条`);
+                setSelectedRowKeys([]);
+                actionRef.current?.reload();
+              } catch (e: any) { if (!isHandledError(e)) message.error('批量删除失败'); }
+            }}
+          >
+            <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
+          </Popconfirm>
+        ) : undefined}
+
         request={async (params) => {
           try {
             const query: Record<string, unknown> = {

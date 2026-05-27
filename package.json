@@ -24,6 +24,7 @@
     "i18next": "^24.2.0",
     "keepalive-for-react": "^2.0.0",
     "nprogress": "^0.2.0",
+    "pnpm": "^11.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-i18next": "^15.5.0",

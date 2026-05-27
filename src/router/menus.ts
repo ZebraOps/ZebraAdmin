@@ -13,6 +13,7 @@ export const staticMenus: MenuNode[] = [
     key: 'org',
     label: 'route.org',
     icon: 'mdi:account-group-outline',
+    path: '/org',
     order: 2,
     children: [
       { key: 'org_dept', label: 'route.org_dept', icon: 'mdi:office-building-cog', path: '/org/dept' },
@@ -25,6 +26,7 @@ export const staticMenus: MenuNode[] = [
     key: 'permission',
     label: 'route.permission',
     icon: 'ic:baseline-lock-person',
+    path: '/permission',
     order: 3,
     children: [
       { key: 'permission_author', label: 'route.permission_author', icon: 'ri:shield-user-fill', path: '/permission/author' },
@@ -36,22 +38,10 @@ export const staticMenus: MenuNode[] = [
     ]
   },
   {
-    key: 'system',
-    label: 'route.system',
-    icon: 'carbon:cloud-service-management',
-    order: 3,
-    children: [
-      { key: 'system_author', label: 'route.system_author', icon: 'mdi:shield-account', path: '/system/author' },
-      { key: 'system_groups', label: 'route.system_groups', icon: 'mdi:layers', path: '/system/groups' },
-      { key: 'system_menus', label: 'route.system_menus', icon: 'mdi:list-box', path: '/system/menus' },
-      { key: 'system_roles', label: 'route.system_roles', icon: 'mdi:account-switch', path: '/system/roles' },
-      { key: 'system_users', label: 'route.system_users', icon: 'mdi:account-cog', path: '/system/users' }
-    ]
-  },
-  {
     key: 'publish',
     label: 'route.publish',
     icon: 'ic:baseline-rocket-launch',
+    path: '/publish',
     order: 4,
     children: [
       { key: 'publish_repos', label: 'route.publish_repos', icon: 'mdi:source-repository', path: '/publish/repos', order: 1 },
@@ -60,6 +50,7 @@ export const staticMenus: MenuNode[] = [
         key: 'publish_templates',
         label: 'route.publish_templates',
         icon: 'ic:baseline-dashboard-customize',
+        path: '/publish/templates',
         order: 3,
         children: [
           { key: 'publish_templates_build', label: 'route.publish_templates_build', icon: 'ic:baseline-playlist-add-check', path: '/publish/templates/build' },
@@ -71,6 +62,7 @@ export const staticMenus: MenuNode[] = [
         key: 'publish_config',
         label: 'route.publish_config',
         icon: 'ic:baseline-tune',
+        path: '/publish/config',
         order: 4,
         children: [
           { key: 'publish_config_env', label: 'route.publish_config_env', icon: 'mdi:environment', path: '/publish/config/env' },
@@ -82,6 +74,7 @@ export const staticMenus: MenuNode[] = [
         key: 'publish_container',
         label: 'route.publish_container',
         icon: 'ic:baseline-view-in-ar',
+        path: '/publish/container',
         order: 5,
         children: [
           { key: 'publish_container_k8s', label: 'route.publish_container_k8s', icon: 'mdi:kubernetes', path: '/publish/container/k8s' },
@@ -94,6 +87,7 @@ export const staticMenus: MenuNode[] = [
     key: 'gateway',
     label: 'route.gateway',
     icon: 'mdi:api',
+    path: '/gateway',
     order: 5,
     children: [
       { key: 'gateway_routes', label: 'route.gateway_routes', icon: 'mdi:routes', path: '/gateway/routes', order: 1 },

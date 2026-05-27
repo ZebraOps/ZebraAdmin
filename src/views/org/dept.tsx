@@ -1,10 +1,11 @@
 import { useRef, useState, useCallback } from 'react';
-import { ProTable, ModalForm, ProFormText, ProFormDigit, ProFormTreeSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Tag, message } from 'antd';
+import { ProTable, ModalForm, ProFormText, ProFormDigit, ProFormTreeSelect, ProFormRadio, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { Button, Popconfirm, Tag, message } from 'antd';
 import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth';
+import { usePermission } from '@/hooks/usePermission';
 import * as api from '@/service/api/rbac/org';
 import type { OrgNode, OrgForm } from '@/service/api/rbac/org';
 
@@ -27,11 +28,12 @@ export default function OrgDept() {
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<OrgNode | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [treeData, setTreeData] = useState<OrgNode[]>([]);
   const [parentId, setParentId] = useState<number | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<number[]>([]);
   const { userInfo } = useAuthStore();
-  const canAddOrg = userInfo?.permissions?.all || userInfo?.permissions?.components?.orgAddBtn;
+  const { hasComp } = usePermission();
 
   /** 收集所有节点 key */
   const collectKeys = (nodes: OrgNode[]): number[] =>
@@ -64,22 +66,22 @@ export default function OrgDept() {
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 200,
       render: (_, row) => [
-        <Button
+        hasComp('org_dept_add') && <Button
           key="addChild" type="link" size="small" icon={<PlusOutlined />}
           onClick={() => { setEditRecord(null); setParentId(row.org_id); setModalOpen(true); }}
         >
           子级
         </Button>,
-        <Button
+        hasComp('org_dept_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setParentId(row.parent_id ?? null); setModalOpen(true); }}
         >
           编辑
         </Button>,
-        <CountdownButton key="del" icon={<DeleteOutlined />}
+        hasComp('org_dept_delete') && <CountdownButton key="del" icon={<DeleteOutlined />}
           onConfirm={async () => { await api.deleteOrg(row.org_id); message.success('删除成功'); actionRef.current?.reload(); }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -87,6 +89,23 @@ export default function OrgDept() {
     <>
       <ProTable<OrgNode>
         rowKey="org_id" actionRef={actionRef} columns={columns}
+        rowSelection={hasComp('org_dept_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('org_dept_delete') ? () => (
+          <Popconfirm
+            title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
+            onConfirm={async () => {
+              try {
+                await Promise.all(selectedRowKeys.map(id => api.deleteOrg(id as number)));
+                message.success(`已删除 ${selectedRowKeys.length} 条`);
+                setSelectedRowKeys([]);
+                actionRef.current?.reload();
+              } catch (e: any) { if (!isHandledError(e)) message.error('批量删除失败'); }
+            }}
+          >
+            <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
+          </Popconfirm>
+        ) : undefined}
+
         request={async () => {
           const data = await loadTree();
           return { data, success: true, total: data.length };
@@ -100,7 +119,7 @@ export default function OrgDept() {
         }}
         headerTitle="组织管理"
         toolBarRender={() => [
-          canAddOrg && (
+          hasComp('org_dept_add') && (
             <Button
               key="add" type="primary" icon={<PlusOutlined />}
               onClick={() => { setEditRecord(null); setParentId(null); setModalOpen(true); }}
@@ -137,12 +156,22 @@ export default function OrgDept() {
         }}
       >
         <ProFormText name="org_name" label="组织名称" rules={[{ required: true, message: '请输入组织名称' }]} />
-        <ProFormText name="org_code" label="组织编码" rules={[{ required: true, message: '请输入组织编码' }]} />
+        {editRecord && <ProFormText name="org_code" label="组织编码" fieldProps={{ readOnly: true }} />}
         <ProFormTreeSelect
           name="parent_id" label="上级组织"
           fieldProps={{ treeData: toTreeSelectData(treeData), allowClear: true, placeholder: '无（顶级组织）', treeDefaultExpandAll: true }}
         />
-        <ProFormDigit name="org_type" label="组织类型" fieldProps={{ precision: 0 }} tooltip="1-公司 2-部门 3-团队" />
+        <ProFormRadio.Group
+          name="org_type"
+          label="组织类型"
+          rules={[{ required: true, message: '请选择组织类型' }]}
+          options={[
+            { label: '公司', value: 1 },
+            { label: '部门', value: 2 },
+            { label: '团队', value: 3 },
+          ]}
+          fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
+        />
         <ProFormDigit name="order_num" label="排序号" fieldProps={{ precision: 0 }} />
       </ModalForm>
     </>

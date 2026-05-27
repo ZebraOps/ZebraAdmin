@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(true);
   const isDark = themeScheme === 'dark';
-  const formRef = useRef<ProFormInstance>();
+  const formRef = useRef<ProFormInstance>(null);
 
   const handleSubmit = async (values: LoginFormValues) => {
     setLoading(true);

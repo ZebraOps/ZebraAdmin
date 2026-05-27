@@ -3,6 +3,7 @@ import http from '../../request';
 export interface MenuItem {
   menu_id: number;
   menu_name: string;
+  menu_key?: string;
   status?: string;
   path?: string;
   parent_id?: number;
@@ -15,6 +16,7 @@ export interface MenuItem {
 
 export interface MenuForm {
   menu_name: string;
+  menu_key?: string;
   status?: string;
   path?: string;
   parent_id?: number;
@@ -36,3 +38,20 @@ export const updateMenu = (id: number, data: Partial<MenuForm>) =>
 
 export const deleteMenu = (id: number) =>
   http.delete(`/rbac/menus/${id}`);
+
+export interface SyncMenuItem {
+  menu_key: string;
+  menu_name: string;
+  path?: string;
+  icon?: string;
+  order_num?: number;
+  parent_key?: string;
+}
+
+export interface SyncResult {
+  created: number;
+  updated: number;
+}
+
+export const syncMenus = (items: SyncMenuItem[]) =>
+  http.post<SyncResult>('/rbac/menus/sync', items);

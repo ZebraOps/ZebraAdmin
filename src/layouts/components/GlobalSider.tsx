@@ -30,7 +30,8 @@ export default function GlobalSider() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { siderCollapsed } = useAppStore();
+  const { siderCollapsed, isMobile, setMobileSiderOpen } = useAppStore();
+  const collapsed = !isMobile && siderCollapsed;
   const { menus: dynamicMenus } = useRouteStore();
 
   const menus = dynamicMenus.length > 0 ? dynamicMenus : staticMenus;
@@ -50,8 +51,8 @@ export default function GlobalSider() {
         style={{
           height: 56,
           display: 'flex', alignItems: 'center',
-          padding: siderCollapsed ? '0' : '0 16px',
-          justifyContent: siderCollapsed ? 'center' : 'flex-start',
+          padding: collapsed ? '0' : '0 16px',
+          justifyContent: collapsed ? 'center' : 'flex-start',
           borderBottom: '1px solid var(--zb-border)',
           gap: 10, flexShrink: 0,
         }}
@@ -67,7 +68,7 @@ export default function GlobalSider() {
             boxShadow: '0 2px 8px var(--zb-accent-glow)',
           }}
         >ZB</div>
-        {!siderCollapsed && (
+        {!collapsed && (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
             <span style={{ fontFamily: 'var(--zb-font-mono)', fontSize: 13, fontWeight: 600, color: 'var(--zb-text-1)', letterSpacing: '0.04em' }}>
               ZEBRAOPS
@@ -82,18 +83,21 @@ export default function GlobalSider() {
       {/* Nav menu */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ paddingTop: 8 }}>
         <Menu
-          inlineCollapsed={siderCollapsed}
+          inlineCollapsed={collapsed}
           selectedKeys={[activeKey]}
           defaultOpenKeys={defaultOpenKeys}
           mode="inline"
           items={buildMenuItems(menus, t)}
-          onClick={({ key }) => navigate(menuKeyToPath(key))}
+          onClick={({ key }) => {
+            navigate(menuKeyToPath(key));
+            if (isMobile) setMobileSiderOpen(false);
+          }}
           style={{ width: '100%', borderRight: 'none', background: 'transparent' }}
         />
       </div>
 
       {/* Bottom version strip */}
-      {!siderCollapsed && (
+      {!collapsed && (
         <div style={{
           padding: '8px 16px', borderTop: '1px solid var(--zb-border)',
           fontFamily: 'var(--zb-font-mono)', fontSize: 10, color: 'var(--zb-text-3)',

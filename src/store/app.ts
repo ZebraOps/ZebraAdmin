@@ -6,6 +6,7 @@ interface AppState {
   locale: App.I18n.LangType;
   siderCollapsed: boolean;
   isMobile: boolean;
+  mobileSiderOpen: boolean;
   reloadFlag: boolean;
   themeDrawerVisible: boolean;
 
@@ -13,6 +14,8 @@ interface AppState {
   toggleSiderCollapse: () => void;
   setSiderCollapsed: (val: boolean) => void;
   setIsMobile: (val: boolean) => void;
+  setMobileSiderOpen: (val: boolean) => void;
+  toggleMobileSider: () => void;
   reloadPage: () => Promise<void>;
   openThemeDrawer: () => void;
   closeThemeDrawer: () => void;
@@ -21,7 +24,8 @@ interface AppState {
 export const useAppStore = create<AppState>((set, get) => ({
   locale: localStg.get<App.I18n.LangType>('lang') || 'zh-CN',
   siderCollapsed: false,
-  isMobile: window.innerWidth < 640,
+  isMobile: window.innerWidth < 768,
+  mobileSiderOpen: false,
   reloadFlag: true,
   themeDrawerVisible: false,
 
@@ -43,8 +47,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isMobile: val });
     if (val) {
       set({ siderCollapsed: true });
+    } else {
+      set({ mobileSiderOpen: false });
     }
   },
+
+  setMobileSiderOpen: (val) => set({ mobileSiderOpen: val }),
+  toggleMobileSider: () => set(state => ({ mobileSiderOpen: !state.mobileSiderOpen })),
 
   reloadPage: async () => {
     set({ reloadFlag: false });

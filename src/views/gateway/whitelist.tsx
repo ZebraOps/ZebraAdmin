@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, ProFormSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Tag, Row, Col, message } from 'antd';
+import { Button, Popconfirm, Tag, Row, Col, message } from 'antd';
 import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import * as api from '@/service/api/gateway/whitelist';
 import type { Whitelist, WhitelistForm } from '@/service/api/gateway/whitelist';
+import { usePermission } from '@/hooks/usePermission';
 
 const METHOD_COLORS: Record<string, string> = { GET: 'success', POST: 'processing', PUT: 'warning', DELETE: 'error', PATCH: 'purple', '*': 'default' };
 const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', '*'].map(m => ({ label: m, value: m }));
@@ -13,6 +14,8 @@ const METHOD_OPTIONS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', '*'].map(m => (
 export default function GatewayWhitelist() {
   const actionRef = useRef<ActionType>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const { hasComp } = usePermission();
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const columns: ProColumns<Whitelist>[] = [
     {
@@ -33,10 +36,10 @@ export default function GatewayWhitelist() {
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 80,
       render: (_, row) => [
-        <CountdownButton key="del" icon={<DeleteOutlined />}
+        hasComp('gateway_whitelist_delete') && <CountdownButton key="del" icon={<DeleteOutlined />}
           onConfirm={async () => { await api.deleteWhitelist(row.ID); message.success('删除成功'); actionRef.current?.reload(); }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -44,6 +47,23 @@ export default function GatewayWhitelist() {
     <>
       <ProTable<Whitelist>
         rowKey="ID" actionRef={actionRef} columns={columns}
+        rowSelection={hasComp('gateway_whitelist_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('gateway_whitelist_delete') ? () => (
+          <Popconfirm
+            title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
+            onConfirm={async () => {
+              try {
+                await Promise.all(selectedRowKeys.map(id => api.deleteWhitelist(id as number)));
+                message.success(`已删除 ${selectedRowKeys.length} 条`);
+                setSelectedRowKeys([]);
+                actionRef.current?.reload();
+              } catch (e: any) { if (!isHandledError(e)) message.error('批量删除失败'); }
+            }}
+          >
+            <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
+          </Popconfirm>
+        ) : undefined}
+
         request={async (params) => {
           try {
             const query: Record<string, unknown> = {};
