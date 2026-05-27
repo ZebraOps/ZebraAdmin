@@ -1,17 +1,17 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Layout, Drawer } from 'antd';
 import { Outlet } from 'react-router';
 import { useAppStore } from '@/store/app';
-import GlobalHeader from './components/GlobalHeader';
-import GlobalSider from './components/GlobalSider';
-import GlobalTab from './components/GlobalTab';
-import GlobalBreadcrumb from './components/GlobalBreadcrumb';
-import ThemeDrawer from './components/ThemeDrawer';
 
 const { Sider, Header, Content } = Layout;
+const GlobalHeader = lazy(() => import('./components/GlobalHeader'));
+const GlobalSider = lazy(() => import('./components/GlobalSider'));
+const GlobalTab = lazy(() => import('./components/GlobalTab'));
+const GlobalBreadcrumb = lazy(() => import('./components/GlobalBreadcrumb'));
+const ThemeDrawer = lazy(() => import('./components/ThemeDrawer'));
 
 export default function BaseLayout() {
-  const { siderCollapsed, setSiderCollapsed, reloadFlag, isMobile, setIsMobile, mobileSiderOpen, setMobileSiderOpen } = useAppStore();
+  const { siderCollapsed, setSiderCollapsed, reloadFlag, isMobile, setIsMobile, mobileSiderOpen, setMobileSiderOpen, themeDrawerVisible } = useAppStore();
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 767px)');
@@ -28,6 +28,10 @@ export default function BaseLayout() {
 
     return () => mediaQuery.removeEventListener('change', handleViewportChange);
   }, [setIsMobile]);
+
+  const siderFallback = <div style={{ height: '100%', background: 'var(--zb-sider-bg)' }} />;
+  const headerFallback = <div style={{ height: 56, background: 'transparent' }} />;
+  const tabFallback = <div style={{ height: 34, borderTop: '1px solid var(--zb-border)' }} />;
 
   return (
     <>
@@ -50,7 +54,9 @@ export default function BaseLayout() {
               boxShadow: 'var(--zb-shadow)',
             }}
           >
-            <GlobalSider />
+            <Suspense fallback={siderFallback}>
+              <GlobalSider />
+            </Suspense>
           </Sider>
         )}
 
@@ -68,7 +74,9 @@ export default function BaseLayout() {
             }}
             closable={false}
           >
-            <GlobalSider />
+            <Suspense fallback={siderFallback}>
+              <GlobalSider />
+            </Suspense>
           </Drawer>
         )}
 
@@ -95,8 +103,12 @@ export default function BaseLayout() {
             }}
           >
             <div className="zb-shell__header-inner">
-              <GlobalHeader />
-              <GlobalTab />
+              <Suspense fallback={headerFallback}>
+                <GlobalHeader />
+              </Suspense>
+              <Suspense fallback={tabFallback}>
+                <GlobalTab />
+              </Suspense>
             </div>
           </Header>
 
@@ -106,14 +118,20 @@ export default function BaseLayout() {
           >
             <div className="zb-shell__content-inner">
               <div className="zb-shell__panel">
-                <GlobalBreadcrumb />
+                <Suspense fallback={null}>
+                  <GlobalBreadcrumb />
+                </Suspense>
                 {reloadFlag && <Outlet />}
               </div>
             </div>
           </Content>
         </Layout>
       </Layout>
-      <ThemeDrawer />
+      {themeDrawerVisible && (
+        <Suspense fallback={null}>
+          <ThemeDrawer />
+        </Suspense>
+      )}
     </>
   );
 }

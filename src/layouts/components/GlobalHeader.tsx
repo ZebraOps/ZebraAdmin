@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import multiavatar from '@multiavatar/multiavatar';
 import { App, Button, Tooltip, Dropdown, Space, Modal, Tag, Typography, Empty, type MenuProps } from 'antd';
 import {
@@ -17,7 +17,8 @@ import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/store/app';
 import { useAuthStore } from '@/store/auth';
 import { useThemeStore } from '@/store/theme';
-import GlobalSearch from './GlobalSearch';
+
+const GlobalSearch = lazy(() => import('./GlobalSearch'));
 
 export default function GlobalHeader() {
   const { t, i18n } = useTranslation();
@@ -93,7 +94,11 @@ export default function GlobalHeader() {
 
   return (
     <>
-      <GlobalSearch open={searchVisible} onClose={() => setSearchVisible(false)} />
+      {searchVisible && (
+        <Suspense fallback={null}>
+          <GlobalSearch open={searchVisible} onClose={() => setSearchVisible(false)} />
+        </Suspense>
+      )}
 
       <div style={{
         height: 56,
