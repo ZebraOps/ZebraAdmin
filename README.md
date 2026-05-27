@@ -39,6 +39,8 @@ src/
 ├── assets/             # 静态资源
 ├── components/
 │   └── CountdownButton.tsx  # 倒计时确认删除按钮（Popconfirm + 3s 倒计时）
+├── hooks/
+│   └── usePermission.ts     # 组件权限检查 Hook（hasComp 方法）
 ├── layouts/            # 布局组件
 │   ├── BaseLayout.tsx  # 主布局（侧边栏 + 顶栏 + 多标签页）
 │   ├── BlankLayout.tsx # 空白布局（登录页等）
@@ -47,7 +49,9 @@ src/
 ├── router/
 │   ├── routes.tsx      # 路由配置（懒加载）
 │   ├── guard.tsx       # 路由守卫（鉴权 + 动态菜单注入）
-│   └── menus.ts        # 静态菜单（图标兜底数据源）
+│   ├── menus.ts        # 静态菜单（图标兜底数据源）
+│   ├── staticComponents.ts  # 静态组件权限注册表（38 个按钮权限）
+│   └── staticFunctions.ts   # 静态功能权限注册表
 ├── service/
 │   ├── request/        # Axios 封装（拦截器统一处理 400/403 错误弹窗）
 │   └── api/            # 模块化 API（auth / route / rbac / publish / gateway）
@@ -62,11 +66,11 @@ src/
 │   ├── home/           # 工作台
 │   ├── login/          # 登录
 │   ├── error/          # 403 / 404 / 500
-│   ├── org/            # 组织管理
-│   ├── permission/     # 权限管理
+│   ├── org/            # 组织管理（已集成组件权限）
+│   ├── permission/     # 权限管理（已集成组件权限）
 │   ├── system/         # 系统管理
 │   ├── publish/        # 发布管理
-│   └── gateway/        # 网关管理
+│   └── gateway/        # 网关管理（已集成组件权限）
 └── App.tsx
 ```
 
@@ -142,11 +146,11 @@ ZebraGateway（:8080）
 
 ### 三级权限模型
 
-| 级别     | 控制粒度               | 前端实现                                       |
-| -------- | ---------------------- | ---------------------------------------------- |
-| 功能权限 | API 接口（Method+URI） | 网关层拦截，前端无感知                         |
-| 菜单权限 | 页面可见性             | 动态菜单 `getUserRoutes`，路由守卫自动注入     |
-| 组件权限 | 按钮/元素可见性        | `userInfo.permissions.components.xxx` 条件渲染 |
+| 级别     | 控制粒度               | 前端实现                                            |
+| -------- | ---------------------- | --------------------------------------------------- |
+| 功能权限 | API 接口（Method+URI） | 网关层拦截，前端无感知                              |
+| 菜单权限 | 页面可见性             | 动态菜单 `getUserRoutes`，路由守卫自动注入          |
+| 组件权限 | 按钮/元素可见性        | `usePermission().hasComp('permission_name')` 条件渲染 |
 
 ### 动态菜单
 
@@ -155,9 +159,84 @@ ZebraGateway（:8080）
 - 图标优先取后端返回值，为空时从静态菜单 `menus.ts` 兜底
 - 首页（`/home`）对所有角色始终可见
 
+### 组件权限系统
+
+本项目实现了完整的**组件级别权限控制**，可以精确控制每个按钮的可见性：
+
+#### 权限命名规范
+
+格式：`{module}_{entity}_{action}`
+
+| 模块       | 前缀         | 示例                                         |
+| ---------- | ------------ | -------------------------------------------- |
+| 组织管理   | `org_`       | `org_user_add`, `org_dept_edit`              |
+| 权限管理   | `permission_`| `permission_role_delete`, `permission_menu_sync` |
+| 网关管理   | `gateway_`   | `gateway_route_add`, `gateway_whitelist_delete` |
+| 发布管理   | `publish_`   | `publish_app_deploy`, `publish_task_cancel`  |
+| 系统管理   | `system_`    | `system_config_edit`                         |
+
+#### 使用方式
+
+```tsx
+import { usePermission } from '@/hooks/usePermission';
+
+function MyPage() {
+  const { hasComp } = usePermission();
+  
+  return (
+    <div>
+      {/* 条件渲染按钮 */}
+      {hasComp('org_user_add') && (
+        <Button type="primary" icon={<PlusOutlined />}>
+          新增用户
+        </Button>
+      )}
+      
+      {/* ProTable 操作列中使用 filter(Boolean) 过滤 */}
+      {[
+        hasComp('org_user_edit') && <Button key="edit">编辑</Button>,
+        hasComp('org_user_delete') && <Button key="del" danger>删除</Button>
+      ].filter(Boolean)}
+    </div>
+  );
+}
+```
+
+#### 静态权限注册
+
+在 `src/router/staticComponents.ts` 中维护全局组件权限清单（共 38 个），支持一键同步到后端：
+
+```typescript
+export const staticComponents: StaticComponent[] = [
+  { component_name: 'org_user_add', comp_desc: '新增用户', group_name: '组织管理' },
+  { component_name: 'org_user_edit', comp_desc: '编辑用户', group_name: '组织管理' },
+  // ... 更多权限
+];
+```
+
+在**权限管理 → 组件管理**页面点击"同步组件"按钮，自动调用 `POST /rbac/components/sync` 将静态权限同步到数据库。
+
+#### 已集成的页面
+
+| 页面                  | 权限控制                                            |
+| --------------------- | --------------------------------------------------- |
+| 组织管理 - 用户       | add / edit / delete                                 |
+| 组织管理 - 部门       | add / edit / delete                                 |
+| 组织管理 - 职位       | add / edit / delete                                 |
+| 组织管理 - 岗位       | add / edit / delete                                 |
+| 权限管理 - 用户组     | add / edit / delete                                 |
+| 权限管理 - 角色       | add / edit / delete                                 |
+| 权限管理 - 菜单       | add / delete / sync                                 |
+| 权限管理 - 功能       | add / delete / sync                                 |
+| 权限管理 - 组件       | add / delete / sync                                 |
+| 权限管理 - 授权       | edit / delete（角色授权）                           |
+| 网关管理 - 路由       | add / edit / delete / reload                        |
+| 网关管理 - 白名单     | add / delete                                        |
+
 ### 公共组件
 
 - **CountdownButton**：替代原生 Popconfirm 的删除确认组件，点击"确定"后 3 秒倒计时自动执行，防止误操作
+- **usePermission Hook**：从 Zustand store 读取用户权限，提供 `hasComp(name: string)` 方法检查组件权限
 
 ## 🎨 主题与国际化
 
@@ -165,6 +244,26 @@ ZebraGateway（:8080）
 - 主色调为 **Carbon Amber** 风格（橙色 `#f97316`），深色模式采用纯碳黑背景
 - 支持 **中文 / English** 切换（`react-i18next`，语言包位于 `src/locales/`）
 
-## 📄 License
+## �️ 开发工具
+
+### ZebraOps 代码生成器
+
+项目配备了专用的代码生成 Skill（位于 `/.github/skills/zebraops-generator/`），可快速生成：
+
+- ✅ **完整 CRUD 页面** — ProTable + Modal 表单 + 权限控制
+- ✅ **后端 API 接口** — FastAPI 路由 + CRUD + 数据库迁移
+- ✅ **React 组件** — TypeScript + Ant Design 集成
+- ✅ **网关路由** — Go Gin Handler + 权限检查
+- ✅ **权限批量注册** — 组件权限 + 功能权限
+
+**使用方式：** 在 VS Code Copilot Chat 中输入
+
+```
+/zebraops-generator 创建设备管理页面,包含设备名称、IP地址、状态字段
+```
+
+详见：[ZebraOps Generator 快速指南](../.github/skills/zebraops-generator/README.md)
+
+## �📄 License
 
 [MIT](./LICENSE)

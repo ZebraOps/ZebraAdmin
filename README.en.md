@@ -39,7 +39,10 @@ A modern DevOps management platform frontend built with React 19 + TypeScript + 
 ```
 src/
 ├── assets/             # Static assets
-├── components/         # Shared components
+├── components/
+│   └── CountdownButton.tsx  # Delete confirmation button with 3s countdown
+├── hooks/
+│   └── usePermission.ts     # Component permission check hook (hasComp method)
 ├── layouts/            # Layout components
 │   ├── BaseLayout.tsx  # Main layout (sidebar + header + multi-tab)
 │   ├── BlankLayout.tsx # Blank layout (login page, etc.)
@@ -48,21 +51,28 @@ src/
 ├── router/
 │   ├── routes.tsx      # Route config (lazy-loaded)
 │   ├── guard.tsx       # Route guard (auth + dynamic routes)
-│   └── menus.ts        # Static menu fallback data
+│   ├── menus.ts        # Static menu fallback data
+│   ├── staticComponents.ts  # Static component permission registry (38 permissions)
+│   └── staticFunctions.ts   # Static function permission registry
 ├── service/
-│   ├── request.ts      # Axios wrapper
-│   └── api/            # Modular APIs (org / permission / system / publish / gateway)
-├── store/              # Zustand stores (auth / tab / app / theme / route)
+│   ├── request/        # Axios wrapper (error interceptor for 400/403)
+│   └── api/            # Modular APIs (auth / route / rbac / publish / gateway)
+├── store/              # Zustand stores
+│   ├── auth.ts         # Auth state, user info, permissions (functions/menus/components)
+│   ├── route.ts        # Dynamic menu, route transformation, icon fallback
+│   ├── tab.ts          # Multi-tab management (home always pinned)
+│   ├── app.ts          # Global app state
+│   └── theme.ts        # Theme toggle
 ├── typings/            # Global type declarations
 ├── views/              # Page views
 │   ├── home/           # Dashboard
 │   ├── login/          # Login
 │   ├── error/          # 403 / 404 / 500
-│   ├── org/            # Organization management
-│   ├── permission/     # Permission management
+│   ├── org/            # Organization management (with component permissions)
+│   ├── permission/     # Permission management (with component permissions)
 │   ├── system/         # System management
 │   ├── publish/        # Release management
-│   └── gateway/        # Gateway management
+│   └── gateway/        # Gateway management (with component permissions)
 └── App.tsx
 ```
 
@@ -117,13 +127,146 @@ This project is designed to work with the following backend services (all locate
 | [ZebraGateway](../ZebraGateway)       | Go — API gateway management                |
 | [ZebraDeployment](../ZebraDeployment) | Docker Compose deployment scripts          |
 
+## 🔐 Permission System Integration
+
+Deep integration with ZebraRBAC + ZebraGateway for three-level permission control:
+
+### Authentication Flow
+
+```
+Login → POST /rbac/login/access-token → JWT Token
+    │
+Request → Authorization: Bearer <token>
+    │
+    ▼
+ZebraGateway (:8080)
+    ├── Whitelist passthrough
+    ├── JWT verification + RBAC permission check
+    ├── Path rewrite (/rbac/* → /api/*)
+    └── Reverse proxy to upstream service
+```
+
+### Three-Level Permission Model
+
+| Level                | Granularity                  | Frontend Implementation                          |
+| -------------------- | ---------------------------- | ------------------------------------------------ |
+| Function Permission  | API endpoint (Method + URI)  | Intercepted at gateway, transparent to frontend  |
+| Menu Permission      | Page visibility              | Dynamic menu via `getUserRoutes`, route guard    |
+| Component Permission | Button/element visibility    | `usePermission().hasComp('permission_name')` conditional render |
+
+### Dynamic Menu
+
+- After login, call `GET /rbac/route/getUserRoutes` to fetch user's visible menus
+- Backend auto-completes ancestor menus (parent menu visible if child has permission)
+- Icons prioritize backend response, fallback to static `menus.ts`
+- Home page (`/home`) always visible to all roles
+
+### Component Permission System
+
+This project implements a complete **component-level permission control** system for precise button visibility control:
+
+#### Permission Naming Convention
+
+Format: `{module}_{entity}_{action}`
+
+| Module       | Prefix        | Examples                                          |
+| ------------ | ------------- | ------------------------------------------------- |
+| Organization | `org_`        | `org_user_add`, `org_dept_edit`                   |
+| Permission   | `permission_` | `permission_role_delete`, `permission_menu_sync`  |
+| Gateway      | `gateway_`    | `gateway_route_add`, `gateway_whitelist_delete`   |
+| Publish      | `publish_`    | `publish_app_deploy`, `publish_task_cancel`       |
+| System       | `system_`     | `system_config_edit`                              |
+
+#### Usage
+
+```tsx
+import { usePermission } from '@/hooks/usePermission';
+
+function MyPage() {
+  const { hasComp } = usePermission();
+  
+  return (
+    <div>
+      {/* Conditional rendering */}
+      {hasComp('org_user_add') && (
+        <Button type="primary" icon={<PlusOutlined />}>
+          Add User
+        </Button>
+      )}
+      
+      {/* Use filter(Boolean) in ProTable action column */}
+      {[
+        hasComp('org_user_edit') && <Button key="edit">Edit</Button>,
+        hasComp('org_user_delete') && <Button key="del" danger>Delete</Button>
+      ].filter(Boolean)}
+    </div>
+  );
+}
+```
+
+#### Static Permission Registry
+
+Maintain global component permission list (38 total) in `src/router/staticComponents.ts`, support one-click sync to backend:
+
+```typescript
+export const staticComponents: StaticComponent[] = [
+  { component_name: 'org_user_add', comp_desc: 'Add User', group_name: 'Organization' },
+  { component_name: 'org_user_edit', comp_desc: 'Edit User', group_name: 'Organization' },
+  // ... more permissions
+];
+```
+
+Click "Sync Components" button on **Permission → Component Management** page to auto-call `POST /rbac/components/sync` and sync static permissions to database.
+
+#### Pages with Integration
+
+| Page                          | Permission Controls                            |
+| ----------------------------- | ---------------------------------------------- |
+| Organization - Users          | add / edit / delete                            |
+| Organization - Departments    | add / edit / delete                            |
+| Organization - Positions      | add / edit / delete                            |
+| Organization - Job Titles     | add / edit / delete                            |
+| Permission - User Groups      | add / edit / delete                            |
+| Permission - Roles            | add / edit / delete                            |
+| Permission - Menus            | add / delete / sync                            |
+| Permission - Functions        | add / delete / sync                            |
+| Permission - Components       | add / delete / sync                            |
+| Permission - Authorization    | edit / delete (role authorization)             |
+| Gateway - Routes              | add / edit / delete / reload                   |
+| Gateway - Whitelist           | add / delete                                   |
+
+### Shared Components
+
+- **CountdownButton**: Replaces native Popconfirm for delete confirmation with 3s countdown after clicking "Confirm", prevents accidental operations
+- **usePermission Hook**: Reads user permissions from Zustand store, provides `hasComp(name: string)` method to check component permissions
+
 ## 🎨 Theme & i18n
 
 - **Light / Dark** theme toggle — one-click switch in the header, powered by Ant Design `ConfigProvider` + CSS design tokens
 - **Carbon Amber** design language — orange accent `#f97316`, pure-carbon dark background
 - **Chinese / English** language switch — `react-i18next`, language packs under `src/locales/`
 
-## 📄 License
+## �️ Development Tools
+
+### ZebraOps Code Generator
+
+The project comes with a dedicated code generation Skill (located at `/.github/skills/zebraops-generator/`) that can quickly generate:
+
+- ✅ **Full CRUD pages** — ProTable + Modal forms + permission control
+- ✅ **Backend API endpoints** — FastAPI routers + CRUD + database migrations
+- ✅ **React components** — TypeScript + Ant Design integration
+- ✅ **Gateway routes** — Go Gin handlers + permission checks
+- ✅ **Batch permission registration** — Component & function permissions
+
+**Usage:** Type in VS Code Copilot Chat
+
+```
+/zebraops-generator create device management page with fields: device name, IP address, status
+```
+
+See: [ZebraOps Generator Quick Guide](../.github/skills/zebraops-generator/README.md)
+
+## �📄 License
 
 [MIT](./LICENSE)
 
