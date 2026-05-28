@@ -10,7 +10,7 @@ export interface ImageRegistry {
 }
 
 export const fetchImageRegistries = (params?: Record<string, unknown>) =>
-  http.get<{ items: ImageRegistry[]; total: number }>('/cicd/api/image-registries', params);
+  http.get<{ total: number; records: ImageRegistry[] }>('/cicd/api/image-registries', params);
 
 export const createImageRegistry = (data: { name: string; url: string; username?: string; password?: string; description?: string }) =>
   http.post<ImageRegistry>('/cicd/api/image-registries', data);

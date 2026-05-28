@@ -101,7 +101,7 @@ pnpm preview
 
 ```env
 # 后端服务地址
-VITE_BASE_URL=http://localhost:8080
+VITE_BASE_URL=http://localhost:4121
 ```
 
 内置代理转发规则（`vite.config.ts`）：
@@ -137,7 +137,7 @@ VITE_BASE_URL=http://localhost:8080
 请求 → Authorization: Bearer <token>
     │
     ▼
-ZebraGateway（:8080）
+ZebraGateway（:4121）
     ├── 白名单放行
     ├── JWT 验证 + RBAC 权限校验
     ├── 路径重写（/rbac/* → /api/*）

@@ -103,7 +103,7 @@ Create a `.env.local` file in the project root (already in `.gitignore`):
 
 ```env
 # Backend service base URL
-VITE_BASE_URL=http://localhost:8080
+VITE_BASE_URL=http://localhost:4121
 ```
 
 Built-in proxy forwarding rules (`vite.config.ts`):
@@ -139,7 +139,7 @@ Login → POST /rbac/login/access-token → JWT Token
 Request → Authorization: Bearer <token>
     │
     ▼
-ZebraGateway (:8080)
+ZebraGateway (:4121)
     ├── Whitelist passthrough
     ├── JWT verification + RBAC permission check
     ├── Path rewrite (/rbac/* → /api/*)

@@ -13,6 +13,7 @@ export * from './rbac/job';
 export * from './rbac/position';
 export * from './publish/applications';
 export * from './publish/repos';
+export * from './publish/deploy-task';
 export * from './publish/environment';
 export * from './publish/image-registry';
 export * from './publish/vendor';

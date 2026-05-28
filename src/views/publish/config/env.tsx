@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { ProTable, ModalForm, ProFormText, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, message } from 'antd';
+import { ProTable, ModalForm, ProFormText, ProFormSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { Button, Tag, message, Popconfirm } from 'antd';
 import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -8,16 +8,31 @@ import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/publish/environment';
 import type { Environment } from '@/service/api/publish/environment';
 
+const TYPE_COLORS: Record<string, string> = { dev: 'processing', test: 'warning', prod: 'error' };
+const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'default' };
+
 export default function PublishConfigEnv() {
   const { t } = useTranslation();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<Environment | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const columns: ProColumns<Environment>[] = [
     { title: t('common.name', { defaultValue: '名称' }), dataIndex: 'name' },
-    { title: '环境标识', dataIndex: 'code' },
-    { title: '描述', dataIndex: 'description' },
+    {
+      title: '环境类型', dataIndex: 'type', width: 110,
+      valueType: 'select',
+      valueEnum: { dev: { text: 'DEV' }, test: { text: 'TEST' }, prod: { text: 'PROD' } },
+      render: (_, row) => row.type ? <Tag color={TYPE_COLORS[String(row.type)] ?? 'default'}>{String(row.type).toUpperCase()}</Tag> : '-'
+    },
+    {
+      title: '状态', dataIndex: 'status', width: 90,
+      valueType: 'select',
+      valueEnum: { active: { text: '激活' }, inactive: { text: '停用' } },
+      render: (_, row) => row.status ? <Tag color={STATUS_COLORS[String(row.status)] ?? 'default'}>{String(row.status)}</Tag> : '-'
+    },
+    { title: '描述', dataIndex: 'description', search: false },
     { title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
@@ -32,10 +47,35 @@ export default function PublishConfigEnv() {
     <>
       <ProTable<Environment>
         rowKey="id" actionRef={actionRef} columns={columns}
-        request={async () => { try { const res = await api.fetchEnvironments({}); return { data: (res as any)?.data?.list ?? (res as any)?.data ?? [], success: true, total: 0 }; } catch { return { data: [], success: false, total: 0 }; } }}
+        rowSelection={{ selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) }}
+        tableAlertOptionRender={() => (
+          <Popconfirm title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
+            onConfirm={async () => {
+              try {
+                await Promise.all(selectedRowKeys.map(id => api.deleteEnvironment(id as number)));
+                message.success(`已删除 ${selectedRowKeys.length} 条`);
+                setSelectedRowKeys([]); actionRef.current?.reload();
+              } catch (e: any) { if (!isHandledError(e)) message.error('批量删除失败'); }
+            }}>
+            <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
+          </Popconfirm>
+        )}
+        request={async (params) => {
+          try {
+            const query: Record<string, unknown> = {
+              current: ((params.current ?? 1) - 1) * (params.pageSize ?? 20),
+              size: params.pageSize ?? 20,
+            };
+            if (params.name) query.name = params.name;
+            if (params.type) query.type = params.type;
+            if (params.status) query.status = params.status;
+            const res = await api.fetchEnvironments(query);
+            return { data: (res as any)?.records ?? [], success: true, total: (res as any)?.total ?? 0 };
+          } catch { return { data: [], success: false, total: 0 }; }
+        }}
         headerTitle={t('route.publish_config_env', { defaultValue: '环境配置' })}
         toolBarRender={() => [<Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>{t('common.add', { defaultValue: '新增' })}</Button>]}
-        search={false} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
+        search={{ labelWidth: 80 }} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
       />
       <ModalForm<Partial<Environment>>
         key={editRecord?.id ?? 'new'}
@@ -50,7 +90,10 @@ export default function PublishConfigEnv() {
         }}
       >
         <ProFormText name="name" label="名称" rules={[{ required: true }]} />
-        <ProFormText name="code" label="环境标识" rules={[{ required: true }]} />
+        <ProFormSelect name="type" label="环境类型" rules={[{ required: true }]}
+          options={[{ label: '开发 (dev)', value: 'dev' }, { label: '测试 (test)', value: 'test' }, { label: '生产 (prod)', value: 'prod' }]} />
+        <ProFormSelect name="status" label="状态"
+          options={[{ label: '激活', value: 'active' }, { label: '停用', value: 'inactive' }]} initialValue="active" />
         <ProFormText name="description" label="描述" />
       </ModalForm>
     </>

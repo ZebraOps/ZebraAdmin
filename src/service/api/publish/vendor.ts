@@ -3,15 +3,25 @@ import http from '../../request';
 export interface Vendor {
   id: number;
   name: string;
-  type: string;
+  display_name?: string;
   description?: string;
-  createdAt?: string;
+  provider?: string;
+  region?: string;
+  access_key?: string;
+  secret_key?: string;
+  endpoint?: string;
+  config?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export const fetchVendors = (params?: Record<string, unknown>) =>
-  http.get<{ items: Vendor[]; total: number }>('/cicd/api/vendors', params);
+type PageResult<T> = { total: number; records: T[] };
 
-export const createVendor = (data: { name: string; type: string; description?: string }) =>
+export const fetchVendors = (params?: Record<string, unknown>) =>
+  http.get<PageResult<Vendor>>('/cicd/api/vendors', params);
+
+export const createVendor = (data: Omit<Vendor, 'id' | 'created_at' | 'updated_at'>) =>
   http.post<Vendor>('/cicd/api/vendors', data);
 
 export const updateVendor = (id: number, data: Partial<Vendor>) =>

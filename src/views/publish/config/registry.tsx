@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, message } from 'antd';
+import { Button, message, Popconfirm } from 'antd';
 import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -13,11 +13,12 @@ export default function PublishConfigRegistry() {
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<ImageRegistry | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const columns: ProColumns<ImageRegistry>[] = [
     { title: '名称', dataIndex: 'name' },
     { title: '地址', dataIndex: 'url' },
-    { title: '描述', dataIndex: 'description' },
+    { title: '描述', dataIndex: 'description', search: false },
     { title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
@@ -32,10 +33,34 @@ export default function PublishConfigRegistry() {
     <>
       <ProTable<ImageRegistry>
         rowKey="id" actionRef={actionRef} columns={columns}
-        request={async () => { try { const res = await api.fetchImageRegistries({}); return { data: (res as any)?.data?.list ?? (res as any)?.data ?? [], success: true, total: 0 }; } catch { return { data: [], success: false, total: 0 }; } }}
+        rowSelection={{ selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) }}
+        tableAlertOptionRender={() => (
+          <Popconfirm title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
+            onConfirm={async () => {
+              try {
+                await Promise.all(selectedRowKeys.map(id => api.deleteImageRegistry(id as number)));
+                message.success(`已删除 ${selectedRowKeys.length} 条`);
+                setSelectedRowKeys([]); actionRef.current?.reload();
+              } catch (e: any) { if (!isHandledError(e)) message.error('批量删除失败'); }
+            }}>
+            <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
+          </Popconfirm>
+        )}
+        request={async (params) => {
+          try {
+            const query: Record<string, unknown> = {
+              current: ((params.current ?? 1) - 1) * (params.pageSize ?? 20),
+              size: params.pageSize ?? 20,
+            };
+            if (params.name) query.name = params.name;
+            if (params.url) query.url = params.url;
+            const res = await api.fetchImageRegistries(query);
+            return { data: (res as any)?.records ?? [], success: true, total: (res as any)?.total ?? 0 };
+          } catch { return { data: [], success: false, total: 0 }; }
+        }}
         headerTitle={t('route.publish_config_registry', { defaultValue: '镜像仓库' })}
         toolBarRender={() => [<Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>{t('common.add', { defaultValue: '新增' })}</Button>]}
-        search={false} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
+        search={{ labelWidth: 80 }} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
       />
       <ModalForm<Partial<ImageRegistry>>
         key={editRecord?.id ?? 'new'}

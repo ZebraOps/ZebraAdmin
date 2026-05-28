@@ -116,7 +116,7 @@ export default function GatewayRoutes() {
       >
         <Row gutter={16}>
           <Col span={12}><ProFormText name="prefix" label="路径前缀" placeholder="如 /rbac" rules={[{ required: true }]} /></Col>
-          <Col span={12}><ProFormText name="target" label="目标地址" placeholder="如 http://192.168.30.198:8000" rules={[{ required: true }]} /></Col>
+          <Col span={12}><ProFormText name="target" label="目标地址" placeholder="如 http://192.168.30.198:4122" rules={[{ required: true }]} /></Col>
         </Row>
         <Row gutter={16}>
           <Col span={12}><ProFormText name="rewrite" label="路径重写" placeholder="留空表示不改写" /></Col>

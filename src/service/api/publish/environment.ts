@@ -3,15 +3,20 @@ import http from '../../request';
 export interface Environment {
   id: number;
   name: string;
-  code: string;
   description?: string;
-  createdAt?: string;
+  type?: string;
+  status?: string;
+  config?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export const fetchEnvironments = (params?: Record<string, unknown>) =>
-  http.get<{ items: Environment[]; total: number }>('/cicd/api/environments', params);
+type PageResult<T> = { total: number; records: T[] };
 
-export const createEnvironment = (data: { name: string; code: string; description?: string }) =>
+export const fetchEnvironments = (params?: Record<string, unknown>) =>
+  http.get<PageResult<Environment>>('/cicd/api/environments', params);
+
+export const createEnvironment = (data: Omit<Environment, 'id' | 'created_at' | 'updated_at'>) =>
   http.post<Environment>('/cicd/api/environments', data);
 
 export const updateEnvironment = (id: number, data: Partial<Environment>) =>
