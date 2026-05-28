@@ -89,12 +89,12 @@ export default function PublishConfigEnv() {
           } catch (e: any) { if (!isHandledError(e)) message.error('保存失败'); return false; }
         }}
       >
-        <ProFormText name="name" label="名称" rules={[{ required: true }]} />
-        <ProFormSelect name="type" label="环境类型" rules={[{ required: true }]}
+        <ProFormText name="name" label="名称" rules={[{ required: true }]} placeholder="请输入环境名称" />
+        <ProFormSelect name="type" label="环境类型" rules={[{ required: true }]} placeholder="请选择环境类型"
           options={[{ label: '开发 (dev)', value: 'dev' }, { label: '测试 (test)', value: 'test' }, { label: '生产 (prod)', value: 'prod' }]} />
-        <ProFormSelect name="status" label="状态"
+        <ProFormSelect name="status" label="状态" placeholder="请选择状态"
           options={[{ label: '激活', value: 'active' }, { label: '停用', value: 'inactive' }]} initialValue="active" />
-        <ProFormText name="description" label="描述" />
+        <ProFormText name="description" label="描述" placeholder="请输入环境描述" />
       </ModalForm>
     </>
   );

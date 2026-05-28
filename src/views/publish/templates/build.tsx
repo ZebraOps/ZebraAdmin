@@ -176,12 +176,12 @@ export default function PublishTemplatesBuild() {
           }
         }}
       >
-        <ProFormText name="name" label="模板名称" rules={[{ required: true }]} />
+        <ProFormText name="name" label="模板名称" rules={[{ required: true }]} placeholder="请输入模板名称" />
         <ProFormSelect
-          name="language" label="开发语言" rules={[{ required: true }]}
+          name="language" label="开发语言" rules={[{ required: true }]} placeholder="请选择开发语言"
           options={languageOptions} showSearch fieldProps={{ optionFilterProp: 'label' }}
         />
-        <ProFormText name="creator" label="创建人" />
+        <ProFormText name="creator" label="创建人" placeholder="请输入创建人" />
         <ProFormTextArea name="dockerfile" label="Dockerfile" fieldProps={{ rows: 8, placeholder: 'FROM golang:1.25-alpine\nWORKDIR /app\nCOPY . .\nRUN go build -o main .\nCMD ["/app/main"]' }} />
         <ProFormTextArea name="pipeline" label="Pipeline (Jenkinsfile)" fieldProps={{ rows: 8, placeholder: 'pipeline {\n  agent any\n  stages {\n    stage("Build") { steps { sh "make build" } }\n  }\n}' }} />
       </ModalForm>

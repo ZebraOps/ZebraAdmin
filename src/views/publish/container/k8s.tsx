@@ -183,18 +183,18 @@ export default function PublishContainerK8s() {
           }
         }}
       >
-        <ProFormText name="name" label="集群名称" rules={[{ required: true }]} />
+        <ProFormText name="name" label="集群名称" rules={[{ required: true }]} placeholder="请输入集群名称" />
         <ProFormText name="api_server" label="API Server 地址" rules={[{ required: true }]} placeholder="https://k8s-api:6443" />
         <ProFormText name="namespace" label="默认命名空间" placeholder="default" />
         <ProFormText.Password name="token" label="认证 Token" placeholder="Bearer Token (K8s 1.24+)" />
         <ProFormTextArea name="ca_cert" label="CA 证书" fieldProps={{ rows: 4, placeholder: '-----BEGIN CERTIFICATE-----\n...' }} />
-        <ProFormTextArea name="client_cert" label="客户端证书" fieldProps={{ rows: 4 }} />
-        <ProFormTextArea name="client_key" label="客户端私钥" fieldProps={{ rows: 4 }} />
+        <ProFormTextArea name="client_cert" label="客户端证书" fieldProps={{ rows: 4, placeholder: '-----BEGIN CERTIFICATE-----\n...' }} />
+        <ProFormTextArea name="client_key" label="客户端私钥" fieldProps={{ rows: 4, placeholder: '-----BEGIN RSA PRIVATE KEY-----\n...' }} />
         <ProFormSwitch name="skip_verify" label="跳过证书验证" />
         <ProFormText name="vendor" label="云厂商" placeholder="aliyun / aws / azure / gcp" />
         <ProFormText name="environment" label="所属环境" placeholder="dev / test / prod" />
         <ProFormSwitch name="enabled" label="启用" />
-        <ProFormText name="description" label="描述" />
+        <ProFormText name="description" label="描述" placeholder="请输入描述" />
       </ModalForm>
 
       {/* Pod 列表抽屉 */}

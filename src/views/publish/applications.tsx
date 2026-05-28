@@ -206,16 +206,16 @@ export default function PublishApplications() {
           }
         }}
       >
-        <ProFormText name="c_name" label="中文名称" rules={[{ required: true }]} />
-        <ProFormText name="e_name" label="英文名称" rules={[{ required: true }]} />
-        <ProFormSelect name="repo_id" label="关联仓库" options={repoOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
-        <ProFormDigit name="listen_port" label="监听端口" min={1} max={65535} />
+        <ProFormText name="c_name" label="中文名称" rules={[{ required: true }]} placeholder="请输入中文名称" />
+        <ProFormText name="e_name" label="英文名称" rules={[{ required: true }]} placeholder="请输入英文名称" />
+        <ProFormSelect name="repo_id" label="关联仓库" options={repoOptions} showSearch placeholder="请选择关联仓库" fieldProps={{ optionFilterProp: 'label' }} />
+        <ProFormDigit name="listen_port" label="监听端口" min={1} max={65535} placeholder="请输入监听端口" />
         <ProFormSelect
-          name="health_check_type" label="健康检查类型"
+          name="health_check_type" label="健康检查类型" placeholder="请选择健康检查类型"
           options={[{ label: 'HTTP', value: 'http' }, { label: 'TCP', value: 'tcp' }, { label: '自定义', value: 'custom' }]}
         />
         <ProFormText name="health_check_url" label="健康检查URL" placeholder="/health" />
-        <ProFormText name="description" label="描述" />
+        <ProFormText name="description" label="描述" placeholder="请输入描述" />
       </ModalForm>
 
       {/* 部署配置抽屉 */}
@@ -271,15 +271,15 @@ export default function PublishApplications() {
         }}
       >
         <ProFormDigit name="application_id" label="应用ID" disabled fieldProps={{ precision: 0 }} />
-        <ProFormSelect name="environment_id" label="环境" rules={[{ required: true }]} options={envOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
+        <ProFormSelect name="environment_id" label="环境" rules={[{ required: true }]} placeholder="请选择环境" options={envOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
         <ProFormSelect
-          name="build_source" label="构建源" rules={[{ required: true }]}
+          name="build_source" label="构建源" rules={[{ required: true }]} placeholder="请选择构建源"
           options={[{ label: 'Git Tag', value: 'tag' }, { label: 'Git Branch', value: 'branch' }]}
         />
-        <ProFormSelect name="build_template_id" label="构建模板" options={buildTplOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
-        <ProFormSelect name="deployment_template_id" label="部署模板" options={deployTplOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
+        <ProFormSelect name="build_template_id" label="构建模板" options={buildTplOptions} showSearch placeholder="请选择构建模板" fieldProps={{ optionFilterProp: 'label' }} />
+        <ProFormSelect name="deployment_template_id" label="部署模板" options={deployTplOptions} showSearch placeholder="请选择部署模板" fieldProps={{ optionFilterProp: 'label' }} />
         <ProFormDigit name="platform_credential_id" label="平台凭据ID" min={1} fieldProps={{ precision: 0 }} />
-        <ProFormTextArea name="description" label="描述" fieldProps={{ rows: 3 }} />
+        <ProFormTextArea name="description" label="描述" fieldProps={{ rows: 3, placeholder: '请输入描述' }} />
       </ModalForm>
     </>
   );

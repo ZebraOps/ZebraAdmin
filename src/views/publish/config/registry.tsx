@@ -74,11 +74,11 @@ export default function PublishConfigRegistry() {
           } catch (e: any) { if (!isHandledError(e)) message.error('保存失败'); return false; }
         }}
       >
-        <ProFormText name="name" label="名称" rules={[{ required: true }]} />
-        <ProFormText name="url" label="仓库地址" rules={[{ required: true }]} />
-        <ProFormText name="username" label="用户名" />
-        <ProFormText.Password name="password" label="密码" />
-        <ProFormText name="description" label="描述" />
+        <ProFormText name="name" label="名称" rules={[{ required: true }]} placeholder="请输入仓库名称" />
+        <ProFormText name="url" label="仓库地址" rules={[{ required: true }]} placeholder="请输入仓库地址" />
+        <ProFormText name="username" label="用户名" placeholder="请输入用户名" />
+        <ProFormText.Password name="password" label="密码" placeholder="请输入密码" />
+        <ProFormText name="description" label="描述" placeholder="请输入描述" />
       </ModalForm>
     </>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ProTable, ModalForm, ProFormText, ProFormSelect,
+  ProTable, ModalForm, ProFormText, ProFormSelect, ProFormTreeSelect,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
 import { Button, Tag, message, Drawer, Space, Modal, Popconfirm } from 'antd';
@@ -16,6 +16,8 @@ import {
   fetchBuildTemplates, associateBuildTemplateRepo, disassociateBuildTemplateRepo,
 } from '@/service/api/publish/build-template';
 import { fetchLanguages } from '@/service/api/publish/language';
+import { fetchOrgTree } from '@/service/api/rbac/org';
+import type { OrgNode } from '@/service/api/rbac/org';
 
 export default function PublishRepos() {
   const { t } = useTranslation();
@@ -34,6 +36,15 @@ export default function PublishRepos() {
   const [associateTplId, setAssociateTplId] = useState<number | undefined>();
 
   const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
+  const [orgTreeData, setOrgTreeData] = useState<OrgNode[]>([]);
+
+  function toDeptTreeSelectData(nodes: OrgNode[]): any[] {
+    return nodes.map(n => ({
+      title: n.org_name,
+      value: n.org_name,
+      children: n.children?.length ? toDeptTreeSelectData(n.children) : undefined,
+    }));
+  }
 
   useEffect(() => {
     fetchBuildTemplates({ size: 200 }).then((res) => {
@@ -47,6 +58,10 @@ export default function PublishRepos() {
         label: e.display_name || e.name,
         value: e.name,
       })));
+    }).catch(() => {});
+    fetchOrgTree().then((res) => {
+      const data = Array.isArray(res) ? res : (res as any)?.data ?? [];
+      setOrgTreeData(data);
     }).catch(() => {});
   }, []);
 
@@ -103,7 +118,17 @@ export default function PublishRepos() {
       valueType: 'select', valueEnum: languageEnum,
     },
     { title: '负责人', dataIndex: 'repo_manager', width: 100 },
-    { title: '归属部门', dataIndex: 'repo_department', width: 120 },
+    {
+      title: '归属部门', dataIndex: 'repo_department', width: 140,
+      valueType: 'treeSelect', search: false,
+      fieldProps: {
+        treeData: toDeptTreeSelectData(orgTreeData),
+        allowClear: true, placeholder: '请选择部门',
+        treeDefaultExpandAll: true,
+        showSearch: true,
+        treeNodeFilterProp: 'title',
+      }
+    },
     { title: '描述', dataIndex: 'repo_desc', ellipsis: true, search: false },
     { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 160, search: false },
     {
@@ -220,8 +245,8 @@ export default function PublishRepos() {
           }
         }}
       >
-        <ProFormText name="c_name" label="中文名称" rules={[{ required: true }]} />
-        <ProFormText name="e_name" label="英文名称" rules={[{ required: true }]} />
+        <ProFormText name="c_name" label="中文名称" rules={[{ required: true }]} placeholder="请输入中文名称" />
+        <ProFormText name="e_name" label="英文名称" rules={[{ required: true }]} placeholder="请输入英文名称" />
         <ProFormText name="repo_url" label="仓库HTTP地址" placeholder="https://github.com/org/repo.git" />
         <ProFormText name="repo_ssh_url" label="仓库SSH地址" placeholder="git@github.com:org/repo.git" />
         <ProFormSelect
@@ -229,10 +254,20 @@ export default function PublishRepos() {
           options={[{ label: 'K8s', value: 'k8s' }, { label: 'Linux', value: 'linux' }]}
           initialValue="k8s"
         />
-        <ProFormSelect name="repo_language" label="开发语言" options={languageOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
-        <ProFormText name="repo_manager" label="负责人" />
-        <ProFormText name="repo_department" label="归属部门" />
-        <ProFormText name="repo_desc" label="描述" />
+        <ProFormSelect name="repo_language" label="开发语言" options={languageOptions} showSearch placeholder="请选择开发语言" fieldProps={{ optionFilterProp: 'label' }} />
+        <ProFormText name="repo_manager" label="负责人" placeholder="请输入负责人" />
+        <ProFormTreeSelect
+          name="repo_department" label="归属部门"
+          fieldProps={{
+            treeData: toDeptTreeSelectData(orgTreeData),
+            allowClear: true,
+            placeholder: '请选择部门',
+            treeDefaultExpandAll: true,
+            showSearch: true,
+            treeNodeFilterProp: 'title',
+          }}
+        />
+        <ProFormText name="repo_desc" label="描述" placeholder="请输入描述" />
       </ModalForm>
 
       {/* 关联模板抽屉 */}

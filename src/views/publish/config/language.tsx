@@ -92,9 +92,9 @@ export default function PublishConfigLanguage() {
         <ProFormText name="display_name" label="显示名称" placeholder="Golang / Java / Python 3" />
         <ProFormText name="icon" label="图标" placeholder="mdi:language-go / mdi:language-java" />
         <ProFormDigit name="sort_order" label="排序" min={0} fieldProps={{ precision: 0 }} />
-        <ProFormSelect name="status" label="状态"
+        <ProFormSelect name="status" label="状态" placeholder="请选择状态"
           options={[{ label: '激活', value: 'active' }, { label: '停用', value: 'inactive' }]} />
-        <ProFormText name="description" label="描述" />
+        <ProFormText name="description" label="描述" placeholder="请输入描述" />
       </ModalForm>
     </>
   );

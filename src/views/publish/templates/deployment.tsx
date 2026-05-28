@@ -258,10 +258,10 @@ export default function PublishTemplatesDeployment() {
           }
         }}
       >
-        <ProFormText name="name" label="模板名称" rules={[{ required: true }]} />
-        <ProFormText name="display_name" label="显示名称" />
+        <ProFormText name="name" label="模板名称" rules={[{ required: true }]} placeholder="请输入模板名称" />
+        <ProFormText name="display_name" label="显示名称" placeholder="请输入显示名称" />
         <ProFormSelect
-          name="template_type" label="模板类型"
+          name="template_type" label="模板类型" placeholder="请选择模板类型"
           options={[
             { label: 'K8s YAML', value: 'k8s' },
             { label: 'Helm Chart', value: 'helm' },
@@ -270,12 +270,12 @@ export default function PublishTemplatesDeployment() {
         />
         <ProFormText name="version" label="版本" placeholder="1.0" />
         <ProFormSelect
-          name="status" label="状态"
+          name="status" label="状态" placeholder="请选择状态"
           options={[{ label: '激活', value: 'active' }, { label: '停用', value: 'inactive' }]}
           initialValue="active"
         />
-        <ProFormTextArea name="content" label="模板内容 (YAML/JSON)" fieldProps={{ rows: 10 }} />
-        <ProFormText name="description" label="描述" />
+        <ProFormTextArea name="content" label="模板内容 (YAML/JSON)" fieldProps={{ rows: 10, placeholder: '请输入模板内容' }} />
+        <ProFormText name="description" label="描述" placeholder="请输入描述" />
       </ModalForm>
 
       {/* 历史抽屉 */}

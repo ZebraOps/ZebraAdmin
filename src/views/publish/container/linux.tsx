@@ -229,19 +229,19 @@ export default function PublishContainerLinux() {
           }
         }}
       >
-        <ProFormText name="name" label="主机名称" rules={[{ required: true }]} />
+        <ProFormText name="name" label="主机名称" rules={[{ required: true }]} placeholder="请输入主机名称" />
         <ProFormText name="host" label="IP 地址 / 主机名" rules={[{ required: true }]} placeholder="192.168.1.100" />
-        <ProFormDigit name="port" label="SSH 端口" min={1} max={65535} fieldProps={{ precision: 0 }} />
+        <ProFormDigit name="port" label="SSH 端口" min={1} max={65535} placeholder="22" fieldProps={{ precision: 0 }} />
         <ProFormText name="username" label="用户名" rules={[{ required: true }]} placeholder="root" />
         <ProFormSelect
-          name="auth_type" label="认证方式" rules={[{ required: true }]}
+          name="auth_type" label="认证方式" rules={[{ required: true }]} placeholder="请选择认证方式"
           options={[{ label: '密码', value: 'password' }, { label: 'SSH 密钥', value: 'key' }]}
           fieldProps={{ onChange: (v: string) => setAuthType(v) }}
         />
-        {authType === 'password' && <ProFormText.Password name="password" label="密码" />}
+        {authType === 'password' && <ProFormText.Password name="password" label="密码" placeholder="请输入密码" />}
         {authType === 'key' && <ProFormTextArea name="private_key" label="SSH 私钥" fieldProps={{ rows: 6, placeholder: '-----BEGIN RSA PRIVATE KEY-----\n...' }} />}
         <ProFormSwitch name="is_active" label="激活状态" />
-        <ProFormText name="description" label="描述" />
+        <ProFormText name="description" label="描述" placeholder="请输入描述" />
       </ModalForm>
 
       {/* 容器列表抽屉 */}

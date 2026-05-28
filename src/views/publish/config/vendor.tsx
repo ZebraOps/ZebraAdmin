@@ -78,17 +78,17 @@ export default function PublishConfigVendor() {
           } catch (e: any) { if (!isHandledError(e)) message.error('保存失败'); return false; }
         }}
       >
-        <ProFormText name="name" label="名称" rules={[{ required: true }]} />
-        <ProFormText name="display_name" label="显示名称" />
-        <ProFormSelect name="provider" label="提供商" rules={[{ required: true }]}
+        <ProFormText name="name" label="名称" rules={[{ required: true }]} placeholder="请输入云厂商名称" />
+        <ProFormText name="display_name" label="显示名称" placeholder="请输入显示名称" />
+        <ProFormSelect name="provider" label="提供商" rules={[{ required: true }]} placeholder="请选择云提供商"
           options={[{ label: '阿里云 (Aliyun)', value: 'aliyun' }, { label: '亚马逊云 (AWS)', value: 'aws' }, { label: '微软云 (Azure)', value: 'azure' }, { label: '谷歌云 (GCP)', value: 'gcp' }]} />
         <ProFormText name="region" label="默认区域" placeholder="cn-hangzhou" />
-        <ProFormText name="access_key" label="Access Key" />
-        <ProFormText.Password name="secret_key" label="Secret Key" />
-        <ProFormText name="endpoint" label="API Endpoint" />
-        <ProFormSelect name="status" label="状态"
+        <ProFormText name="access_key" label="Access Key" placeholder="请输入 Access Key" />
+        <ProFormText.Password name="secret_key" label="Secret Key" placeholder="请输入 Secret Key" />
+        <ProFormText name="endpoint" label="API Endpoint" placeholder="请输入 API Endpoint" />
+        <ProFormSelect name="status" label="状态" placeholder="请选择状态"
           options={[{ label: '激活', value: 'active' }, { label: '停用', value: 'inactive' }]} initialValue="active" />
-        <ProFormText name="description" label="描述" />
+        <ProFormText name="description" label="描述" placeholder="请输入描述" />
       </ModalForm>
     </>
   );
