@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/publish/deploy-template';
 import type { DeployTemplate, DeployTemplateRepo } from '@/service/api/publish/deploy-template';
 import { fetchRepos } from '@/service/api/publish/repos';
+import { fetchLanguages } from '@/service/api/publish/language';
 
 const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'default' };
 
@@ -31,6 +32,7 @@ export default function PublishTemplatesDeployment() {
   const [editRecord, setEditRecord] = useState<DeployTemplate | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
 
   // 历史抽屉
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -53,7 +55,18 @@ export default function PublishTemplatesDeployment() {
         label: `${e.c_name} (${e.e_name})`, value: e.id,
       })));
     }).catch(() => {});
+    fetchLanguages({ size: 200 }).then((res) => {
+      setLanguageOptions(((res as any)?.records ?? []).map((e: any) => ({
+        label: e.display_name || e.name,
+        value: e.name,
+      })));
+    }).catch(() => {});
   }, []);
+
+  const languageEnum = languageOptions.reduce((acc, o) => {
+    acc[o.value] = { text: o.label };
+    return acc;
+  }, {} as Record<string, { text: string }>);
 
   const loadHistory = async (tpl: DeployTemplate) => {
     setHistoryLoading(true);
@@ -160,7 +173,10 @@ export default function PublishTemplatesDeployment() {
       title: '部署平台', dataIndex: 'platform', width: 90,
       render: (val) => val ? <Tag>{String(val).toUpperCase()}</Tag> : '-'
     },
-    { title: '语言', dataIndex: 'repo_language', width: 100 },
+    {
+      title: '语言', dataIndex: 'repo_language', width: 100,
+      valueType: 'select', valueEnum: languageEnum,
+    },
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 110,
       render: (_, row) => [

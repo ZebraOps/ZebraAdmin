@@ -15,6 +15,7 @@ import type { Repo, RepoTemplate } from '@/service/api/publish/repos';
 import {
   fetchBuildTemplates, associateBuildTemplateRepo, disassociateBuildTemplateRepo,
 } from '@/service/api/publish/build-template';
+import { fetchLanguages } from '@/service/api/publish/language';
 
 export default function PublishRepos() {
   const { t } = useTranslation();
@@ -32,6 +33,8 @@ export default function PublishRepos() {
   const [associateModalOpen, setAssociateModalOpen] = useState(false);
   const [associateTplId, setAssociateTplId] = useState<number | undefined>();
 
+  const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
+
   useEffect(() => {
     fetchBuildTemplates({ size: 200 }).then((res) => {
       setAllBuildTemplates(((res as any)?.records ?? []).map((e: any) => ({
@@ -39,7 +42,18 @@ export default function PublishRepos() {
         value: e.id,
       })));
     }).catch(() => {});
+    fetchLanguages({ size: 200 }).then((res) => {
+      setLanguageOptions(((res as any)?.records ?? []).map((e: any) => ({
+        label: e.display_name || e.name,
+        value: e.name,
+      })));
+    }).catch(() => {});
   }, []);
+
+  const languageEnum = languageOptions.reduce((acc, o) => {
+    acc[o.value] = { text: o.label };
+    return acc;
+  }, {} as Record<string, { text: string }>);
 
   const loadRepoTemplates = async (repo: Repo) => {
     setTmplLoading(true);
@@ -84,7 +98,10 @@ export default function PublishRepos() {
       title: '部署平台', dataIndex: 'platform', width: 90, search: false,
       render: (val) => val ? <Tag color={String(val) === 'k8s' ? 'processing' : 'warning'}>{String(val).toUpperCase()}</Tag> : '-'
     },
-    { title: '开发语言', dataIndex: 'repo_language', width: 100 },
+    {
+      title: '开发语言', dataIndex: 'repo_language', width: 100,
+      valueType: 'select', valueEnum: languageEnum,
+    },
     { title: '负责人', dataIndex: 'repo_manager', width: 100 },
     { title: '归属部门', dataIndex: 'repo_department', width: 120 },
     { title: '描述', dataIndex: 'repo_desc', ellipsis: true, search: false },
@@ -212,7 +229,7 @@ export default function PublishRepos() {
           options={[{ label: 'K8s', value: 'k8s' }, { label: 'Linux', value: 'linux' }]}
           initialValue="k8s"
         />
-        <ProFormText name="repo_language" label="开发语言" placeholder="Go / Java / Python..." />
+        <ProFormSelect name="repo_language" label="开发语言" options={languageOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
         <ProFormText name="repo_manager" label="负责人" />
         <ProFormText name="repo_department" label="归属部门" />
         <ProFormText name="repo_desc" label="描述" />

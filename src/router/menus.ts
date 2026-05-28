@@ -65,9 +65,10 @@ export const staticMenus: MenuNode[] = [
         path: '/publish/config',
         order: 4,
         children: [
+          { key: 'publish_config_vendor', label: 'route.publish_config_vendor', icon: 'ic:baseline-cloud-sync', path: '/publish/config/vendor' },
           { key: 'publish_config_env', label: 'route.publish_config_env', icon: 'mdi:environment', path: '/publish/config/env' },
           { key: 'publish_config_registry', label: 'route.publish_config_registry', icon: 'carbon:container-registry', path: '/publish/config/registry' },
-          { key: 'publish_config_vendor', label: 'route.publish_config_vendor', icon: 'ic:baseline-cloud-sync', path: '/publish/config/vendor' }
+          { key: 'publish_config_language', label: 'route.publish_config_language', icon: 'mdi:code-tags', path: '/publish/config/language' }
         ]
       },
       {

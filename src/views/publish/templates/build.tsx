@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ProTable, ModalForm, ProFormText, ProFormTextArea, ProFormSelect,
   type ActionType, type ProColumns
@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/publish/build-template';
 import type { BuildTemplate } from '@/service/api/publish/build-template';
+import { fetchLanguages } from '@/service/api/publish/language';
 
 interface TemplateHistory {
   id: number;
@@ -28,6 +29,21 @@ export default function PublishTemplatesBuild() {
   const [editRecord, setEditRecord] = useState<BuildTemplate | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
+
+  useEffect(() => {
+    fetchLanguages({ size: 200 }).then((res) => {
+      setLanguageOptions(((res as any)?.records ?? []).map((e: any) => ({
+        label: e.display_name || e.name,
+        value: e.name,
+      })));
+    }).catch(() => {});
+  }, []);
+
+  const languageEnum = languageOptions.reduce((acc, o) => {
+    acc[o.value] = { text: o.label };
+    return acc;
+  }, {} as Record<string, { text: string }>);
 
   // 历史抽屉
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -52,7 +68,10 @@ export default function PublishTemplatesBuild() {
 
   const columns: ProColumns<BuildTemplate>[] = [
     { title: '模板名称', dataIndex: 'name' },
-    { title: '语言', dataIndex: 'language', width: 100 },
+    {
+      title: '语言', dataIndex: 'language', width: 100,
+      valueType: 'select', valueEnum: languageEnum,
+    },
     { title: '创建人', dataIndex: 'creator', width: 100 },
     { title: '修改人', dataIndex: 'updater', width: 100 },
     { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 160, search: false },
@@ -160,11 +179,7 @@ export default function PublishTemplatesBuild() {
         <ProFormText name="name" label="模板名称" rules={[{ required: true }]} />
         <ProFormSelect
           name="language" label="开发语言" rules={[{ required: true }]}
-          options={[
-            { label: 'Go', value: 'Go' }, { label: 'Java', value: 'Java' },
-            { label: 'Python', value: 'Python' }, { label: 'Node.js', value: 'Node.js' },
-            { label: 'Rust', value: 'Rust' }, { label: '其他', value: 'other' },
-          ]}
+          options={languageOptions} showSearch fieldProps={{ optionFilterProp: 'label' }}
         />
         <ProFormText name="creator" label="创建人" />
         <ProFormTextArea name="dockerfile" label="Dockerfile" fieldProps={{ rows: 8, placeholder: 'FROM golang:1.25-alpine\nWORKDIR /app\nCOPY . .\nRUN go build -o main .\nCMD ["/app/main"]' }} />
