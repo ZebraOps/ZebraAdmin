@@ -120,14 +120,22 @@ export default function PublishRepos() {
     { title: '负责人', dataIndex: 'repo_manager', width: 100 },
     {
       title: '归属部门', dataIndex: 'repo_department', width: 140,
-      valueType: 'treeSelect', search: false,
-      fieldProps: {
-        treeData: toDeptTreeSelectData(orgTreeData),
-        allowClear: true, placeholder: '请选择部门',
-        treeDefaultExpandAll: true,
-        showSearch: true,
-        treeNodeFilterProp: 'title',
-      }
+      search: {
+        transform: (val) => val,
+      },
+      render: (_, row) => row.repo_department || '-',
+      renderFormItem: () => (
+        <ProFormTreeSelect
+          name="repo_department"
+          fieldProps={{
+            treeData: toDeptTreeSelectData(orgTreeData),
+            allowClear: true, placeholder: '请选择部门',
+            treeDefaultExpandAll: true,
+            showSearch: true,
+            treeNodeFilterProp: 'title',
+          }}
+        />
+      ),
     },
     { title: '描述', dataIndex: 'repo_desc', ellipsis: true, search: false },
     { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 160, search: false },

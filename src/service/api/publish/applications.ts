@@ -9,6 +9,8 @@ export interface Application {
   health_check_type?: string;
   health_check_url?: string;
   description?: string;
+  department?: string;
+  language?: string;
   deployment_count?: number;
   created_at?: string;
   updated_at?: string;

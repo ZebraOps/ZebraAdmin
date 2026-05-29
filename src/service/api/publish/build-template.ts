@@ -4,6 +4,7 @@ export interface BuildTemplate {
   id: number;
   name: string;
   language?: string;
+  department?: string;
   creator?: string;
   updater?: string;
   dockerfile?: string;

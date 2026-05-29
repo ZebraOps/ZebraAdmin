@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ProTable, ModalForm, ProFormText, ProFormTextArea, ProFormSelect,
+  ProFormTreeSelect,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
 import { Button, Tag, message, Drawer, Modal, Space, Popconfirm } from 'antd';
@@ -14,6 +15,8 @@ import * as api from '@/service/api/publish/deploy-template';
 import type { DeployTemplate, DeployTemplateRepo } from '@/service/api/publish/deploy-template';
 import { fetchRepos } from '@/service/api/publish/repos';
 import { fetchLanguages } from '@/service/api/publish/language';
+import { fetchOrgTree } from '@/service/api/rbac/org';
+import type { OrgNode } from '@/service/api/rbac/org';
 
 const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'default' };
 
@@ -33,6 +36,14 @@ export default function PublishTemplatesDeployment() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
+  const [orgTreeData, setOrgTreeData] = useState<OrgNode[]>([]);
+
+  function toDeptTreeSelectData(nodes: OrgNode[]): any[] {
+    return nodes.map(n => ({
+      title: n.org_name, value: n.org_name,
+      children: n.children?.length ? toDeptTreeSelectData(n.children) : undefined,
+    }));
+  }
 
   // 历史抽屉
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -60,6 +71,9 @@ export default function PublishTemplatesDeployment() {
         label: e.display_name || e.name,
         value: e.name,
       })));
+    }).catch(() => {});
+    fetchOrgTree().then((res) => {
+      setOrgTreeData((res as any) ?? []);
     }).catch(() => {});
   }, []);
 
@@ -128,6 +142,26 @@ export default function PublishTemplatesDeployment() {
       render: (_, row) => row.status ? <Tag color={STATUS_COLORS[String(row.status)] ?? 'default'}>{String(row.status)}</Tag> : '-'
     },
     { title: '描述', dataIndex: 'description', ellipsis: true, search: false },
+    {
+      title: '归属部门', dataIndex: 'department', width: 140,
+      search: {
+        transform: (val) => val,
+      },
+      render: (_, row) => row.department || '-',
+      renderFormItem: () => (
+        <ProFormTreeSelect
+          name="department"
+          fieldProps={{
+            treeData: toDeptTreeSelectData(orgTreeData),
+            allowClear: true, 
+            placeholder: '请选择部门',
+            treeDefaultExpandAll: true,
+            showSearch: true,
+            treeNodeFilterProp: 'title',
+          }}
+        />
+      ),
+    },
     {
       title: t('common.actions', { defaultValue: '操作' }),
       key: 'actions', valueType: 'option', fixed: 'right', width: 280,
@@ -226,6 +260,7 @@ export default function PublishTemplatesDeployment() {
             if (params.name) query.name = params.name;
             if (params.template_type) query.template_type = params.template_type;
             if (params.status) query.status = params.status;
+            if (params.department) query.department = params.department;
             const res = await api.fetchDeployTemplates(query);
             return { data: (res as any)?.records ?? [], success: true, total: (res as any)?.total ?? 0 };
           } catch { return { data: [], success: false, total: 0 }; }
@@ -276,6 +311,16 @@ export default function PublishTemplatesDeployment() {
         />
         <ProFormTextArea name="content" label="模板内容 (YAML/JSON)" fieldProps={{ rows: 10, placeholder: '请输入模板内容' }} />
         <ProFormText name="description" label="描述" placeholder="请输入描述" />
+        <ProFormTreeSelect
+          name="department" label="归属部门" placeholder="请选择部门"
+          fieldProps={{
+            treeData: toDeptTreeSelectData(orgTreeData),
+            allowClear: true,
+            treeDefaultExpandAll: true,
+            showSearch: true,
+            treeNodeFilterProp: 'title',
+          }}
+        />
       </ModalForm>
 
       {/* 历史抽屉 */}

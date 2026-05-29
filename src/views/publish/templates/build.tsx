@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ProTable, ModalForm, ProFormText, ProFormTextArea, ProFormSelect,
+  ProFormTreeSelect,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
 import { Button, message, Drawer, Tag, Popconfirm } from 'antd';
@@ -13,6 +14,8 @@ import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/publish/build-template';
 import type { BuildTemplate } from '@/service/api/publish/build-template';
 import { fetchLanguages } from '@/service/api/publish/language';
+import { fetchOrgTree } from '@/service/api/rbac/org';
+import type { OrgNode } from '@/service/api/rbac/org';
 
 interface TemplateHistory {
   id: number;
@@ -30,6 +33,14 @@ export default function PublishTemplatesBuild() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
+  const [orgTreeData, setOrgTreeData] = useState<OrgNode[]>([]);
+
+  function toDeptTreeSelectData(nodes: OrgNode[]): any[] {
+    return nodes.map(n => ({
+      title: n.org_name, value: n.org_name,
+      children: n.children?.length ? toDeptTreeSelectData(n.children) : undefined,
+    }));
+  }
 
   useEffect(() => {
     fetchLanguages({ size: 200 }).then((res) => {
@@ -37,6 +48,9 @@ export default function PublishTemplatesBuild() {
         label: e.display_name || e.name,
         value: e.name,
       })));
+    }).catch(() => {});
+    fetchOrgTree().then((res) => {
+      setOrgTreeData((res as any) ?? []);
     }).catch(() => {});
   }, []);
 
@@ -71,6 +85,25 @@ export default function PublishTemplatesBuild() {
     {
       title: '语言', dataIndex: 'language', width: 100,
       valueType: 'select', valueEnum: languageEnum,
+    },
+    {
+      title: '归属部门', dataIndex: 'department', width: 140,
+      search: {
+        transform: (val) => val,
+      },
+      render: (_, row) => row.department || '-',
+      renderFormItem: () => (
+        <ProFormTreeSelect
+          name="department"
+          fieldProps={{
+            treeData: toDeptTreeSelectData(orgTreeData),
+            allowClear: true, placeholder: '请选择部门',
+            treeDefaultExpandAll: true,
+            showSearch: true,
+            treeNodeFilterProp: 'title',
+          }}
+        />
+      ),
     },
     { title: '创建人', dataIndex: 'creator', width: 100 },
     { title: '修改人', dataIndex: 'updater', width: 100 },
@@ -142,6 +175,7 @@ export default function PublishTemplatesBuild() {
             };
             if (params.name) query.name = params.name;
             if (params.language) query.language = params.language;
+            if (params.department) query.department = params.department;
             if (params.creator) query.creator = params.creator;
             if (params.updater) query.updater = params.updater;
             const res = await api.fetchBuildTemplates(query);
@@ -180,6 +214,16 @@ export default function PublishTemplatesBuild() {
         <ProFormSelect
           name="language" label="开发语言" rules={[{ required: true }]} placeholder="请选择开发语言"
           options={languageOptions} showSearch fieldProps={{ optionFilterProp: 'label' }}
+        />
+        <ProFormTreeSelect
+          name="department" label="归属部门" placeholder="请选择部门"
+          fieldProps={{
+            treeData: toDeptTreeSelectData(orgTreeData),
+            allowClear: true,
+            treeDefaultExpandAll: true,
+            showSearch: true,
+            treeNodeFilterProp: 'title',
+          }}
         />
         <ProFormText name="creator" label="创建人" placeholder="请输入创建人" />
         <ProFormTextArea name="dockerfile" label="Dockerfile" fieldProps={{ rows: 8, placeholder: 'FROM golang:1.25-alpine\nWORKDIR /app\nCOPY . .\nRUN go build -o main .\nCMD ["/app/main"]' }} />

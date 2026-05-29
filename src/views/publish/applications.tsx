@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ProTable, ModalForm, ProFormText, ProFormDigit, ProFormSelect, ProFormTextArea,
-  type ActionType, type ProColumns
+  ProFormTreeSelect,
+  type ActionType, type ProColumns, type ProFormInstance
 } from '@ant-design/pro-components';
 import { Button, message, Drawer, Tag, Space, Popconfirm } from 'antd';
 import CountdownButton from '@/components/CountdownButton';
@@ -18,6 +19,9 @@ import { fetchEnvironments } from '@/service/api/publish/environment';
 import { fetchBuildTemplates } from '@/service/api/publish/build-template';
 import { fetchDeployTemplates } from '@/service/api/publish/deploy-template';
 import { fetchRepos } from '@/service/api/publish/repos';
+import { fetchOrgTree } from '@/service/api/rbac/org';
+import type { OrgNode } from '@/service/api/rbac/org';
+import { fetchLanguages } from '@/service/api/publish/language';
 
 export default function PublishApplications() {
   const { t } = useTranslation();
@@ -39,6 +43,17 @@ export default function PublishApplications() {
   const [buildTplOptions, setBuildTplOptions] = useState<{ label: string; value: number }[]>([]);
   const [deployTplOptions, setDeployTplOptions] = useState<{ label: string; value: number }[]>([]);
   const [repoOptions, setRepoOptions] = useState<{ label: string; value: number }[]>([]);
+  const [orgTreeData, setOrgTreeData] = useState<OrgNode[]>([]);
+  const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
+  const [repoDataMap, setRepoDataMap] = useState<Map<number, { department: string; language: string }>>(new Map());
+  const formRef = useRef<ProFormInstance>(null);
+
+  function toDeptTreeSelectData(nodes: OrgNode[]): any[] {
+    return nodes.map(n => ({
+      title: n.org_name, value: n.org_name,
+      children: n.children?.length ? toDeptTreeSelectData(n.children) : undefined,
+    }));
+  }
 
   // 加载下拉数据
   const loadOptions = async () => {
@@ -52,7 +67,21 @@ export default function PublishApplications() {
       setEnvOptions(((envs as any)?.records ?? []).map((e: any) => ({ label: `${e.name}${e.type ? ` (${e.type})` : ''}`, value: e.id })));
       setBuildTplOptions(((builds as any)?.records ?? []).map((e: any) => ({ label: `${e.name}${e.language ? ` (${e.language})` : ''}`, value: e.id })));
       setDeployTplOptions(((deploys as any)?.records ?? []).map((e: any) => ({ label: e.display_name || e.name, value: e.id })));
-      setRepoOptions(((repos as any)?.records ?? []).map((e: any) => ({ label: `${e.c_name} (${e.e_name})`, value: e.id })));
+      const repoList = (repos as any)?.records ?? [];
+      setRepoOptions(repoList.map((e: any) => ({ label: `${e.c_name} (${e.e_name})`, value: e.id })));
+      // 缓存仓库的部门、语言信息用于自动填充
+      const map = new Map<number, { department: string; language: string }>();
+      repoList.forEach((r: any) => map.set(r.id, { department: r.repo_department || '', language: r.repo_language || '' }));
+      setRepoDataMap(map);
+      fetchOrgTree().then((res) => {
+        setOrgTreeData((res as any) ?? []);
+      }).catch(() => {});
+      fetchLanguages({ size: 200 }).then((res) => {
+        setLanguageOptions(((res as any)?.records ?? []).map((e: any) => ({
+          label: e.display_name || e.name,
+          value: e.name,
+        })));
+      }).catch(() => {});
     } catch { /* ignore */ }
   };
 
@@ -80,6 +109,11 @@ export default function PublishApplications() {
   const findLabel = (opts: { label: string; value: number }[], v?: number | null) =>
     opts.find(o => o.value === v)?.label ?? (v ? `#${v}` : '-');
 
+  const languageEnum = languageOptions.reduce((acc, o) => {
+    acc[o.value] = { text: o.label };
+    return acc;
+  }, {} as Record<string, { text: string }>);
+
   const columns: ProColumns<Application>[] = [
     { title: '中文名称', dataIndex: 'c_name', width: 150 },
     { title: '英文名称', dataIndex: 'e_name', width: 150 },
@@ -90,6 +124,27 @@ export default function PublishApplications() {
       render: (_, row) => findLabel(repoOptions, row.repo_id as number)
     },
     { title: '监听端口', dataIndex: 'listen_port', width: 90, search: false },
+    {
+      title: '归属部门', dataIndex: 'department', width: 140,
+      search: { transform: (val) => val },
+      render: (_, row) => row.department || '-',
+      renderFormItem: () => (
+        <ProFormTreeSelect
+          name="department"
+          fieldProps={{
+            treeData: toDeptTreeSelectData(orgTreeData),
+            allowClear: true, placeholder: '请选择部门',
+            treeDefaultExpandAll: true,
+            showSearch: true,
+            treeNodeFilterProp: 'title',
+          }}
+        />
+      ),
+    },
+    {
+      title: '开发语言', dataIndex: 'language', width: 100,
+      valueType: 'select', valueEnum: languageEnum,
+    },
     { title: '健康检查类型', dataIndex: 'health_check_type', width: 120, search: false },
     { title: '部署配置数', dataIndex: 'deployment_count', width: 110, search: false, render: (val) => <Tag color={Number(val) > 0 ? 'processing' : 'default'}>{Number(val ?? 0)}</Tag> },
     { title: '描述', dataIndex: 'description', ellipsis: true, search: false },
@@ -168,9 +223,13 @@ export default function PublishApplications() {
         )}
         request={async (params) => {
           try {
-            if (!params.repo_id) return { data: [], success: true, total: 0 };
-            const res = await api.fetchApplications({ id: params.repo_id });
+            const query: Record<string, unknown> = {};
+            if (params.repo_id) query.id = params.repo_id;
+            if (params.department) query.department = params.department;
+            if (params.language) query.language = params.language;
+            const res = await api.fetchApplications(query);
             const list: Application[] = Array.isArray(res) ? (res as any) : ((res as any)?.records ?? []);
+            // 前端再做 c_name / e_name 模糊过滤
             const filtered = list.filter(a =>
               (!params.c_name || (a.c_name || '').includes(String(params.c_name))) &&
               (!params.e_name || (a.e_name || '').includes(String(params.e_name)))
@@ -191,6 +250,7 @@ export default function PublishApplications() {
         key={editRecord?.id ?? 'new'}
         title={editRecord ? '编辑应用' : '新增应用'}
         open={modalOpen} onOpenChange={setModalOpen}
+        formRef={formRef}
         modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '' }}
         initialValues={editRecord ?? {}}
         onFinish={async (values) => {
@@ -208,7 +268,33 @@ export default function PublishApplications() {
       >
         <ProFormText name="c_name" label="中文名称" rules={[{ required: true }]} placeholder="请输入中文名称" />
         <ProFormText name="e_name" label="英文名称" rules={[{ required: true }]} placeholder="请输入英文名称" />
-        <ProFormSelect name="repo_id" label="关联仓库" options={repoOptions} showSearch placeholder="请选择关联仓库" fieldProps={{ optionFilterProp: 'label' }} />
+        <ProFormSelect
+          name="repo_id" label="关联仓库" options={repoOptions} showSearch placeholder="请选择关联仓库"
+          fieldProps={{
+            optionFilterProp: 'label',
+            onChange: (val) => {
+              const data = val ? repoDataMap.get(val as number) : null;
+              if (data) {
+                formRef.current?.setFieldsValue({ department: data.department, language: data.language });
+              }
+            },
+          }}
+        />
+        <ProFormTreeSelect
+          name="department" label="归属部门"
+          fieldProps={{
+            treeData: toDeptTreeSelectData(orgTreeData),
+            allowClear: true, placeholder: '选择仓库后自动填充',
+            treeDefaultExpandAll: true,
+            showSearch: true,
+            treeNodeFilterProp: 'title',
+          }}
+        />
+        <ProFormSelect
+          name="language" label="开发语言"
+          options={languageOptions} showSearch
+          fieldProps={{ optionFilterProp: 'label', placeholder: '选择仓库后自动填充' }}
+        />
         <ProFormDigit name="listen_port" label="监听端口" min={1} max={65535} placeholder="请输入监听端口" />
         <ProFormSelect
           name="health_check_type" label="健康检查类型" placeholder="请选择健康检查类型"

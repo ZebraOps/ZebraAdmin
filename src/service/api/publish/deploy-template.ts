@@ -13,6 +13,7 @@ export interface DeployTemplate {
   status?: string;
   creator?: string;
   updater?: string;
+  department?: string;
   created_at?: string;
   updated_at?: string;
 }
