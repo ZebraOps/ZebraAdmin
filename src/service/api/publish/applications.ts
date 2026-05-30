@@ -1,4 +1,5 @@
 import http from '../../request';
+import { PageResult } from '@/service/types';
 
 export interface Application {
   id: number;
@@ -16,7 +17,6 @@ export interface Application {
   updated_at?: string;
 }
 
-type PageResult<T> = { total: number; records: T[] };
 
 export const fetchApplications = (params?: Record<string, unknown>) =>
   http.get<PageResult<Application>>('/cicd/api/applications', params);

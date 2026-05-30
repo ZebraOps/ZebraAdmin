@@ -1,4 +1,5 @@
 import http from '../../request';
+import { PageResult } from '@/service/types';
 
 export interface BuildTemplate {
   id: number;
@@ -13,7 +14,6 @@ export interface BuildTemplate {
   updated_at?: string;
 }
 
-type PageResult<T> = { total: number; records: T[] };
 
 export const fetchBuildTemplates = (params?: Record<string, unknown>) =>
   http.get<PageResult<BuildTemplate>>('/cicd/api/templates/build', params);

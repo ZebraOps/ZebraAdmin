@@ -1,4 +1,5 @@
 import http from '../../request';
+import { PageResult } from '@/service/types';
 
 export interface Language {
   id: number;
@@ -12,7 +13,6 @@ export interface Language {
   updated_at?: string;
 }
 
-type PageResult<T> = { total: number; records: T[] };
 
 export const fetchLanguages = (params?: Record<string, unknown>) =>
   http.get<PageResult<Language>>('/cicd/api/languages', params);

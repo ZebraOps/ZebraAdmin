@@ -1,4 +1,5 @@
 import http from '../../request';
+import { PageResult } from '@/service/types';
 
 export interface K8sCluster {
   id: number;
@@ -19,7 +20,6 @@ export interface K8sCluster {
   updated_at?: string;
 }
 
-type PageResult<T> = { total: number; records: T[] };
 
 export interface PodInfo {
   name: string;

@@ -4,7 +4,7 @@ import { localStg } from '@/utils/storage';
 
 export interface ServiceResponse<T = unknown> {
   code: string;
-  msg: string;
+  message: string;
   data: T;
 }
 

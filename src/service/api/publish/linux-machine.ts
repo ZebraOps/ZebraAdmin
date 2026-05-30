@@ -1,4 +1,5 @@
 import http from '../../request';
+import { PageResult } from '@/service/types';
 
 export interface LinuxMachine {
   id: number;
@@ -15,7 +16,6 @@ export interface LinuxMachine {
   updated_at?: string;
 }
 
-type PageResult<T> = { total: number; records: T[] };
 
 export interface DockerContainer {
   id: string;

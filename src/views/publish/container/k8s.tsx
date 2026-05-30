@@ -11,11 +11,13 @@ import {
   ApiOutlined, ContainerOutlined, ReloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { usePermission } from '@/hooks/usePermission';
 import * as api from '@/service/api/publish/k8s-cluster';
 import type { K8sCluster, PodInfo } from '@/service/api/publish/k8s-cluster';
 
 export default function PublishContainerK8s() {
   const { t } = useTranslation();
+  const { hasComp } = usePermission();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<K8sCluster | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -89,11 +91,11 @@ export default function PublishContainerK8s() {
           key="pods" type="link" size="small" icon={<ContainerOutlined />}
           onClick={() => handleViewPods(row)}
         >Pods</Button>,
-        <Button
+        hasComp('publish_k8s_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setModalOpen(true); }}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <CountdownButton
+        hasComp('publish_k8s_delete') && <CountdownButton
           key="del" icon={<DeleteOutlined />}
           text={t('common.delete', { defaultValue: '删除' })}
           onConfirm={async () => {
@@ -102,7 +104,7 @@ export default function PublishContainerK8s() {
             actionRef.current?.reload();
           }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -125,8 +127,8 @@ export default function PublishContainerK8s() {
     <>
       <ProTable<K8sCluster>
         rowKey="id" actionRef={actionRef} columns={columns}
-        rowSelection={{ selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) }}
-        tableAlertOptionRender={() => (
+        rowSelection={hasComp('publish_k8s_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('publish_k8s_delete') ? () => (
           <Popconfirm
             title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
             onConfirm={async () => {
@@ -140,7 +142,7 @@ export default function PublishContainerK8s() {
           >
             <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
           </Popconfirm>
-        )}
+        ) : undefined}
         request={async (params) => {
           try {
             const query: Record<string, unknown> = {
@@ -157,7 +159,7 @@ export default function PublishContainerK8s() {
         }}
         headerTitle={t('route.publish_container_k8s', { defaultValue: 'K8s 集群' })}
         toolBarRender={() => [
-          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>
+          hasComp('publish_k8s_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>
             {t('common.add', { defaultValue: '新增' })}
           </Button>
         ]}

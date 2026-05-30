@@ -11,6 +11,7 @@ import {
   PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { usePermission } from '@/hooks/usePermission';
 import * as api from '@/service/api/publish/build-template';
 import type { BuildTemplate } from '@/service/api/publish/build-template';
 import { fetchLanguages } from '@/service/api/publish/language';
@@ -28,6 +29,7 @@ interface TemplateHistory {
 
 export default function PublishTemplatesBuild() {
   const { t } = useTranslation();
+  const { hasComp } = usePermission();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<BuildTemplate | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -116,11 +118,11 @@ export default function PublishTemplatesBuild() {
           key="history" type="link" size="small" icon={<HistoryOutlined />}
           onClick={() => { setHistoryTpl(row); setHistoryOpen(true); loadHistory(row); }}
         >历史</Button>,
-        <Button
+        hasComp('publish_build_template_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setModalOpen(true); }}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <CountdownButton
+        hasComp('publish_build_template_delete') && <CountdownButton
           key="del" icon={<DeleteOutlined />}
           text={t('common.delete', { defaultValue: '删除' })}
           onConfirm={async () => {
@@ -129,7 +131,7 @@ export default function PublishTemplatesBuild() {
             actionRef.current?.reload();
           }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -151,8 +153,8 @@ export default function PublishTemplatesBuild() {
     <>
       <ProTable<BuildTemplate>
         rowKey="id" actionRef={actionRef} columns={columns}
-        rowSelection={{ selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) }}
-        tableAlertOptionRender={() => (
+        rowSelection={hasComp('publish_build_template_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('publish_build_template_delete') ? () => (
           <Popconfirm
             title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
             onConfirm={async () => {
@@ -166,7 +168,7 @@ export default function PublishTemplatesBuild() {
           >
             <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
           </Popconfirm>
-        )}
+        ) : undefined}
         request={async (params) => {
           try {
             const query: Record<string, unknown> = {
@@ -184,7 +186,7 @@ export default function PublishTemplatesBuild() {
         }}
         headerTitle={t('route.publish_templates_build', { defaultValue: '构建模板' })}
         toolBarRender={() => [
-          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>
+          hasComp('publish_build_template_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>
             {t('common.add', { defaultValue: '新增' })}
           </Button>
         ]}
@@ -225,7 +227,6 @@ export default function PublishTemplatesBuild() {
             treeNodeFilterProp: 'title',
           }}
         />
-        <ProFormText name="creator" label="创建人" placeholder="请输入创建人" />
         <ProFormTextArea name="dockerfile" label="Dockerfile" fieldProps={{ rows: 8, placeholder: 'FROM golang:1.25-alpine\nWORKDIR /app\nCOPY . .\nRUN go build -o main .\nCMD ["/app/main"]' }} />
         <ProFormTextArea name="pipeline" label="Pipeline (Jenkinsfile)" fieldProps={{ rows: 8, placeholder: 'pipeline {\n  agent any\n  stages {\n    stage("Build") { steps { sh "make build" } }\n  }\n}' }} />
       </ModalForm>

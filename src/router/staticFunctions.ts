@@ -93,4 +93,109 @@ export const staticFunctions: StaticFunction[] = [
 
   // === 路由管理 ===
   { func_name: '获取前端路由', uri: '/rbac/route', method_type: 'GET', group_name: '功能管理' },
+
+  // === CICD 发布管理 - 仓库 ===
+  { func_name: '获取仓库列表', uri: '/cicd/api/repos', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建仓库', uri: '/cicd/api/repos', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取仓库详情', uri: '/cicd/api/repos/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新仓库', uri: '/cicd/api/repos/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除仓库', uri: '/cicd/api/repos/{id}', method_type: 'DELETE', group_name: '发布功能' },
+  { func_name: '获取仓库GitLab地址', uri: '/cicd/api/repos/gitlab-url/{repoID}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '获取仓库关联模板', uri: '/cicd/api/repos/{id}/templates', method_type: 'GET', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 应用 ===
+  { func_name: '获取应用列表', uri: '/cicd/api/applications', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建应用', uri: '/cicd/api/applications', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取应用详情', uri: '/cicd/api/applications/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新应用', uri: '/cicd/api/applications/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除应用', uri: '/cicd/api/applications/{id}', method_type: 'DELETE', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 应用部署配置 ===
+  { func_name: '获取应用部署配置列表', uri: '/cicd/api/application/template', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建应用部署配置', uri: '/cicd/api/application/template', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '按环境获取部署配置', uri: '/cicd/api/application/template/environment', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '获取部署配置详情', uri: '/cicd/api/application/template/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新部署配置', uri: '/cicd/api/application/template/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除部署配置', uri: '/cicd/api/application/template/{id}', method_type: 'DELETE', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 发布任务 ===
+  { func_name: '获取发布任务列表', uri: '/cicd/api/deploys', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建发布任务', uri: '/cicd/api/deploys', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '批量删除发布任务', uri: '/cicd/api/deploys/batch-delete', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取可用模板', uri: '/cicd/api/deploys/templates', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '获取发布任务详情', uri: '/cicd/api/deploys/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '获取任务控制台输出', uri: '/cicd/api/deploys/{id}/console', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '删除发布任务', uri: '/cicd/api/deploys/{id}', method_type: 'DELETE', group_name: '发布功能' },
+  { func_name: '流式获取任务日志', uri: '/cicd/api/deploys/{id}/console/stream', method_type: 'GET', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 构建模板 ===
+  { func_name: '获取构建模板列表', uri: '/cicd/api/templates/build', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建构建模板', uri: '/cicd/api/templates/build', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取构建模板详情', uri: '/cicd/api/templates/build/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新构建模板', uri: '/cicd/api/templates/build/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除构建模板', uri: '/cicd/api/templates/build/{id}', method_type: 'DELETE', group_name: '发布功能' },
+  { func_name: '获取构建模板历史', uri: '/cicd/api/templates/build/{id}/history', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '关联仓库和构建模板', uri: '/cicd/api/templates/build/{id}/repos/{repoId}', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '取消仓库和构建模板关联', uri: '/cicd/api/templates/build/{id}/repos/{repoId}', method_type: 'DELETE', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 部署模板 ===
+  { func_name: '获取部署模板列表', uri: '/cicd/api/templates/deployment', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建部署模板', uri: '/cicd/api/templates/deployment', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取部署模板详情', uri: '/cicd/api/templates/deployment/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新部署模板', uri: '/cicd/api/templates/deployment/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除部署模板', uri: '/cicd/api/templates/deployment/{id}', method_type: 'DELETE', group_name: '发布功能' },
+  { func_name: '获取部署模板历史', uri: '/cicd/api/templates/deployment/{id}/history', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '关联仓库和部署模板', uri: '/cicd/api/templates/deployment/{id}/repos/{repoId}', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '取消仓库和部署模板关联', uri: '/cicd/api/templates/deployment/{id}/repos/{repoId}', method_type: 'DELETE', group_name: '发布功能' },
+  { func_name: '获取部署模板关联仓库', uri: '/cicd/api/templates/deployment/{id}/repos', method_type: 'GET', group_name: '发布功能' },
+
+  // === CICD 发布管理 - K8s集群 ===
+  { func_name: '获取K8s集群列表', uri: '/cicd/api/k8s/clusters', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建K8s集群', uri: '/cicd/api/k8s/clusters', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取K8s集群详情', uri: '/cicd/api/k8s/clusters/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新K8s集群', uri: '/cicd/api/k8s/clusters/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除K8s集群', uri: '/cicd/api/k8s/clusters/{id}', method_type: 'DELETE', group_name: '发布功能' },
+  { func_name: '测试K8s集群连接', uri: '/cicd/api/k8s/clusters/{id}/connect', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取K8s集群Pod列表', uri: '/cicd/api/k8s/clusters/{id}/pods', method_type: 'GET', group_name: '发布功能' },
+
+  // === CICD 发布管理 - Linux主机 ===
+  { func_name: '获取服务器列表', uri: '/cicd/api/linux-machines', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建服务器', uri: '/cicd/api/linux-machines', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取服务器详情', uri: '/cicd/api/linux-machines/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新服务器', uri: '/cicd/api/linux-machines/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除服务器', uri: '/cicd/api/linux-machines/{id}', method_type: 'DELETE', group_name: '发布功能' },
+  { func_name: '测试服务器连接', uri: '/cicd/api/linux-machines/{id}/connect', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取服务器容器列表', uri: '/cicd/api/linux-machines/{id}/containers', method_type: 'GET', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 容器操作 ===
+  { func_name: '在容器中执行命令', uri: '/cicd/api/servers/{id}/containers/{containerID}/exec', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '连接到容器终端', uri: '/cicd/api/servers/{id}/containers/{containerID}/attach', method_type: 'GET', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 环境 ===
+  { func_name: '获取环境列表', uri: '/cicd/api/environments', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建环境', uri: '/cicd/api/environments', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取环境详情', uri: '/cicd/api/environments/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新环境', uri: '/cicd/api/environments/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除环境', uri: '/cicd/api/environments/{id}', method_type: 'DELETE', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 云厂商 ===
+  { func_name: '获取云厂商列表', uri: '/cicd/api/vendors', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建云厂商', uri: '/cicd/api/vendors', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取云厂商详情', uri: '/cicd/api/vendors/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新云厂商', uri: '/cicd/api/vendors/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除云厂商', uri: '/cicd/api/vendors/{id}', method_type: 'DELETE', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 镜像仓库 ===
+  { func_name: '获取镜像仓库列表', uri: '/cicd/api/image-registries', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建镜像仓库', uri: '/cicd/api/image-registries', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取镜像仓库详情', uri: '/cicd/api/image-registries/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新镜像仓库', uri: '/cicd/api/image-registries/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除镜像仓库', uri: '/cicd/api/image-registries/{id}', method_type: 'DELETE', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 开发语言 ===
+  { func_name: '获取语言列表', uri: '/cicd/api/languages', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建语言', uri: '/cicd/api/languages', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取语言详情', uri: '/cicd/api/languages/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新语言', uri: '/cicd/api/languages/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除语言', uri: '/cicd/api/languages/{id}', method_type: 'DELETE', group_name: '发布功能' },
 ];

@@ -1,4 +1,5 @@
 import http from '../../request';
+import { PageResult } from '@/service/types';
 
 export interface DeployTemplate {
   id: number;
@@ -18,7 +19,6 @@ export interface DeployTemplate {
   updated_at?: string;
 }
 
-type PageResult<T> = { total: number; records: T[] };
 
 export const fetchDeployTemplates = (params?: Record<string, unknown>) =>
   http.get<PageResult<DeployTemplate>>('/cicd/api/templates/deployment', params);

@@ -1,4 +1,5 @@
 import http from '../../request';
+import { PageResult } from '@/service/types';
 
 export interface ImageRegistry {
   id: number;
@@ -10,7 +11,7 @@ export interface ImageRegistry {
 }
 
 export const fetchImageRegistries = (params?: Record<string, unknown>) =>
-  http.get<{ total: number; records: ImageRegistry[] }>('/cicd/api/image-registries', params);
+  http.get<PageResult<ImageRegistry>>('/cicd/api/image-registries', params);
 
 export const createImageRegistry = (data: { name: string; url: string; username?: string; password?: string; description?: string }) =>
   http.post<ImageRegistry>('/cicd/api/image-registries', data);

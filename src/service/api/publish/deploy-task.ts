@@ -1,4 +1,5 @@
 import http from '../../request';
+import { PageResult } from '@/service/types';
 
 export interface DeployTask {
   id: number;
@@ -10,9 +11,13 @@ export interface DeployTask {
   k8s_cluster_id?: number;
   k8s_namespace?: string;
   jenkins_job_name?: string;
+  jenkins_build_number?: number;
   harbor_project?: string;
   image_name?: string;
   deployment_name?: string;
+  build_template_id?: number | null;
+  deployment_template_id?: number | null;
+  error_message?: string;
   log_path?: string;
   started_at?: string;
   finished_at?: string;
@@ -30,6 +35,8 @@ export interface CreateDeployTaskRequest {
   harbor_project: string;
   image_name: string;
   deployment_name?: string;
+  build_template_id?: number;
+  deployment_template_id?: number;
 }
 
 export interface ListDeployTasksParams {
@@ -39,14 +46,25 @@ export interface ListDeployTasksParams {
   size?: number;
 }
 
+export interface TemplatesForTask {
+  build_templates: { id: number; name: string; language?: string; department?: string }[];
+  deployment_templates: { id: number; name: string; template_type?: string; display_name?: string }[];
+}
+
 export const listDeployTasks = (params?: ListDeployTasksParams) =>
-  http.get<{ code: number; data: { total: number; records: DeployTask[] } }>('/cicd/api/deploys', { params });
+  http.get<PageResult<DeployTask>>('/cicd/api/deploys', params as Record<string, unknown>);
 
 export const createDeployTask = (data: CreateDeployTaskRequest) =>
   http.post<{ task_id: number }>('/cicd/api/deploys', data);
 
 export const getDeployTask = (id: number) =>
   http.get<DeployTask>(`/cicd/api/deploys/${id}`);
+
+export const getAvailableTemplates = (appId: number) =>
+  http.get<TemplatesForTask>('/cicd/api/deploys/templates', { app_id: String(appId) } as Record<string, unknown>);
+
+export const getTaskConsole = (id: number) =>
+  http.get<{ output: string }>(`/cicd/api/deploys/${id}/console`);
 
 export const deleteDeployTask = (id: number) =>
   http.delete<void>(`/cicd/api/deploys/${id}`);

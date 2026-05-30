@@ -61,9 +61,63 @@ export const staticComponents: StaticComponent[] = [
   { component_name: 'gateway_whitelist_add', comp_desc: '网关-新增白名单', group_name: '网关管理' },
   { component_name: 'gateway_whitelist_delete', comp_desc: '网关-删除白名单', group_name: '网关管理' },
 
-  // 发布管理（示例）
+  // 发布管理 - 仓库
+  { component_name: 'publish_repo_add', comp_desc: '发布-新增仓库', group_name: '发布管理' },
+  { component_name: 'publish_repo_edit', comp_desc: '发布-编辑仓库', group_name: '发布管理' },
+  { component_name: 'publish_repo_delete', comp_desc: '发布-删除仓库', group_name: '发布管理' },
+  { component_name: 'publish_repo_sync', comp_desc: '发布-同步仓库(GitLab)', group_name: '发布管理' },
+
+  // 发布管理 - 应用
   { component_name: 'publish_app_add', comp_desc: '发布-新增应用', group_name: '发布管理' },
   { component_name: 'publish_app_edit', comp_desc: '发布-编辑应用', group_name: '发布管理' },
   { component_name: 'publish_app_delete', comp_desc: '发布-删除应用', group_name: '发布管理' },
-  { component_name: 'publish_app_sync', comp_desc: '发布-同步应用', group_name: '发布管理' },
+  { component_name: 'publish_app_deploy_add', comp_desc: '发布-新增部署配置', group_name: '发布管理' },
+  { component_name: 'publish_app_deploy_edit', comp_desc: '发布-编辑部署配置', group_name: '发布管理' },
+  { component_name: 'publish_app_deploy_delete', comp_desc: '发布-删除部署配置', group_name: '发布管理' },
+
+  // 发布管理 - 发布任务
+  { component_name: 'publish_task_add', comp_desc: '发布-创建任务', group_name: '发布管理' },
+  { component_name: 'publish_task_delete', comp_desc: '发布-删除任务', group_name: '发布管理' },
+  { component_name: 'publish_task_batch_delete', comp_desc: '发布-批量删除任务', group_name: '发布管理' },
+
+  // 发布管理 - 构建模板
+  { component_name: 'publish_build_template_add', comp_desc: '发布-新增构建模板', group_name: '发布管理' },
+  { component_name: 'publish_build_template_edit', comp_desc: '发布-编辑构建模板', group_name: '发布管理' },
+  { component_name: 'publish_build_template_delete', comp_desc: '发布-删除构建模板', group_name: '发布管理' },
+
+  // 发布管理 - 部署模板
+  { component_name: 'publish_deploy_template_add', comp_desc: '发布-新增部署模板', group_name: '发布管理' },
+  { component_name: 'publish_deploy_template_edit', comp_desc: '发布-编辑部署模板', group_name: '发布管理' },
+  { component_name: 'publish_deploy_template_delete', comp_desc: '发布-删除部署模板', group_name: '发布管理' },
+
+  // 发布管理 - K8s集群
+  { component_name: 'publish_k8s_add', comp_desc: '发布-新增K8s集群', group_name: '发布管理' },
+  { component_name: 'publish_k8s_edit', comp_desc: '发布-编辑K8s集群', group_name: '发布管理' },
+  { component_name: 'publish_k8s_delete', comp_desc: '发布-删除K8s集群', group_name: '发布管理' },
+
+  // 发布管理 - Linux主机
+  { component_name: 'publish_linux_add', comp_desc: '发布-新增主机', group_name: '发布管理' },
+  { component_name: 'publish_linux_edit', comp_desc: '发布-编辑主机', group_name: '发布管理' },
+  { component_name: 'publish_linux_delete', comp_desc: '发布-删除主机', group_name: '发布管理' },
+  { component_name: 'publish_linux_connect', comp_desc: '发布-测试主机连接', group_name: '发布管理' },
+
+  // 发布管理 - 环境
+  { component_name: 'publish_env_add', comp_desc: '发布-新增环境', group_name: '发布管理' },
+  { component_name: 'publish_env_edit', comp_desc: '发布-编辑环境', group_name: '发布管理' },
+  { component_name: 'publish_env_delete', comp_desc: '发布-删除环境', group_name: '发布管理' },
+
+  // 发布管理 - 云厂商
+  { component_name: 'publish_vendor_add', comp_desc: '发布-新增云厂商', group_name: '发布管理' },
+  { component_name: 'publish_vendor_edit', comp_desc: '发布-编辑云厂商', group_name: '发布管理' },
+  { component_name: 'publish_vendor_delete', comp_desc: '发布-删除云厂商', group_name: '发布管理' },
+
+  // 发布管理 - 镜像仓库
+  { component_name: 'publish_registry_add', comp_desc: '发布-新增镜像仓库', group_name: '发布管理' },
+  { component_name: 'publish_registry_edit', comp_desc: '发布-编辑镜像仓库', group_name: '发布管理' },
+  { component_name: 'publish_registry_delete', comp_desc: '发布-删除镜像仓库', group_name: '发布管理' },
+
+  // 发布管理 - 开发语言
+  { component_name: 'publish_language_add', comp_desc: '发布-新增语言', group_name: '发布管理' },
+  { component_name: 'publish_language_edit', comp_desc: '发布-编辑语言', group_name: '发布管理' },
+  { component_name: 'publish_language_delete', comp_desc: '发布-删除语言', group_name: '发布管理' },
 ];

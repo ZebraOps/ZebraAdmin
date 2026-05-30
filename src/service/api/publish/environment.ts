@@ -1,4 +1,5 @@
 import http from '../../request';
+import { PageResult } from '@/service/types';
 
 export interface Environment {
   id: number;
@@ -11,7 +12,6 @@ export interface Environment {
   updated_at?: string;
 }
 
-type PageResult<T> = { total: number; records: T[] };
 
 export const fetchEnvironments = (params?: Record<string, unknown>) =>
   http.get<PageResult<Environment>>('/cicd/api/environments', params);

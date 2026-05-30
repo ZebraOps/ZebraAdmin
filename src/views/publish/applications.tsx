@@ -22,9 +22,11 @@ import { fetchRepos } from '@/service/api/publish/repos';
 import { fetchOrgTree } from '@/service/api/rbac/org';
 import type { OrgNode } from '@/service/api/rbac/org';
 import { fetchLanguages } from '@/service/api/publish/language';
+import { usePermission } from '@/hooks/usePermission';
 
 export default function PublishApplications() {
   const { t } = useTranslation();
+  const { hasComp } = usePermission();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<Application | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -157,11 +159,11 @@ export default function PublishApplications() {
           key="deploys" type="link" size="small" icon={<AppstoreOutlined />}
           onClick={() => handleViewDeployments(row)}
         >部署配置</Button>,
-        <Button
+        hasComp('publish_app_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setModalOpen(true); }}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <CountdownButton
+        hasComp('publish_app_delete') && <CountdownButton
           key="del" icon={<DeleteOutlined />}
           text={t('common.delete', { defaultValue: '删除' })}
           onConfirm={async () => {
@@ -170,7 +172,7 @@ export default function PublishApplications() {
             actionRef.current?.reload();
           }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -184,11 +186,11 @@ export default function PublishApplications() {
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 130,
       render: (_, row) => [
-        <Button
+        hasComp('publish_app_deploy_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setDeployFormRecord(row); setDeployFormOpen(true); }}
         >编辑</Button>,
-        <CountdownButton
+        hasComp('publish_app_deploy_delete') && <CountdownButton
           key="del" icon={<DeleteOutlined />} text="删除"
           onConfirm={async () => {
             await api.deleteApplicationDeployment(row.id);
@@ -197,7 +199,7 @@ export default function PublishApplications() {
             actionRef.current?.reload();
           }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -205,8 +207,8 @@ export default function PublishApplications() {
     <>
       <ProTable<Application>
         rowKey="id" actionRef={actionRef} columns={columns}
-        rowSelection={{ selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) }}
-        tableAlertOptionRender={() => (
+        rowSelection={hasComp('publish_app_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('publish_app_delete') ? () => (
           <Popconfirm
             title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
             onConfirm={async () => {
@@ -220,7 +222,7 @@ export default function PublishApplications() {
           >
             <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
           </Popconfirm>
-        )}
+        ) : undefined}
         request={async (params) => {
           try {
             const query: Record<string, unknown> = {};
@@ -239,7 +241,7 @@ export default function PublishApplications() {
         }}
         headerTitle={t('route.publish_applications', { defaultValue: '应用管理' })}
         toolBarRender={() => [
-          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>
+          hasComp('publish_app_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>
             {t('common.add', { defaultValue: '新增应用' })}
           </Button>
         ]}
@@ -313,9 +315,9 @@ export default function PublishApplications() {
         destroyOnClose
         extra={
           <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setDeployFormRecord(null); setDeployFormOpen(true); }}>
+            {hasComp('publish_app_deploy_add') && <Button type="primary" icon={<PlusOutlined />} onClick={() => { setDeployFormRecord(null); setDeployFormOpen(true); }}>
               新增部署配置
-            </Button>
+            </Button>}
           </Space>
         }
       >

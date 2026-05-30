@@ -5,11 +5,13 @@ import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { usePermission } from '@/hooks/usePermission';
 import * as api from '@/service/api/publish/image-registry';
 import type { ImageRegistry } from '@/service/api/publish/image-registry';
 
 export default function PublishConfigRegistry() {
   const { t } = useTranslation();
+  const { hasComp } = usePermission();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<ImageRegistry | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -21,11 +23,11 @@ export default function PublishConfigRegistry() {
     { title: '描述', dataIndex: 'description', search: false },
     { title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
-        <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
+        hasComp('publish_registry_edit') && <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
+        hasComp('publish_registry_delete') && <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
           onConfirm={async () => { await api.deleteImageRegistry(row.id!); message.success('删除成功'); actionRef.current?.reload(); }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -33,8 +35,8 @@ export default function PublishConfigRegistry() {
     <>
       <ProTable<ImageRegistry>
         rowKey="id" actionRef={actionRef} columns={columns}
-        rowSelection={{ selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) }}
-        tableAlertOptionRender={() => (
+        rowSelection={hasComp('publish_registry_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('publish_registry_delete') ? () => (
           <Popconfirm title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
             onConfirm={async () => {
               try {
@@ -45,7 +47,7 @@ export default function PublishConfigRegistry() {
             }}>
             <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
           </Popconfirm>
-        )}
+        ) : undefined}
         request={async (params) => {
           try {
             const query: Record<string, unknown> = {
@@ -59,7 +61,7 @@ export default function PublishConfigRegistry() {
           } catch { return { data: [], success: false, total: 0 }; }
         }}
         headerTitle={t('route.publish_config_registry', { defaultValue: '镜像仓库' })}
-        toolBarRender={() => [<Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>{t('common.add', { defaultValue: '新增' })}</Button>]}
+        toolBarRender={() => [hasComp('publish_registry_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>{t('common.add', { defaultValue: '新增' })}</Button>]}
         search={{ labelWidth: 80 }} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
       />
       <ModalForm<Partial<ImageRegistry>>

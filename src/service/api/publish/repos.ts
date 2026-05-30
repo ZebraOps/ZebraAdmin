@@ -1,4 +1,5 @@
 import http from '../../request';
+import { PageResult } from '@/service/types';
 
 export interface Repo {
   id: number;
@@ -18,7 +19,6 @@ export interface Repo {
   updated_at?: string;
 }
 
-type PageResult<T> = { total: number; records: T[] };
 
 export const fetchRepos = (params?: Record<string, unknown>) =>
   http.get<PageResult<Repo>>('/cicd/api/repos', params);

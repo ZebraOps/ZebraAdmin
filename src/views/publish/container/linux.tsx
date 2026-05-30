@@ -12,11 +12,13 @@ import {
   ApiOutlined, ContainerOutlined, ReloadOutlined, CodeOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { usePermission } from '@/hooks/usePermission';
 import * as api from '@/service/api/publish/linux-machine';
 import type { LinuxMachine, DockerContainer } from '@/service/api/publish/linux-machine';
 
 export default function PublishContainerLinux() {
   const { t } = useTranslation();
+  const { hasComp } = usePermission();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<LinuxMachine | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -104,7 +106,7 @@ export default function PublishContainerLinux() {
       title: t('common.actions', { defaultValue: '操作' }),
       key: 'actions', valueType: 'option', fixed: 'right', width: 280,
       render: (_, row) => [
-        <Tooltip key="test" title="测试 SSH 连接">
+        hasComp('publish_linux_connect') && <Tooltip key="test" title="测试 SSH 连接">
           <Button
             type="link" size="small" icon={<ApiOutlined />}
             loading={testingId === row.id}
@@ -115,11 +117,11 @@ export default function PublishContainerLinux() {
           key="containers" type="link" size="small" icon={<ContainerOutlined />}
           onClick={() => handleViewContainers(row)}
         >容器</Button>,
-        <Button
+        hasComp('publish_linux_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setAuthType(row.auth_type || 'password'); setModalOpen(true); }}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <CountdownButton
+        hasComp('publish_linux_delete') && <CountdownButton
           key="del" icon={<DeleteOutlined />}
           text={t('common.delete', { defaultValue: '删除' })}
           onConfirm={async () => {
@@ -128,7 +130,7 @@ export default function PublishContainerLinux() {
             actionRef.current?.reload();
           }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -154,7 +156,7 @@ export default function PublishContainerLinux() {
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 100,
       render: (_, row) => [
-        <Button
+        hasComp('publish_linux_connect') && <Button
           key="exec" type="link" size="small" icon={<CodeOutlined />}
           onClick={() => {
             if (drawerHost) {
@@ -164,7 +166,7 @@ export default function PublishContainerLinux() {
             }
           }}
         >执行</Button>
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -172,8 +174,8 @@ export default function PublishContainerLinux() {
     <>
       <ProTable<LinuxMachine>
         rowKey="id" actionRef={actionRef} columns={columns}
-        rowSelection={{ selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) }}
-        tableAlertOptionRender={() => (
+        rowSelection={hasComp('publish_linux_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('publish_linux_delete') ? () => (
           <Popconfirm
             title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
             onConfirm={async () => {
@@ -187,7 +189,7 @@ export default function PublishContainerLinux() {
           >
             <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
           </Popconfirm>
-        )}
+        ) : undefined}
         request={async (params) => {
           try {
             const query: Record<string, unknown> = {
@@ -203,7 +205,7 @@ export default function PublishContainerLinux() {
         }}
         headerTitle={t('route.publish_container_linux', { defaultValue: 'Linux 主机' })}
         toolBarRender={() => [
-          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setAuthType('password'); setModalOpen(true); }}>
+          hasComp('publish_linux_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setAuthType('password'); setModalOpen(true); }}>
             {t('common.add', { defaultValue: '新增' })}
           </Button>
         ]}

@@ -18,9 +18,11 @@ import {
 import { fetchLanguages } from '@/service/api/publish/language';
 import { fetchOrgTree } from '@/service/api/rbac/org';
 import type { OrgNode } from '@/service/api/rbac/org';
+import { usePermission } from '@/hooks/usePermission';
 
 export default function PublishRepos() {
   const { t } = useTranslation();
+  const { hasComp } = usePermission();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<Repo | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -147,11 +149,11 @@ export default function PublishRepos() {
           key="tmpl" type="link" size="small" icon={<LinkOutlined />}
           onClick={() => handleViewTemplates(row)}
         >模板</Button>,
-        <Button
+        hasComp('publish_repo_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setModalOpen(true); }}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        <CountdownButton
+        hasComp('publish_repo_delete') && <CountdownButton
           key="del" icon={<DeleteOutlined />}
           text={t('common.delete', { defaultValue: '删除' })}
           onConfirm={async () => {
@@ -160,7 +162,7 @@ export default function PublishRepos() {
             actionRef.current?.reload();
           }}
         />
-      ]
+      ].filter(Boolean)
     }
   ];
 
@@ -194,8 +196,8 @@ export default function PublishRepos() {
     <>
       <ProTable<Repo>
         rowKey="id" actionRef={actionRef} columns={columns}
-        rowSelection={{ selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) }}
-        tableAlertOptionRender={() => (
+        rowSelection={hasComp('publish_repo_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
+        tableAlertOptionRender={hasComp('publish_repo_delete') ? () => (
           <Popconfirm
             title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
             onConfirm={async () => {
@@ -209,7 +211,7 @@ export default function PublishRepos() {
           >
             <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
           </Popconfirm>
-        )}
+        ) : undefined}
         request={async (params) => {
           try {
             const query: Record<string, unknown> = {
@@ -227,7 +229,7 @@ export default function PublishRepos() {
         }}
         headerTitle={t('route.publish_repos', { defaultValue: '代码仓库' })}
         toolBarRender={() => [
-          <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>
+          hasComp('publish_repo_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>
             {t('common.add', { defaultValue: '新增仓库' })}
           </Button>
         ]}
