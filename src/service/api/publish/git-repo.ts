@@ -30,3 +30,6 @@ export const deleteGitPlatform = (id: number) =>
 
 export const testGitPlatformConnection = (id: number) =>
   http.post<{ message: string }>(`/cicd/api/git-platforms/${id}/connect`);
+
+export const fetchGitPlatformProjects = (id: number, params?: Record<string, unknown>) =>
+  http.get<any>(`/cicd/api/git-platforms/${id}/projects`, params);

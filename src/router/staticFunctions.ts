@@ -206,4 +206,12 @@ export const staticFunctions: StaticFunction[] = [
   { func_name: '更新Git平台配置', uri: '/cicd/api/git-platforms/{id}', method_type: 'PUT', group_name: '发布功能' },
   { func_name: '删除Git平台配置', uri: '/cicd/api/git-platforms/{id}', method_type: 'DELETE', group_name: '发布功能' },
   { func_name: '测试Git平台连接', uri: '/cicd/api/git-platforms/{id}/connect', method_type: 'POST', group_name: '发布功能' },
+
+  // === CICD 发布管理 - Jenkins平台配置 ===
+  { func_name: '获取Jenkins配置列表', uri: '/cicd/api/jenkins-platforms', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建Jenkins配置', uri: '/cicd/api/jenkins-platforms', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取Jenkins配置详情', uri: '/cicd/api/jenkins-platforms/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新Jenkins配置', uri: '/cicd/api/jenkins-platforms/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除Jenkins配置', uri: '/cicd/api/jenkins-platforms/{id}', method_type: 'DELETE', group_name: '发布功能' },
+  { func_name: '测试Jenkins连接', uri: '/cicd/api/jenkins-platforms/{id}/connect', method_type: 'POST', group_name: '发布功能' },
 ];
