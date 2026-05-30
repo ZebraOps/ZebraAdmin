@@ -14,7 +14,6 @@ export interface Repo {
   repo_desc?: string;
   repo_deploy_type?: string;
   repo_build_path?: string;
-  platform?: string;
   created_at?: string;
   updated_at?: string;
 }

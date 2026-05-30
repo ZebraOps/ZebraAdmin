@@ -3,7 +3,7 @@ import {
   ProTable, ModalForm, ProFormText, ProFormSelect, ProFormTreeSelect,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Popconfirm } from 'antd';
+import { Button, message, Popconfirm } from 'antd';
 import { isHandledError } from '@/service/request';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
@@ -57,10 +57,6 @@ export default function PublishRepos() {
     { title: '中文名称', dataIndex: 'c_name', width: 150 },
     { title: '英文名称', dataIndex: 'e_name', width: 150 },
     { title: '仓库地址', dataIndex: 'repo_url', ellipsis: true, search: false },
-    {
-      title: '部署平台', dataIndex: 'platform', width: 90, search: false,
-      render: (val) => val ? <Tag color={String(val) === 'k8s' ? 'processing' : 'warning'}>{String(val).toUpperCase()}</Tag> : '-'
-    },
     {
       title: '开发语言', dataIndex: 'repo_language', width: 100,
       valueType: 'select', valueEnum: languageEnum,
@@ -173,11 +169,6 @@ export default function PublishRepos() {
         <ProFormText name="e_name" label="英文名称" rules={[{ required: true }]} placeholder="请输入英文名称" />
         <ProFormText name="repo_url" label="仓库HTTP地址" placeholder="https://github.com/org/repo.git" />
         <ProFormText name="repo_ssh_url" label="仓库SSH地址" placeholder="git@github.com:org/repo.git" />
-        <ProFormSelect
-          name="platform" label="部署平台"
-          options={[{ label: 'K8s', value: 'k8s' }, { label: 'Linux', value: 'linux' }]}
-          initialValue="k8s"
-        />
         <ProFormSelect name="repo_language" label="开发语言" options={languageOptions} showSearch placeholder="请选择开发语言" fieldProps={{ optionFilterProp: 'label' }} />
         <ProFormText name="repo_manager" label="负责人" placeholder="请输入负责人" />
         <ProFormTreeSelect
