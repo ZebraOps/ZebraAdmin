@@ -4,7 +4,6 @@ import {
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
 import { Button, Tag, message, Drawer, Input, Space, Tooltip, Popconfirm } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
@@ -95,15 +94,13 @@ export default function PublishContainerK8s() {
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setModalOpen(true); }}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        hasComp('publish_k8s_delete') && <CountdownButton
-          key="del" icon={<DeleteOutlined />}
-          text={t('common.delete', { defaultValue: '删除' })}
-          onConfirm={async () => {
+        hasComp('publish_k8s_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => {
             await api.deleteK8sCluster(row.id);
             message.success('删除成功');
             actionRef.current?.reload();
-          }}
-        />
+          }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];

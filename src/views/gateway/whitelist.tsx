@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, ProFormSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Popconfirm, Tag, Row, Col, message } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import * as api from '@/service/api/gateway/whitelist';
@@ -36,9 +35,9 @@ export default function GatewayWhitelist() {
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 80,
       render: (_, row) => [
-        hasComp('gateway_whitelist_delete') && <CountdownButton key="del" icon={<DeleteOutlined />}
-          onConfirm={async () => { await api.deleteWhitelist(row.ID); message.success('删除成功'); actionRef.current?.reload(); }}
-        />
+        hasComp('gateway_whitelist_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteWhitelist(row.ID); message.success('删除成功'); actionRef.current?.reload(); }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];

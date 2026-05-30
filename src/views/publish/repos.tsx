@@ -3,18 +3,14 @@ import {
   ProTable, ModalForm, ProFormText, ProFormSelect, ProFormTreeSelect,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Drawer, Space, Modal, Popconfirm } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
+import { Button, Tag, message, Popconfirm } from 'antd';
 import { isHandledError } from '@/service/request';
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined, LinkOutlined,
+  PlusOutlined, EditOutlined, DeleteOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/publish/repos';
-import type { Repo, RepoTemplate } from '@/service/api/publish/repos';
-import {
-  fetchBuildTemplates, associateBuildTemplateRepo, disassociateBuildTemplateRepo,
-} from '@/service/api/publish/build-template';
+import type { Repo } from '@/service/api/publish/repos';
 import { fetchLanguages } from '@/service/api/publish/language';
 import { fetchOrgTree } from '@/service/api/rbac/org';
 import type { OrgNode } from '@/service/api/rbac/org';
@@ -28,15 +24,6 @@ export default function PublishRepos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  // 关联模板抽屉
-  const [tmplDrawerOpen, setTmplDrawerOpen] = useState(false);
-  const [tmplRepo, setTmplRepo] = useState<Repo | null>(null);
-  const [tmplList, setTmplList] = useState<RepoTemplate[]>([]);
-  const [tmplLoading, setTmplLoading] = useState(false);
-  const [allBuildTemplates, setAllBuildTemplates] = useState<{ label: string; value: number }[]>([]);
-  const [associateModalOpen, setAssociateModalOpen] = useState(false);
-  const [associateTplId, setAssociateTplId] = useState<number | undefined>();
-
   const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
   const [orgTreeData, setOrgTreeData] = useState<OrgNode[]>([]);
 
@@ -49,12 +36,6 @@ export default function PublishRepos() {
   }
 
   useEffect(() => {
-    fetchBuildTemplates({ size: 200 }).then((res) => {
-      setAllBuildTemplates(((res as any)?.records ?? []).map((e: any) => ({
-        label: `${e.name}${e.language ? ` (${e.language})` : ''}`,
-        value: e.id,
-      })));
-    }).catch(() => {});
     fetchLanguages({ size: 200 }).then((res) => {
       setLanguageOptions(((res as any)?.records ?? []).map((e: any) => ({
         label: e.display_name || e.name,
@@ -71,41 +52,6 @@ export default function PublishRepos() {
     acc[o.value] = { text: o.label };
     return acc;
   }, {} as Record<string, { text: string }>);
-
-  const loadRepoTemplates = async (repo: Repo) => {
-    setTmplLoading(true);
-    try {
-      const list = await api.fetchRepoTemplates(repo.id);
-      setTmplList(Array.isArray(list) ? list : []);
-    } catch (e: any) {
-      if (!isHandledError(e)) message.error(e?.message || '获取关联模板失败');
-      setTmplList([]);
-    } finally {
-      setTmplLoading(false);
-    }
-  };
-
-  const handleViewTemplates = async (row: Repo) => {
-    setTmplRepo(row);
-    setTmplDrawerOpen(true);
-    await loadRepoTemplates(row);
-  };
-
-  const handleAssociate = async () => {
-    if (!tmplRepo || !associateTplId) {
-      message.warning('请选择要关联的模板');
-      return;
-    }
-    try {
-      await associateBuildTemplateRepo(associateTplId, tmplRepo.id);
-      message.success('关联成功');
-      setAssociateModalOpen(false);
-      setAssociateTplId(undefined);
-      await loadRepoTemplates(tmplRepo);
-    } catch (e: any) {
-      if (!isHandledError(e)) message.error(e?.message || '关联失败');
-    }
-  };
 
   const columns: ProColumns<Repo>[] = [
     { title: '中文名称', dataIndex: 'c_name', width: 150 },
@@ -143,52 +89,20 @@ export default function PublishRepos() {
     { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 160, search: false },
     {
       title: t('common.actions', { defaultValue: '操作' }),
-      key: 'actions', valueType: 'option', fixed: 'right', width: 240,
+      key: 'actions', valueType: 'option', fixed: 'right', width: 160,
       render: (_, row) => [
-        <Button
-          key="tmpl" type="link" size="small" icon={<LinkOutlined />}
-          onClick={() => handleViewTemplates(row)}
-        >模板</Button>,
         hasComp('publish_repo_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setModalOpen(true); }}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        hasComp('publish_repo_delete') && <CountdownButton
-          key="del" icon={<DeleteOutlined />}
-          text={t('common.delete', { defaultValue: '删除' })}
-          onConfirm={async () => {
+        hasComp('publish_repo_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => {
             await api.deleteRepo(row.id);
             message.success('删除成功');
             actionRef.current?.reload();
-          }}
-        />
+          }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
+        </Popconfirm>
       ].filter(Boolean)
-    }
-  ];
-
-  const tmplColumns: ProColumns<RepoTemplate>[] = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
-    { title: '模板名称', dataIndex: 'name' },
-    { title: '语言', dataIndex: 'language', width: 100 },
-    { title: '创建人', dataIndex: 'creator', width: 100 },
-    { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 170 },
-    {
-      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 110,
-      render: (_, row) => [
-        <CountdownButton
-          key="del" icon={<DeleteOutlined />} text="取消关联"
-          onConfirm={async () => {
-            if (!tmplRepo) return;
-            try {
-              await disassociateBuildTemplateRepo(row.id, tmplRepo.id);
-              message.success('已取消关联');
-              await loadRepoTemplates(tmplRepo);
-            } catch (e: any) {
-              if (!isHandledError(e)) message.error(e?.message || '操作失败');
-            }
-          }}
-        />
-      ]
     }
   ];
 
@@ -279,43 +193,6 @@ export default function PublishRepos() {
         />
         <ProFormText name="repo_desc" label="描述" placeholder="请输入描述" />
       </ModalForm>
-
-      {/* 关联模板抽屉 */}
-      <Drawer
-        title={`关联构建模板 — ${tmplRepo?.c_name ?? ''}`}
-        placement="right" width={900}
-        open={tmplDrawerOpen}
-        onClose={() => setTmplDrawerOpen(false)}
-        destroyOnClose
-        extra={
-          <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setAssociateModalOpen(true)}>
-              关联模板
-            </Button>
-          </Space>
-        }
-      >
-        <ProTable<RepoTemplate>
-          rowKey="id" search={false} columns={tmplColumns}
-          dataSource={tmplList} loading={tmplLoading}
-          pagination={{ pageSize: 20 }} options={false}
-          scroll={{ x: 'max-content' }}
-        />
-      </Drawer>
-
-      {/* 选择模板进行关联 */}
-      <Modal
-        title="选择构建模板"
-        open={associateModalOpen}
-        onCancel={() => { setAssociateModalOpen(false); setAssociateTplId(undefined); }}
-        onOk={handleAssociate} okText="确认关联"
-        destroyOnClose
-      >
-        <ProFormSelect
-          label="构建模板" name="tplId" options={allBuildTemplates}
-          showSearch fieldProps={{ optionFilterProp: 'label', value: associateTplId, onChange: (v) => setAssociateTplId(v as number) }}
-        />
-      </Modal>
     </>
   );
 }

@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Popconfirm, message } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { usePermission } from '@/hooks/usePermission';
@@ -23,9 +22,9 @@ export default function OrgJob() {
     { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
         hasComp('org_job_edit') && <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
-        hasComp('org_job_delete') && <CountdownButton key="del" icon={<DeleteOutlined />}
-          onConfirm={async () => { await api.deleteJob(row.job_id); message.success('删除成功'); actionRef.current?.reload(); }}
-        />
+        hasComp('org_job_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteJob(row.job_id); message.success('删除成功'); actionRef.current?.reload(); }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];

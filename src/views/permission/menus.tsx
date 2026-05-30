@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, ProFormSelect, ProFormDigit, ProFormTreeSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Popconfirm, Tag, message } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -77,9 +76,9 @@ export default function PermissionMenus() {
       render: (_, row) => [
         <Button key="addChild" type="link" size="small" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setDefaultParentId(row.menu_id); setModalOpen(true); }}>子菜单</Button>,
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setDefaultParentId(undefined); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        hasComp('permission_menu_delete') && hasComp('permission_menu_delete') && <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
-          onConfirm={async () => { await api.deleteMenu(row.menu_id); message.success('删除成功'); actionRef.current?.reload(); }}
-        />
+        hasComp('permission_menu_delete') && hasComp('permission_menu_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteMenu(row.menu_id); message.success('删除成功'); actionRef.current?.reload(); }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];

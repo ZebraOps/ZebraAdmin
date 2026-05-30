@@ -1,7 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import { ProTable, ModalForm, ProFormText, ProFormDigit, ProFormTreeSelect, ProFormRadio, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Popconfirm, Tag, message } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth';
@@ -78,9 +77,9 @@ export default function OrgDept() {
         >
           编辑
         </Button>,
-        hasComp('org_dept_delete') && <CountdownButton key="del" icon={<DeleteOutlined />}
-          onConfirm={async () => { await api.deleteOrg(row.org_id); message.success('删除成功'); actionRef.current?.reload(); }}
-        />
+        hasComp('org_dept_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteOrg(row.org_id); message.success('删除成功'); actionRef.current?.reload(); }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];

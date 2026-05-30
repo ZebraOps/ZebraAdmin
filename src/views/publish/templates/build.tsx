@@ -5,15 +5,16 @@ import {
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
 import { Button, message, Drawer, Tag, Popconfirm } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined,
+  AppstoreOutlined, LinkOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermission } from '@/hooks/usePermission';
 import * as api from '@/service/api/publish/build-template';
-import type { BuildTemplate } from '@/service/api/publish/build-template';
+import type { BuildTemplate, LinkedApplication } from '@/service/api/publish/build-template';
+import { fetchApplications } from '@/service/api/publish/applications';
 import { fetchLanguages } from '@/service/api/publish/language';
 import { fetchOrgTree } from '@/service/api/rbac/org';
 import type { OrgNode } from '@/service/api/rbac/org';
@@ -67,11 +68,19 @@ export default function PublishTemplatesBuild() {
   const [historyList, setHistoryList] = useState<TemplateHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  // 关联应用 Drawer
+  const [appsOpen, setAppsOpen] = useState(false);
+  const [appsTpl, setAppsTpl] = useState<BuildTemplate | null>(null);
+  const [linkedApps, setLinkedApps] = useState<LinkedApplication[]>([]);
+  const [appsLoading, setAppsLoading] = useState(false);
+  const [associateOpen, setAssociateOpen] = useState(false);
+  const [associateAppId, setAssociateAppId] = useState<number | undefined>(undefined);
+  const [allApps, setAllApps] = useState<{ label: string; value: number }[]>([]);
+
   const loadHistory = async (tpl: BuildTemplate) => {
     setHistoryLoading(true);
     try {
       const res = await api.fetchBuildTemplateHistory(tpl.id);
-      // 后端返回的是 {total, records} 分页
       const records = (res as any)?.records ?? (Array.isArray(res) ? res : []);
       setHistoryList(records);
     } catch (e: any) {
@@ -79,6 +88,19 @@ export default function PublishTemplatesBuild() {
       setHistoryList([]);
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const loadLinkedApps = async (tpl: BuildTemplate) => {
+    setAppsLoading(true);
+    try {
+      const res = await api.fetchBuildTemplateApplications(tpl.id);
+      setLinkedApps((res as any) ?? []);
+    } catch (e: any) {
+      if (!isHandledError(e)) message.error('获取关联应用失败');
+      setLinkedApps([]);
+    } finally {
+      setAppsLoading(false);
     }
   };
 
@@ -90,9 +112,7 @@ export default function PublishTemplatesBuild() {
     },
     {
       title: '归属部门', dataIndex: 'department', width: 140,
-      search: {
-        transform: (val) => val,
-      },
+      search: { transform: (val) => val },
       render: (_, row) => row.department || '-',
       renderFormItem: () => (
         <ProFormTreeSelect
@@ -100,9 +120,7 @@ export default function PublishTemplatesBuild() {
           fieldProps={{
             treeData: toDeptTreeSelectData(orgTreeData),
             allowClear: true, placeholder: '请选择部门',
-            treeDefaultExpandAll: true,
-            showSearch: true,
-            treeNodeFilterProp: 'title',
+            treeDefaultExpandAll: true, showSearch: true, treeNodeFilterProp: 'title',
           }}
         />
       ),
@@ -112,25 +130,27 @@ export default function PublishTemplatesBuild() {
     { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 160, search: false },
     {
       title: t('common.actions', { defaultValue: '操作' }),
-      key: 'actions', valueType: 'option', fixed: 'right', width: 220,
+      key: 'actions', valueType: 'option', fixed: 'right', width: 240,
       render: (_, row) => [
-        <Button
-          key="history" type="link" size="small" icon={<HistoryOutlined />}
-          onClick={() => { setHistoryTpl(row); setHistoryOpen(true); loadHistory(row); }}
-        >历史</Button>,
+        <Button key="apps" type="link" size="small" icon={<AppstoreOutlined />}
+          onClick={() => { setAppsTpl(row); setAppsOpen(true); loadLinkedApps(row); }}>
+          应用
+        </Button>,
+        <Button key="history" type="link" size="small" icon={<HistoryOutlined />}
+          onClick={() => { setHistoryTpl(row); setHistoryOpen(true); loadHistory(row); }}>
+          历史
+        </Button>,
         hasComp('publish_build_template_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setModalOpen(true); }}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        hasComp('publish_build_template_delete') && <CountdownButton
-          key="del" icon={<DeleteOutlined />}
-          text={t('common.delete', { defaultValue: '删除' })}
-          onConfirm={async () => {
+        hasComp('publish_build_template_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => {
             await api.deleteBuildTemplate(row.id);
             message.success('删除成功');
             actionRef.current?.reload();
-          }}
-        />
+          }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];
@@ -213,20 +233,10 @@ export default function PublishTemplatesBuild() {
         }}
       >
         <ProFormText name="name" label="模板名称" rules={[{ required: true }]} placeholder="请输入模板名称" />
-        <ProFormSelect
-          name="language" label="开发语言" rules={[{ required: true }]} placeholder="请选择开发语言"
-          options={languageOptions} showSearch fieldProps={{ optionFilterProp: 'label' }}
-        />
-        <ProFormTreeSelect
-          name="department" label="归属部门" placeholder="请选择部门"
-          fieldProps={{
-            treeData: toDeptTreeSelectData(orgTreeData),
-            allowClear: true,
-            treeDefaultExpandAll: true,
-            showSearch: true,
-            treeNodeFilterProp: 'title',
-          }}
-        />
+        <ProFormSelect name="language" label="开发语言" rules={[{ required: true }]} placeholder="请选择开发语言"
+          options={languageOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
+        <ProFormTreeSelect name="department" label="归属部门" placeholder="请选择部门"
+          fieldProps={{ treeData: toDeptTreeSelectData(orgTreeData), allowClear: true, treeDefaultExpandAll: true, showSearch: true, treeNodeFilterProp: 'title' }} />
         <ProFormTextArea name="dockerfile" label="Dockerfile" fieldProps={{ rows: 8, placeholder: 'FROM golang:1.25-alpine\nWORKDIR /app\nCOPY . .\nRUN go build -o main .\nCMD ["/app/main"]' }} />
         <ProFormTextArea name="pipeline" label="Pipeline (Jenkinsfile)" fieldProps={{ rows: 8, placeholder: 'pipeline {\n  agent any\n  stages {\n    stage("Build") { steps { sh "make build" } }\n  }\n}' }} />
       </ModalForm>
@@ -234,8 +244,7 @@ export default function PublishTemplatesBuild() {
       <Drawer
         title={`修改历史 — ${historyTpl?.name ?? ''}`}
         placement="right" width={900}
-        open={historyOpen} onClose={() => setHistoryOpen(false)}
-        destroyOnClose
+        open={historyOpen} onClose={() => setHistoryOpen(false)} destroyOnClose
       >
         <ProTable<TemplateHistory>
           rowKey="id" search={false} columns={historyColumns}
@@ -246,21 +255,73 @@ export default function PublishTemplatesBuild() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>Dockerfile</div>
-                  <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, maxHeight: 280, overflow: 'auto' }}>
-                    {record.dockerfile || '(无)'}
-                  </pre>
+                  <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, maxHeight: 280, overflow: 'auto' }}>{record.dockerfile || '(无)'}</pre>
                 </div>
                 <div>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>Pipeline</div>
-                  <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, maxHeight: 280, overflow: 'auto' }}>
-                    {record.pipeline || '(无)'}
-                  </pre>
+                  <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, maxHeight: 280, overflow: 'auto' }}>{record.pipeline || '(无)'}</pre>
                 </div>
               </div>
             ),
           }}
         />
       </Drawer>
+
+      {/* 关联应用 Drawer */}
+      <Drawer
+        title={`关联应用 — ${appsTpl?.name ?? ''}`}
+        placement="right" width={900}
+        open={appsOpen} onClose={() => setAppsOpen(false)} destroyOnClose
+        extra={<Button type="primary" size="small" icon={<LinkOutlined />} onClick={() => {
+          fetchApplications({ size: 200 }).then((res) => {
+            setAllApps((((res as any)?.records) ?? []).map((e: any) => ({ label: `${e.c_name} (${e.e_name})`, value: e.id })));
+            setAssociateOpen(true);
+          });
+        }}>新增关联</Button>}
+      >
+        <ProTable
+          rowKey="id" search={false} columns={[
+            { title: 'ID', dataIndex: 'id', width: 70 },
+            { title: '中文名称', dataIndex: 'c_name' },
+            { title: '英文名称', dataIndex: 'e_name' },
+            { title: '部门', dataIndex: 'department', width: 120 },
+            { title: '语言', dataIndex: 'language', width: 100 },
+            { title: '监听端口', dataIndex: 'listen_port', width: 90 },
+            { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 160 },
+            { title: '操作', key: 'actions', valueType: 'option', width: 100, render: (_, row) => [
+              <Popconfirm key="dis" title="确认取消关联？" onConfirm={async () => {
+                try {
+                  await api.disassociateBuildTemplateApp(appsTpl!.id, row.id);
+                  message.success('已取消关联');
+                  loadLinkedApps(appsTpl!);
+                } catch (e: any) { if (!isHandledError(e)) message.error('取消关联失败'); }
+              }}>
+                <Button type="link" size="small" danger>取消关联</Button>
+              </Popconfirm>
+            ]}
+          ]}
+          dataSource={linkedApps} loading={appsLoading}
+          pagination={false} options={false}
+        />
+      </Drawer>
+
+      <ModalForm
+        title="新增应用关联"
+        open={associateOpen} onOpenChange={setAssociateOpen}
+        onFinish={async () => {
+          if (!associateAppId) { message.warning('请选择应用'); return false; }
+          try {
+            await api.associateBuildTemplateApp(appsTpl!.id, associateAppId);
+            message.success('关联成功');
+            loadLinkedApps(appsTpl!);
+            return true;
+          } catch (e: any) { if (!isHandledError(e)) message.error('关联失败'); return false; }
+        }}
+      >
+        <ProFormSelect name="application_id" label="应用" rules={[{ required: true }]} options={allApps} showSearch
+          fieldProps={{ optionFilterProp: 'label', onChange: (val: number) => setAssociateAppId(val) }}
+          placeholder="请选择要关联的应用" />
+      </ModalForm>
     </>
   );
 }

@@ -19,7 +19,6 @@ export interface Repo {
   updated_at?: string;
 }
 
-
 export const fetchRepos = (params?: Record<string, unknown>) =>
   http.get<PageResult<Repo>>('/cicd/api/repos', params);
 
@@ -31,21 +30,6 @@ export const updateRepo = (id: number, data: Partial<Repo>) =>
 
 export const deleteRepo = (id: number) =>
   http.delete(`/cicd/api/repos/${id}`);
-
-/** 仓库上关联的构建模板简要信息 */
-export interface RepoTemplate {
-  id: number;
-  name: string;
-  language?: string;
-  creator?: string;
-  updater?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-/** 获取仓库关联的构建模板列表 */
-export const fetchRepoTemplates = (id: number) =>
-  http.get<RepoTemplate[]>(`/cicd/api/repos/${id}/templates`);
 
 /** 从 GitLab 获取仓库信息 */
 export const fetchRepoGitlabUrl = (repoId: number | string) =>

@@ -45,25 +45,25 @@ export const staticMenus: MenuNode[] = [
     order: 4,
     children: [
       { key: 'publish_repos', label: 'route.publish_repos', icon: 'mdi:source-repository', path: '/publish/repos', order: 1 },
-      { key: 'publish_tasks', label: 'route.publish_tasks', icon: 'mdi:rocket-launch', path: '/publish/tasks', order: 2 },
+      { key: 'publish_applications', label: 'route.publish_applications', icon: 'material-symbols:apps', path: '/publish/applications', order: 2 },
+      { key: 'publish_tasks', label: 'route.publish_tasks', icon: 'mdi:rocket-launch', path: '/publish/tasks', order: 3 },
       {
         key: 'publish_templates',
         label: 'route.publish_templates',
         icon: 'ic:baseline-dashboard-customize',
         path: '/publish/templates',
-        order: 3,
+        order: 4,
         children: [
           { key: 'publish_templates_build', label: 'route.publish_templates_build', icon: 'ic:baseline-playlist-add-check', path: '/publish/templates/build' },
           { key: 'publish_templates_deployment', label: 'route.publish_templates_deployment', icon: 'carbon:deployment-policy', path: '/publish/templates/deployment' }
         ]
       },
-      { key: 'publish_applications', label: 'route.publish_applications', icon: 'material-symbols:apps', path: '/publish/applications', order: 4 },
       {
         key: 'publish_config',
         label: 'route.publish_config',
         icon: 'ic:baseline-tune',
         path: '/publish/config',
-        order: 4,
+        order: 5,
         children: [
           { key: 'publish_config_vendor', label: 'route.publish_config_vendor', icon: 'ic:baseline-cloud-sync', path: '/publish/config/vendor' },
           { key: 'publish_config_env', label: 'route.publish_config_env', icon: 'mdi:environment', path: '/publish/config/env' },
@@ -76,7 +76,7 @@ export const staticMenus: MenuNode[] = [
         label: 'route.publish_container',
         icon: 'ic:baseline-view-in-ar',
         path: '/publish/container',
-        order: 5,
+        order: 6,
         children: [
           { key: 'publish_container_k8s', label: 'route.publish_container_k8s', icon: 'mdi:kubernetes', path: '/publish/container/k8s' },
           { key: 'publish_container_linux', label: 'route.publish_container_linux', icon: 'mdi:linux', path: '/publish/container/linux' }

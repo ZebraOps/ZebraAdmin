@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { ProTable, ModalForm, ProFormText, ProFormSelect, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Tag, message, Popconfirm } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -38,9 +37,9 @@ export default function PublishConfigEnv() {
     { title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
         hasComp('publish_env_edit') && <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        hasComp('publish_env_delete') && <CountdownButton key="del" icon={<DeleteOutlined />} text={t('common.delete', { defaultValue: '删除' })}
-          onConfirm={async () => { await api.deleteEnvironment(row.id!); message.success('删除成功'); actionRef.current?.reload(); }}
-        />
+        hasComp('publish_env_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteEnvironment(row.id!); message.success('删除成功'); actionRef.current?.reload(); }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];

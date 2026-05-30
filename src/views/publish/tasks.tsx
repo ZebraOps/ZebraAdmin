@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  ProTable, ModalForm, ProFormText, ProFormSelect, ProFormDependency,
+  ProTable, ModalForm, ProFormText, ProFormSelect,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
 import { Button, Tag, message, Popconfirm, Drawer, Descriptions, Badge, Typography } from 'antd';
@@ -13,7 +13,6 @@ import { fetchK8sClusters } from '@/service/api/publish/k8s-cluster';
 import { fetchEnvironments } from '@/service/api/publish/environment';
 import { fetchApplications } from '@/service/api/publish/applications';
 import { usePermission } from '@/hooks/usePermission';
-import CountdownButton from '@/components/CountdownButton';
 import { localStg } from '@/utils/storage';
 
 const { Text, Paragraph } = Typography;
@@ -209,9 +208,9 @@ export default function PublishTasks() {
             Jenkins 日志
           </Button>
         ) : null,
-        hasComp('publish_task_delete') && <CountdownButton key="del" icon={<DeleteOutlined />}
-          onConfirm={async () => { try { await api.deleteDeployTask(row.id); message.success('已删除'); actionRef.current?.reload(); } catch (e: any) { if (!isHandledError(e)) message.error('删除失败'); } }}
-        />,
+        hasComp('publish_task_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { try { await api.deleteDeployTask(row.id); message.success('已删除'); actionRef.current?.reload(); } catch (e: any) { if (!isHandledError(e)) message.error('删除失败'); } }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>,
       ].filter(Boolean),
     },
   ];
@@ -269,7 +268,6 @@ export default function PublishTasks() {
         ]}
         scroll={{ x: 'max-content' }}
         pagination={{ pageSize: 20, showSizeChanger: true }}
-        options={{ density: false }}
         search={{ labelWidth: 'auto' }}
       />
 
@@ -296,20 +294,13 @@ export default function PublishTasks() {
         }}
       >
         <ProFormSelect name="project_id" label="应用" rules={[{ required: true }]} options={appOptions} showSearch
-          fieldProps={{ optionFilterProp: 'label', onChange: (val: number) => setSelectedProjectId(val) }} placeholder="请选择应用" />
-        <ProFormDependency name={['project_id']}>
-          {({ project_id }) => {
-            if (!project_id) return <><ProFormSelect name="build_template_id" label="构建模板" options={[]} disabled placeholder="请先选择应用" /><ProFormSelect name="deployment_template_id" label="部署模板" options={[]} disabled placeholder="请先选择应用" /></>;
-            return <>
-              <ProFormSelect name="build_template_id" label="构建模板" options={buildTemplateOptions} showSearch
-                fieldProps={{ optionFilterProp: 'label', allowClear: true, loading: templateLoading }}
-                placeholder="选择应用后自动加载，留空则使用默认模板" />
-              <ProFormSelect name="deployment_template_id" label="部署模板" options={deployTemplateOptions} showSearch
-                fieldProps={{ optionFilterProp: 'label', allowClear: true, loading: templateLoading }}
-                placeholder="选择应用后自动加载，留空则使用默认模板" />
-            </>;
-          }}
-        </ProFormDependency>
+          fieldProps={{ optionFilterProp: 'label', onChange: (val: number) => { setSelectedProjectId(val); } }} placeholder="请选择应用" />
+        <ProFormSelect name="build_template_id" label="构建模板" options={buildTemplateOptions} showSearch
+          fieldProps={{ optionFilterProp: 'label', allowClear: true, loading: templateLoading, disabled: !selectedProjectId }}
+          placeholder={!selectedProjectId ? '请先选择应用' : '留空则使用默认模板'} />
+        <ProFormSelect name="deployment_template_id" label="部署模板" options={deployTemplateOptions} showSearch
+          fieldProps={{ optionFilterProp: 'label', allowClear: true, loading: templateLoading, disabled: !selectedProjectId }}
+          placeholder={!selectedProjectId ? '请先选择应用' : '留空则使用默认模板'} />
         <ProFormSelect name="env_id" label="环境" rules={[{ required: true }]} options={envOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择环境" />
         <ProFormText name="git_ref" label="Git 引用（分支/标签）" rules={[{ required: true }]} placeholder="main" />
         <ProFormSelect name="k8s_cluster_id" label="K8s 集群" rules={[{ required: true }]} options={clusterOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择K8s集群" />

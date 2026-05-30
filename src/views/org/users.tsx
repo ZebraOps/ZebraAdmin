@@ -2,7 +2,6 @@ import { useRef, useState, useEffect } from 'react';
 import { ProTable, ProForm, ProFormText, ProFormSelect, ProFormTreeSelect, type ActionType, type ProColumns, ProFormDependency, type ProFormInstance } from '@ant-design/pro-components';
 import multiavatar from '@multiavatar/multiavatar';
 import { Button, Popconfirm, Tag, Space, Row, Col, message, Modal, Input } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import * as api from '@/service/api/rbac/user';
@@ -92,9 +91,9 @@ export default function OrgUsers() {
     { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 140,
       render: (_, row) => [
         hasComp('org_user_edit') && <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
-        hasComp('org_user_delete') && <CountdownButton key="del" icon={<DeleteOutlined />}
-          onConfirm={async () => { await api.deleteUser(row.user_id); message.success('删除成功'); actionRef.current?.reload(); }}
-        />
+        hasComp('org_user_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteUser(row.user_id); message.success('删除成功'); actionRef.current?.reload(); }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];

@@ -5,7 +5,6 @@ import {
   type ActionType, type ProColumns, type ProFormInstance
 } from '@ant-design/pro-components';
 import { Button, message, Drawer, Tag, Space, Popconfirm } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
 import { isHandledError } from '@/service/request';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, AppstoreOutlined,
@@ -163,15 +162,13 @@ export default function PublishApplications() {
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setModalOpen(true); }}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        hasComp('publish_app_delete') && <CountdownButton
-          key="del" icon={<DeleteOutlined />}
-          text={t('common.delete', { defaultValue: '删除' })}
-          onConfirm={async () => {
+        hasComp('publish_app_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => {
             await api.deleteApplication(row.id);
             message.success('删除成功');
             actionRef.current?.reload();
-          }}
-        />
+          }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];
@@ -190,15 +187,14 @@ export default function PublishApplications() {
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setDeployFormRecord(row); setDeployFormOpen(true); }}
         >编辑</Button>,
-        hasComp('publish_app_deploy_delete') && <CountdownButton
-          key="del" icon={<DeleteOutlined />} text="删除"
-          onConfirm={async () => {
+        hasComp('publish_app_deploy_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => {
             await api.deleteApplicationDeployment(row.id);
             message.success('删除成功');
             if (deployApp) await loadDeployments(deployApp.id);
             actionRef.current?.reload();
-          }}
-        />
+          }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];

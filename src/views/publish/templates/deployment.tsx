@@ -4,17 +4,17 @@ import {
   ProFormTreeSelect,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Drawer, Modal, Space, Popconfirm } from 'antd';
-import CountdownButton from '@/components/CountdownButton';
+import { Button, Tag, message, Drawer, Space, Modal, Popconfirm } from 'antd';
 import { isHandledError } from '@/service/request';
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, LinkOutlined,
+  PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, LinkOutlined, AppstoreOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermission } from '@/hooks/usePermission';
 import * as api from '@/service/api/publish/deploy-template';
-import type { DeployTemplate, DeployTemplateRepo } from '@/service/api/publish/deploy-template';
-import { fetchRepos } from '@/service/api/publish/repos';
+import type { DeployTemplate } from '@/service/api/publish/deploy-template';
+import type { LinkedApplication } from '@/service/api/publish/build-template';
+import { fetchApplications } from '@/service/api/publish/applications';
 import { fetchLanguages } from '@/service/api/publish/language';
 import { fetchOrgTree } from '@/service/api/rbac/org';
 import type { OrgNode } from '@/service/api/rbac/org';
@@ -53,21 +53,16 @@ export default function PublishTemplatesDeployment() {
   const [historyList, setHistoryList] = useState<DeployTemplateHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  // 关联仓库抽屉
-  const [reposOpen, setReposOpen] = useState(false);
-  const [reposTpl, setReposTpl] = useState<DeployTemplate | null>(null);
-  const [linkedRepos, setLinkedRepos] = useState<DeployTemplateRepo[]>([]);
-  const [linkedLoading, setLinkedLoading] = useState(false);
+  // 关联应用
+  const [appsOpen, setAppsOpen] = useState(false);
+  const [appsTpl, setAppsTpl] = useState<DeployTemplate | null>(null);
+  const [linkedApps, setLinkedApps] = useState<LinkedApplication[]>([]);
+  const [appsLoading, setAppsLoading] = useState(false);
   const [associateOpen, setAssociateOpen] = useState(false);
-  const [associateRepoId, setAssociateRepoId] = useState<number | undefined>();
-  const [allRepos, setAllRepos] = useState<{ label: string; value: number }[]>([]);
+  const [associateAppId, setAssociateAppId] = useState<number | undefined>();
+  const [allApps, setAllApps] = useState<{ label: string; value: number }[]>([]);
 
   useEffect(() => {
-    fetchRepos({ size: 200 }).then((res) => {
-      setAllRepos(((res as any)?.records ?? []).map((e: any) => ({
-        label: `${e.c_name} (${e.e_name})`, value: e.id,
-      })));
-    }).catch(() => {});
     fetchLanguages({ size: 200 }).then((res) => {
       setLanguageOptions(((res as any)?.records ?? []).map((e: any) => ({
         label: e.display_name || e.name,
@@ -98,30 +93,30 @@ export default function PublishTemplatesDeployment() {
     }
   };
 
-  const loadLinkedRepos = async (tpl: DeployTemplate) => {
-    setLinkedLoading(true);
+  const loadLinkedApps = async (tpl: DeployTemplate) => {
+    setAppsLoading(true);
     try {
-      const list = await api.fetchReposByDeployTemplate(tpl.id);
-      setLinkedRepos(Array.isArray(list) ? list : []);
+      const res = await api.fetchDeployTemplateApplications(tpl.id);
+      setLinkedApps((res as any) ?? []);
     } catch (e: any) {
-      if (!isHandledError(e)) message.error(e?.message || '获取关联仓库失败');
-      setLinkedRepos([]);
+      if (!isHandledError(e)) message.error('获取关联应用失败');
+      setLinkedApps([]);
     } finally {
-      setLinkedLoading(false);
+      setAppsLoading(false);
     }
   };
 
   const handleAssociate = async () => {
-    if (!reposTpl || !associateRepoId) {
-      message.warning('请选择仓库');
+    if (!appsTpl || !associateAppId) {
+      message.warning('请选择应用');
       return;
     }
     try {
-      await api.associateDeployTemplateRepo(reposTpl.id, associateRepoId);
+      await api.associateDeployTemplateApp(appsTpl.id, associateAppId);
       message.success('关联成功');
       setAssociateOpen(false);
-      setAssociateRepoId(undefined);
-      await loadLinkedRepos(reposTpl);
+      setAssociateAppId(undefined);
+      await loadLinkedApps(appsTpl);
     } catch (e: any) {
       if (!isHandledError(e)) message.error(e?.message || '关联失败');
     }
@@ -146,49 +141,34 @@ export default function PublishTemplatesDeployment() {
     { title: '描述', dataIndex: 'description', ellipsis: true, search: false },
     {
       title: '归属部门', dataIndex: 'department', width: 140,
-      search: {
-        transform: (val) => val,
-      },
+      search: { transform: (val) => val },
       render: (_, row) => row.department || '-',
       renderFormItem: () => (
-        <ProFormTreeSelect
-          name="department"
-          fieldProps={{
-            treeData: toDeptTreeSelectData(orgTreeData),
-            allowClear: true, 
-            placeholder: '请选择部门',
-            treeDefaultExpandAll: true,
-            showSearch: true,
-            treeNodeFilterProp: 'title',
-          }}
-        />
+        <ProFormTreeSelect name="department"
+          fieldProps={{ treeData: toDeptTreeSelectData(orgTreeData), allowClear: true, placeholder: '请选择部门', treeDefaultExpandAll: true, showSearch: true, treeNodeFilterProp: 'title' }} />
       ),
     },
     {
       title: t('common.actions', { defaultValue: '操作' }),
       key: 'actions', valueType: 'option', fixed: 'right', width: 280,
       render: (_, row) => [
-        <Button
-          key="repos" type="link" size="small" icon={<LinkOutlined />}
-          onClick={() => { setReposTpl(row); setReposOpen(true); loadLinkedRepos(row); }}
-        >仓库</Button>,
-        <Button
-          key="history" type="link" size="small" icon={<HistoryOutlined />}
+        <Button key="apps" type="link" size="small" icon={<AppstoreOutlined />}
+          onClick={() => { setAppsTpl(row); setAppsOpen(true); loadLinkedApps(row); }}
+        >应用</Button>,
+        <Button key="history" type="link" size="small" icon={<HistoryOutlined />}
           onClick={() => { setHistoryTpl(row); setHistoryOpen(true); loadHistory(row); }}
         >历史</Button>,
         hasComp('publish_deploy_template_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => { setEditRecord(row); setModalOpen(true); }}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        hasComp('publish_deploy_template_delete') && <CountdownButton
-          key="del" icon={<DeleteOutlined />}
-          text={t('common.delete', { defaultValue: '删除' })}
-          onConfirm={async () => {
+        hasComp('publish_deploy_template_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => {
             await api.deleteDeployTemplate(row.id);
             message.success('删除成功');
             actionRef.current?.reload();
-          }}
-        />
+          }}>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
+        </Popconfirm>
       ].filter(Boolean)
     }
   ];
@@ -199,38 +179,6 @@ export default function PublishTemplatesDeployment() {
     { title: '版本', dataIndex: 'version', width: 100 },
     { title: '修改原因', dataIndex: 'change_reason', ellipsis: true },
     { title: '修改时间', dataIndex: 'created_at', valueType: 'dateTime', width: 170 },
-  ];
-
-  const linkedRepoColumns: ProColumns<DeployTemplateRepo>[] = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
-    { title: '中文名称', dataIndex: 'c_name' },
-    { title: '英文名称', dataIndex: 'e_name' },
-    {
-      title: '部署平台', dataIndex: 'platform', width: 90,
-      render: (val) => val ? <Tag>{String(val).toUpperCase()}</Tag> : '-'
-    },
-    {
-      title: '语言', dataIndex: 'repo_language', width: 100,
-      valueType: 'select', valueEnum: languageEnum,
-    },
-    {
-      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 110,
-      render: (_, row) => [
-        <CountdownButton
-          key="del" icon={<DeleteOutlined />} text="取消关联"
-          onConfirm={async () => {
-            if (!reposTpl) return;
-            try {
-              await api.disassociateDeployTemplateRepo(reposTpl.id, row.id);
-              message.success('已取消关联');
-              await loadLinkedRepos(reposTpl);
-            } catch (e: any) {
-              if (!isHandledError(e)) message.error(e?.message || '操作失败');
-            }
-          }}
-        />
-      ]
-    }
   ];
 
   return (
@@ -297,40 +245,22 @@ export default function PublishTemplatesDeployment() {
       >
         <ProFormText name="name" label="模板名称" rules={[{ required: true }]} placeholder="请输入模板名称" />
         <ProFormText name="display_name" label="显示名称" placeholder="请输入显示名称" />
-        <ProFormSelect
-          name="template_type" label="模板类型" placeholder="请选择模板类型"
-          options={[
-            { label: 'K8s YAML', value: 'k8s' },
-            { label: 'Helm Chart', value: 'helm' },
-            { label: 'Docker Compose', value: 'docker' },
-          ]}
-        />
+        <ProFormSelect name="template_type" label="模板类型" placeholder="请选择模板类型"
+          options={[{ label: 'K8s YAML', value: 'k8s' }, { label: 'Helm Chart', value: 'helm' }, { label: 'Docker Compose', value: 'docker' }]} />
         <ProFormText name="version" label="版本" placeholder="1.0" />
-        <ProFormSelect
-          name="status" label="状态" placeholder="请选择状态"
-          options={[{ label: '激活', value: 'active' }, { label: '停用', value: 'inactive' }]}
-          initialValue="active"
-        />
+        <ProFormSelect name="status" label="状态" placeholder="请选择状态"
+          options={[{ label: '激活', value: 'active' }, { label: '停用', value: 'inactive' }]} initialValue="active" />
         <ProFormTextArea name="content" label="模板内容 (YAML/JSON)" fieldProps={{ rows: 10, placeholder: '请输入模板内容' }} />
         <ProFormText name="description" label="描述" placeholder="请输入描述" />
-        <ProFormTreeSelect
-          name="department" label="归属部门" placeholder="请选择部门"
-          fieldProps={{
-            treeData: toDeptTreeSelectData(orgTreeData),
-            allowClear: true,
-            treeDefaultExpandAll: true,
-            showSearch: true,
-            treeNodeFilterProp: 'title',
-          }}
-        />
+        <ProFormTreeSelect name="department" label="归属部门" placeholder="请选择部门"
+          fieldProps={{ treeData: toDeptTreeSelectData(orgTreeData), allowClear: true, treeDefaultExpandAll: true, showSearch: true, treeNodeFilterProp: 'title' }} />
       </ModalForm>
 
       {/* 历史抽屉 */}
       <Drawer
         title={`修改历史 — ${historyTpl?.name ?? ''}`}
         placement="right" width={900}
-        open={historyOpen} onClose={() => setHistoryOpen(false)}
-        destroyOnClose
+        open={historyOpen} onClose={() => setHistoryOpen(false)} destroyOnClose
       >
         <ProTable<DeployTemplateHistoryItem>
           rowKey="id" search={false} columns={historyColumns}
@@ -339,44 +269,64 @@ export default function PublishTemplatesDeployment() {
         />
       </Drawer>
 
-      {/* 关联仓库抽屉 */}
+      {/* 关联应用 Drawer */}
       <Drawer
-        title={`关联仓库 — ${reposTpl?.name ?? ''}`}
+        title={`关联应用 — ${appsTpl?.name ?? ''}`}
         placement="right" width={900}
-        open={reposOpen} onClose={() => setReposOpen(false)}
-        destroyOnClose
+        open={appsOpen} onClose={() => setAppsOpen(false)} destroyOnClose
         extra={
           <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setAssociateOpen(true)}>
-              关联仓库
-            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => {
+              fetchApplications({ size: 200 }).then((res) => {
+                setAllApps(((res as any)?.records ?? []).map((e: any) => ({ label: `${e.c_name} (${e.e_name})`, value: e.id })));
+                setAssociateOpen(true);
+              });
+            }}>关联应用</Button>
           </Space>
         }
       >
-        <ProTable<DeployTemplateRepo>
-          rowKey="id" search={false} columns={linkedRepoColumns}
-          dataSource={linkedRepos} loading={linkedLoading}
+        <ProTable
+          rowKey="id" search={false} columns={[
+            { title: 'ID', dataIndex: 'id', width: 70 },
+            { title: '中文名称', dataIndex: 'c_name' },
+            { title: '英文名称', dataIndex: 'e_name' },
+            { title: '部门', dataIndex: 'department', width: 120 },
+            { title: '语言', dataIndex: 'language', width: 100 },
+            { title: '监听端口', dataIndex: 'listen_port', width: 90 },
+            { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 160 },
+            { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 110, render: (_, row) => [
+              <Popconfirm key="del" title="确认取消关联？" onConfirm={async () => {
+                  if (!appsTpl) return;
+                  try {
+                    await api.disassociateDeployTemplateApp(appsTpl.id, row.id);
+                    message.success('已取消关联');
+                    await loadLinkedApps(appsTpl);
+                  } catch (e: any) {
+                    if (!isHandledError(e)) message.error(e?.message || '操作失败');
+                  }
+                }}>
+                <Button type="link" size="small" danger icon={<DeleteOutlined />}>取消关联</Button>
+              </Popconfirm>
+            ]}
+          ]}
+          dataSource={linkedApps} loading={appsLoading}
           pagination={{ pageSize: 20 }} options={false}
           scroll={{ x: 'max-content' }}
         />
       </Drawer>
 
-      {/* 选择仓库进行关联 */}
+      {/* 选择应用进行关联 */}
       <Modal
-        title="选择关联仓库"
+        title="选择关联应用"
         open={associateOpen}
-        onCancel={() => { setAssociateOpen(false); setAssociateRepoId(undefined); }}
+        onCancel={() => { setAssociateOpen(false); setAssociateAppId(undefined); }}
         onOk={handleAssociate} okText="确认关联"
         destroyOnClose
       >
         <ProFormSelect
-          label="仓库" name="repoId" options={allRepos}
+          label="应用" name="appId" options={allApps}
           showSearch
-          fieldProps={{
-            optionFilterProp: 'label',
-            value: associateRepoId,
-            onChange: (v) => setAssociateRepoId(v as number),
-          }}
+          fieldProps={{ optionFilterProp: 'label', value: associateAppId, onChange: (v) => setAssociateAppId(v as number) }}
         />
       </Modal>
     </>
