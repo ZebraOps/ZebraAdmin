@@ -120,4 +120,10 @@ export const staticComponents: StaticComponent[] = [
   { component_name: 'publish_language_add', comp_desc: '发布-新增语言', group_name: '发布管理' },
   { component_name: 'publish_language_edit', comp_desc: '发布-编辑语言', group_name: '发布管理' },
   { component_name: 'publish_language_delete', comp_desc: '发布-删除语言', group_name: '发布管理' },
+
+  // 发布管理 - Git平台配置
+  { component_name: 'publish_gitplatform_add', comp_desc: '发布-新增Git平台配置', group_name: '发布管理' },
+  { component_name: 'publish_gitplatform_edit', comp_desc: '发布-编辑Git平台配置', group_name: '发布管理' },
+  { component_name: 'publish_gitplatform_delete', comp_desc: '发布-删除Git平台配置', group_name: '发布管理' },
+  { component_name: 'publish_gitplatform_connect', comp_desc: '发布-测试Git平台连接', group_name: '发布管理' },
 ];

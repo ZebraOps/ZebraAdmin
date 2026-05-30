@@ -36,6 +36,7 @@ const PublishConfigEnv = lazy(() => import('@/views/publish/config/env'));
 const PublishConfigRegistry = lazy(() => import('@/views/publish/config/registry'));
 const PublishConfigVendor = lazy(() => import('@/views/publish/config/vendor'));
 const PublishConfigLanguage = lazy(() => import('@/views/publish/config/language'));
+const PublishConfigGitRepo = lazy(() => import('@/views/publish/config/git-repo'));
 const PublishContainerK8s = lazy(() => import('@/views/publish/container/k8s'));
 const PublishContainerLinux = lazy(() => import('@/views/publish/container/linux'));
 
@@ -81,6 +82,7 @@ const routeConfig: RouteObject[] = [
       { path: '/publish/config/registry', element: <RouteOutlet><PublishConfigRegistry /></RouteOutlet> },
       { path: '/publish/config/vendor', element: <RouteOutlet><PublishConfigVendor /></RouteOutlet> },
       { path: '/publish/config/language', element: <RouteOutlet><PublishConfigLanguage /></RouteOutlet> },
+      { path: '/publish/config/gitplatform', element: <RouteOutlet><PublishConfigGitRepo /></RouteOutlet> },
       { path: '/publish/container/k8s', element: <RouteOutlet><PublishContainerK8s /></RouteOutlet> },
       { path: '/publish/container/linux', element: <RouteOutlet><PublishContainerLinux /></RouteOutlet> },
       // Gateway

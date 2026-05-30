@@ -99,6 +99,7 @@ const zhCN = {
     publish_config_env: '环境列表',
     publish_config_vendor: '云厂商',
         publish_config_language: '开发语言',
+    publish_config_gitplatform: 'Git平台配置',
     publish_config_registry: '镜像仓库',
     publish_container: '容器管理',
     publish_container_k8s: 'K8s集群管理',

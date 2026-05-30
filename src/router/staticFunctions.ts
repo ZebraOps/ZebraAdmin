@@ -198,4 +198,12 @@ export const staticFunctions: StaticFunction[] = [
   { func_name: '获取语言详情', uri: '/cicd/api/languages/{id}', method_type: 'GET', group_name: '发布功能' },
   { func_name: '更新语言', uri: '/cicd/api/languages/{id}', method_type: 'PUT', group_name: '发布功能' },
   { func_name: '删除语言', uri: '/cicd/api/languages/{id}', method_type: 'DELETE', group_name: '发布功能' },
+
+  // === CICD 发布管理 - Git平台配置 ===
+  { func_name: '获取Git平台配置列表', uri: '/cicd/api/git-platforms', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '创建Git平台配置', uri: '/cicd/api/git-platforms', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '获取Git平台配置详情', uri: '/cicd/api/git-platforms/{id}', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '更新Git平台配置', uri: '/cicd/api/git-platforms/{id}', method_type: 'PUT', group_name: '发布功能' },
+  { func_name: '删除Git平台配置', uri: '/cicd/api/git-platforms/{id}', method_type: 'DELETE', group_name: '发布功能' },
+  { func_name: '测试Git平台连接', uri: '/cicd/api/git-platforms/{id}/connect', method_type: 'POST', group_name: '发布功能' },
 ];

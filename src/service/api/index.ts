@@ -21,3 +21,4 @@ export * from './publish/k8s-cluster';
 export * from './publish/linux-machine';
 export * from './publish/build-template';
 export * from './publish/deploy-template';
+export * from './publish/git-repo';
