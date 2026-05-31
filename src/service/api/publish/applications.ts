@@ -44,6 +44,10 @@ export interface ApplicationDeployment {
   k8s_namespace?: string;
   server_id?: number | null;
   deploy_path?: string;
+  // 平台关联字段
+  jenkins_platform_id?: number | null;
+  git_platform_id?: number | null;
+  image_repo_id?: number | null;
   created_at?: string;
   updated_at?: string;
 }
