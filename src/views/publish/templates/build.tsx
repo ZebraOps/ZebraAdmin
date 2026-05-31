@@ -8,7 +8,7 @@ import { Button, message, Drawer, Tag, Popconfirm, Tabs } from 'antd';
 import { isHandledError } from '@/service/request';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined,
-  AppstoreOutlined, LinkOutlined,
+  AppstoreOutlined, LinkOutlined, UndoOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermission } from '@/hooks/usePermission';
@@ -179,6 +179,22 @@ export default function PublishTemplatesBuild() {
     {
       title: 'Pipeline', dataIndex: 'pipeline', width: 90,
       render: (val) => val ? <Tag color="purple">已变更</Tag> : <Tag>无</Tag>,
+    },
+    {
+      title: '操作', key: 'actions', valueType: 'option', width: 100,
+      render: (_, row) => [
+        <Popconfirm key="rollback" title={`确认回退到历史版本 #${row.id}？当前内容将被替换。`}
+          onConfirm={async () => {
+            try {
+              await api.rollbackBuildTemplate(historyTpl!.id, row.id);
+              message.success('回退成功');
+              loadHistory(historyTpl!);
+              actionRef.current?.reload();
+            } catch (e: any) { if (!isHandledError(e)) message.error(e?.message || '回退失败'); }
+          }}>
+          <Button type="link" size="small" icon={<UndoOutlined />}>回退</Button>
+        </Popconfirm>,
+      ],
     },
   ];
 

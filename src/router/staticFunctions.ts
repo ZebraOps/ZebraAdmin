@@ -137,6 +137,7 @@ export const staticFunctions: StaticFunction[] = [
   { func_name: '获取构建模板历史', uri: '/cicd/api/templates/build/{id}/history', method_type: 'GET', group_name: '发布功能' },
   { func_name: '关联仓库和构建模板', uri: '/cicd/api/templates/build/{id}/repos/{repoId}', method_type: 'POST', group_name: '发布功能' },
   { func_name: '取消仓库和构建模板关联', uri: '/cicd/api/templates/build/{id}/repos/{repoId}', method_type: 'DELETE', group_name: '发布功能' },
+  { func_name: '回退构建模板', uri: '/cicd/api/templates/build/{id}/rollback/{historyId}', method_type: 'POST', group_name: '发布功能' },
 
   // === CICD 发布管理 - 部署模板 ===
   { func_name: '获取部署模板列表', uri: '/cicd/api/templates/deployment', method_type: 'GET', group_name: '发布功能' },

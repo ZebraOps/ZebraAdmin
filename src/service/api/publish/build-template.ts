@@ -56,3 +56,7 @@ export const disassociateBuildTemplateApp = (templateId: number, applicationId: 
 /** 获取构建模板关联的应用列表 */
 export const fetchBuildTemplateApplications = (templateId: number) =>
   http.get<LinkedApplication[]>(`/cicd/api/templates/build/${templateId}/applications`);
+
+/** 回退构建模板到指定历史版本 */
+export const rollbackBuildTemplate = (templateId: number, historyId: number) =>
+  http.post<BuildTemplate>(`/cicd/api/templates/build/${templateId}/rollback/${historyId}`);
