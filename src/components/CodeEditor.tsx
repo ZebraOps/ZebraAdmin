@@ -118,7 +118,7 @@ export default function CodeEditor({
         height={fullscreen ? 'calc(100vh - 80px)' : height}
         language={language}
         value={value || ''}
-        onChange={(val) => onChange?.(val ?? '')}
+        onChange={(val: any) => onChange?.(val ?? '')}
         onMount={handleEditorMount}
         options={editorOptions}
         theme="vs-dark"

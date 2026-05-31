@@ -1,29 +1,21 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
-  ProTable, ModalForm, ProFormText, ProFormDigit, ProFormSelect,
-  ProFormTextArea, ProFormSwitch,
-  type ActionType, type ProColumns
+  ProFormText, ProFormDigit, ProFormSelect,
+  ProFormTextArea, ProFormSwitch, ProFormDependency,
+  ProTable, type ProColumns,
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Drawer, Tooltip, Space, Modal, Input, Popconfirm } from 'antd';
+import { Button, Tag, message, Drawer, Tooltip, Space, Modal, Input } from 'antd';
 import { isHandledError } from '@/service/request';
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined,
   ApiOutlined, ContainerOutlined, ReloadOutlined, CodeOutlined,
 } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
-import { usePermission } from '@/hooks/usePermission';
+import PublishCRUDPage from '@/components/PublishCRUDPage';
 import * as api from '@/service/api/publish/linux-machine';
 import type { LinuxMachine, DockerContainer } from '@/service/api/publish/linux-machine';
 
 export default function PublishContainerLinux() {
-  const { t } = useTranslation();
-  const { hasComp } = usePermission();
-  const actionRef = useRef<ActionType>(null);
-  const [editRecord, setEditRecord] = useState<LinuxMachine | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [authType, setAuthType] = useState<string>('password');
+  // 连接测试状态
   const [testingId, setTestingId] = useState<number | null>(null);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // 容器抽屉状态
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -42,8 +34,8 @@ export default function PublishContainerLinux() {
     try {
       const list = await api.listLinuxContainers(host.id);
       setContainers(Array.isArray(list) ? list : []);
-    } catch (e: any) {
-      if (!isHandledError(e)) message.error(e?.message || '获取容器列表失败');
+    } catch (e: unknown) {
+      if (!isHandledError(e)) message.error((e as any)?.message || '获取容器列表失败');
       setContainers([]);
     } finally {
       setContainersLoading(false);
@@ -61,8 +53,8 @@ export default function PublishContainerLinux() {
     try {
       const res = await api.testLinuxConnection(row.id);
       message.success((res as any)?.message || 'SSH 连接成功');
-    } catch (e: any) {
-      if (!isHandledError(e)) message.error(e?.message || 'SSH 连接失败');
+    } catch (e: unknown) {
+      if (!isHandledError(e)) message.error((e as any)?.message || 'SSH 连接失败');
     } finally {
       setTestingId(null);
     }
@@ -78,8 +70,8 @@ export default function PublishContainerLinux() {
       const res = await api.execContainerCommand(execTarget.host.id, execTarget.container.id, execCommand);
       setExecOutput((res as any)?.output ?? '');
       if ((res as any)?.error) message.warning(String((res as any).error));
-    } catch (e: any) {
-      if (!isHandledError(e)) message.error(e?.message || '命令执行失败');
+    } catch (e: unknown) {
+      if (!isHandledError(e)) message.error((e as any)?.message || '命令执行失败');
     } finally {
       setExecLoading(false);
     }
@@ -101,34 +93,6 @@ export default function PublishContainerLinux() {
       render: (_, row) => <Tag color={row.is_active ? 'success' : 'default'}>{row.is_active ? '活跃' : '停用'}</Tag>
     },
     { title: '描述', dataIndex: 'description', ellipsis: true, search: false },
-    {
-      title: t('common.actions', { defaultValue: '操作' }),
-      key: 'actions', valueType: 'option', fixed: 'right', width: 280,
-      render: (_, row) => [
-        hasComp('publish_linux_connect') && <Tooltip key="test" title="测试 SSH 连接">
-          <Button
-            type="link" size="small" icon={<ApiOutlined />}
-            loading={testingId === row.id}
-            onClick={() => handleTestConnection(row)}
-          >测试</Button>
-        </Tooltip>,
-        <Button
-          key="containers" type="link" size="small" icon={<ContainerOutlined />}
-          onClick={() => handleViewContainers(row)}
-        >容器</Button>,
-        hasComp('publish_linux_edit') && <Button
-          key="edit" type="link" size="small" icon={<EditOutlined />}
-          onClick={() => { setEditRecord(row); setAuthType(row.auth_type || 'password'); setModalOpen(true); }}
-        >{t('common.edit', { defaultValue: '编辑' })}</Button>,
-        hasComp('publish_linux_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => {
-            await api.deleteLinuxMachine(row.id);
-            message.success('删除成功');
-            actionRef.current?.reload();
-          }}>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
-        </Popconfirm>
-      ].filter(Boolean)
-    }
   ];
 
   const containerColumns: ProColumns<DockerContainer>[] = [
@@ -153,7 +117,7 @@ export default function PublishContainerLinux() {
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 100,
       render: (_, row) => [
-        hasComp('publish_linux_connect') && <Button
+        <Button
           key="exec" type="link" size="small" icon={<CodeOutlined />}
           onClick={() => {
             if (drawerHost) {
@@ -169,79 +133,59 @@ export default function PublishContainerLinux() {
 
   return (
     <>
-      <ProTable<LinuxMachine>
-        rowKey="id" actionRef={actionRef} columns={columns}
-        rowSelection={hasComp('publish_linux_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
-        tableAlertOptionRender={hasComp('publish_linux_delete') ? () => (
-          <Popconfirm
-            title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
-            onConfirm={async () => {
-              try {
-                await Promise.all(selectedRowKeys.map(id => api.deleteLinuxMachine(id as number)));
-                message.success(`已删除 ${selectedRowKeys.length} 条`);
-                setSelectedRowKeys([]);
-                actionRef.current?.reload();
-              } catch (e: any) { if (!isHandledError(e)) message.error('批量删除失败'); }
-            }}
-          >
-            <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
-          </Popconfirm>
-        ) : undefined}
-        request={async (params) => {
-          try {
-            const query: Record<string, unknown> = {
-              current: ((params.current ?? 1) - 1) * (params.pageSize ?? 20),
-              size: params.pageSize ?? 20,
-            };
-            if (params.name) query.name = params.name;
-            if (params.host) query.host = params.host;
-            if (params.is_active !== undefined && params.is_active !== '') query.isActive = params.is_active;
-            const res = await api.fetchLinuxMachines(query);
-            return { data: (res as any)?.records ?? [], success: true, total: (res as any)?.total ?? 0 };
-          } catch { return { data: [], success: false, total: 0 }; }
+      <PublishCRUDPage<LinuxMachine>
+        rowKey="id"
+        title="Linux 主机"
+        columns={columns}
+        fetchList={async (params) => {
+          const res = await api.fetchLinuxMachines(params) as any;
+          return { data: res?.records ?? [], total: res?.total ?? 0 };
         }}
-        headerTitle={t('route.publish_container_linux', { defaultValue: 'Linux 主机' })}
-        toolBarRender={() => [
-          hasComp('publish_linux_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setAuthType('password'); setModalOpen(true); }}>
-            {t('common.add', { defaultValue: '新增' })}
-          </Button>
+        createItem={api.createLinuxMachine as any}
+        updateItem={api.updateLinuxMachine as any}
+        deleteItem={api.deleteLinuxMachine}
+        addPerm="publish_linux_add"
+        editPerm="publish_linux_edit"
+        deletePerm="publish_linux_delete"
+        actionColumnWidth={280}
+        extraActionRender={(row) => [
+          <Tooltip key="test" title="测试 SSH 连接">
+            <Button
+              type="link" size="small" icon={<ApiOutlined />}
+              loading={testingId === row.id}
+              onClick={() => handleTestConnection(row)}
+            >测试</Button>
+          </Tooltip>,
+          <Button
+            key="containers" type="link" size="small" icon={<ContainerOutlined />}
+            onClick={() => handleViewContainers(row)}
+          >容器</Button>,
         ]}
-        search={{ labelWidth: 80 }} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
+        formFields={
+          <>
+            <ProFormText name="name" label="主机名称" rules={[{ required: true }]} placeholder="请输入主机名称" />
+            <ProFormText name="host" label="IP 地址 / 主机名" rules={[{ required: true }]} placeholder="192.168.1.100" />
+            <ProFormDigit name="port" label="SSH 端口" min={1} max={65535} placeholder="22" fieldProps={{ precision: 0 }} />
+            <ProFormText name="username" label="用户名" rules={[{ required: true }]} placeholder="root" />
+            <ProFormSelect
+              name="auth_type" label="认证方式" rules={[{ required: true }]} placeholder="请选择认证方式"
+              options={[{ label: '密码', value: 'password' }, { label: 'SSH 密钥', value: 'key' }]}
+            />
+            <ProFormDependency name={['auth_type']}>
+              {({ auth_type }) => {
+                if (auth_type === 'password') return <ProFormText.Password name="password" label="密码" placeholder="请输入密码" />;
+                if (auth_type === 'key') return <ProFormTextArea name="private_key" label="SSH 私钥" fieldProps={{ rows: 6, placeholder: '-----BEGIN RSA PRIVATE KEY-----\n...' }} />;
+                return null;
+              }}
+            </ProFormDependency>
+            <ProFormSwitch name="is_active" label="激活状态" />
+            <ProFormText name="description" label="描述" placeholder="请输入描述" />
+          </>
+        }
+        formInitialValues={{ port: 22, auth_type: 'password', is_active: true }}
+        formTitleCreate="新增 Linux 主机"
+        formTitleEdit="编辑 Linux 主机"
       />
-
-      <ModalForm<Partial<LinuxMachine>>
-        key={editRecord?.id ?? 'new'}
-        title={editRecord ? '编辑 Linux 主机' : '新增 Linux 主机'}
-        open={modalOpen} onOpenChange={setModalOpen}
-        modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '' }}
-        initialValues={{ port: 22, auth_type: 'password', is_active: true, ...editRecord }}
-        onFinish={async (values) => {
-          try {
-            if (editRecord?.id) await api.updateLinuxMachine(editRecord.id, values as any);
-            else await api.createLinuxMachine(values as any);
-            message.success('保存成功');
-            actionRef.current?.reload();
-            return true;
-          } catch (e: any) {
-            if (!isHandledError(e)) message.error('保存失败');
-            return false;
-          }
-        }}
-      >
-        <ProFormText name="name" label="主机名称" rules={[{ required: true }]} placeholder="请输入主机名称" />
-        <ProFormText name="host" label="IP 地址 / 主机名" rules={[{ required: true }]} placeholder="192.168.1.100" />
-        <ProFormDigit name="port" label="SSH 端口" min={1} max={65535} placeholder="22" fieldProps={{ precision: 0 }} />
-        <ProFormText name="username" label="用户名" rules={[{ required: true }]} placeholder="root" />
-        <ProFormSelect
-          name="auth_type" label="认证方式" rules={[{ required: true }]} placeholder="请选择认证方式"
-          options={[{ label: '密码', value: 'password' }, { label: 'SSH 密钥', value: 'key' }]}
-          fieldProps={{ onChange: (v: string) => setAuthType(v) }}
-        />
-        {authType === 'password' && <ProFormText.Password name="password" label="密码" placeholder="请输入密码" />}
-        {authType === 'key' && <ProFormTextArea name="private_key" label="SSH 私钥" fieldProps={{ rows: 6, placeholder: '-----BEGIN RSA PRIVATE KEY-----\n...' }} />}
-        <ProFormSwitch name="is_active" label="激活状态" />
-        <ProFormText name="description" label="描述" placeholder="请输入描述" />
-      </ModalForm>
 
       {/* 容器列表抽屉 */}
       <Drawer

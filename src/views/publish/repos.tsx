@@ -21,7 +21,7 @@ export default function PublishRepos() {
   const { t } = useTranslation();
   const { hasComp } = usePermission();
   const actionRef = useRef<ActionType>(null);
-  const formRef = useRef<ProFormInstance>();
+  const formRef = useRef<ProFormInstance<any>>(null);
   const [editRecord, setEditRecord] = useState<Repo | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);

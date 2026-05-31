@@ -1,24 +1,17 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  ProTable, ModalForm, ProFormText, ProFormSelect,
+  ProTable, ModalForm, ProFormText, ProFormSelect, ProFormDependency, ProFormInstance,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Popconfirm, Drawer, Descriptions, Badge, Typography } from 'antd';
+import { Button, Tag, message, Popconfirm, Drawer, Descriptions } from 'antd';
 import { isHandledError } from '@/service/request';
-import { PlusOutlined, DeleteOutlined, EyeOutlined, FileTextOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/publish/deploy-task';
 import type { DeployTask, CreateDeployTaskRequest } from '@/service/api/publish/deploy-task';
-import { fetchK8sClusters } from '@/service/api/publish/k8s-cluster';
-import { fetchEnvironments } from '@/service/api/publish/environment';
-import { fetchApplications } from '@/service/api/publish/applications';
 import { usePermission } from '@/hooks/usePermission';
-import { localStg } from '@/utils/storage';
-
-const { Text, Paragraph } = Typography;
-
-const rawBaseURL = (import.meta.env.VITE_BASE_URL || '').trim();
-const wsBaseURL = rawBaseURL.replace(/^http/, 'ws').replace(/\/$/, '');
+import { usePublishStore } from '@/store/publish';
+import JenkinsConsolePanel from '@/components/JenkinsConsolePanel';
 
 const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   PENDING:   { color: 'default',    label: '等待中' },
@@ -40,37 +33,12 @@ export default function PublishTasks() {
   const [hasActive, setHasActive] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  // 下拉选项
-  const [appOptions, setAppOptions] = useState<{ label: string; value: number }[]>([]);
-  const [envOptions, setEnvOptions] = useState<{ label: string; value: number }[]>([]);
-  const [clusterOptions, setClusterOptions] = useState<{ label: string; value: number }[]>([]);
+  // 下拉选项（来自共享 store）
+  const { appOptions, envOptions, clusterOptions, linuxMachineOptions, apps, loadAll } = usePublishStore();
+  useEffect(() => { loadAll(); }, []);
 
-  // 模板选项（创建表单中，选择应用后动态加载）
-  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
-  const [buildTemplateOptions, setBuildTemplateOptions] = useState<{ label: string; value: number }[]>([]);
-  const [deployTemplateOptions, setDeployTemplateOptions] = useState<{ label: string; value: number }[]>([]);
-  const [templateLoading, setTemplateLoading] = useState(false);
-
-  // 任务详情 Drawer
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailTask, setDetailTask] = useState<DeployTask | null>(null);
-  const [consoleOutput, setConsoleOutput] = useState('');
-  const [consoleLoading, setConsoleLoading] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'closed' | 'error'>('closed');
-
-  // 加载下拉数据
-  useEffect(() => {
-    Promise.all([
-      fetchApplications({ size: 200 }).catch(() => null),
-      fetchEnvironments({ size: 200 }).catch(() => null),
-      fetchK8sClusters({ size: 200 }).catch(() => null),
-    ]).then(([apps, envs, clusters]) => {
-      setAppOptions((((apps as any)?.records) ?? []).map((e: any) => ({ label: `${e.c_name} (${e.e_name})`, value: e.id })));
-      setEnvOptions((((envs as any)?.records) ?? []).map((e: any) => ({ label: `${e.name}${e.type ? ` (${e.type})` : ''}`, value: e.id })));
-      setClusterOptions((((clusters as any)?.records) ?? []).map((e: any) => ({ label: `${e.name}${e.environment ? ` [${e.environment}]` : ''}`, value: e.id })));
-    });
-  }, []);
+  // 根据选中的应用ID获取其英文名称（用于自动填充）
+  const getAppEName = (appId: number) => apps.find(a => a.id === appId)?.e_name ?? '';
 
   // 自动轮询非终态任务
   useEffect(() => {
@@ -79,40 +47,21 @@ export default function PublishTasks() {
     return () => clearInterval(timer);
   }, [hasActive]);
 
-  // WebSocket 连接 Jenkins 控制台
-  const connectConsoleWS = useCallback((taskId: number) => {
-    // 关闭已有连接
-    if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
+  // 模板选项（创建表单中，选择应用后动态加载）
+  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
+  const [buildTemplateOptions, setBuildTemplateOptions] = useState<{ label: string; value: number }[]>([]);
+  const [deployTemplateOptions, setDeployTemplateOptions] = useState<{ label: string; value: number }[]>([]);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const formRef = useRef<ProFormInstance<CreateDeployTaskRequest>>(null);
 
-    const token = localStg.get<string>('token') || '';
-    const url = `${wsBaseURL}/cicd/api/deploys/${taskId}/console/stream?token=${token}`;
+  // 任务详情 Drawer
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailTask, setDetailTask] = useState<DeployTask | null>(null);
 
-    setWsStatus('connecting');
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
-
-    ws.onopen = () => { setWsStatus('connected'); };
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.output) setConsoleOutput(data.output);
-        if (data.finished) {
-          ws.close();
-        }
-      } catch {
-        setConsoleOutput(event.data);
-      }
-    };
-    ws.onerror = () => { setWsStatus('error'); };
-    ws.onclose = () => { setWsStatus('closed'); wsRef.current = null; };
-  }, []);
-
-  // 关闭详情时清理 WebSocket
+  // 关闭详情时清理
   useEffect(() => {
     if (!detailOpen) {
-      setConsoleOutput('');
-      if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
-      setWsStatus('closed');
+      setDetailTask(null);
     }
   }, [detailOpen]);
 
@@ -131,7 +80,7 @@ export default function PublishTasks() {
     });
   }, [selectedProjectId]);
 
-  const findLabel = (opts: { label: string; value: number }[], v?: number) =>
+  const findLabel = (opts: { label: string; value: number | string }[], v?: number) =>
     opts.find((o) => o.value === v)?.label ?? (v ? `#${v}` : '-');
 
   // 加载可选模板
@@ -157,11 +106,6 @@ export default function PublishTasks() {
   const openDetail = (task: DeployTask) => {
     setDetailTask(task);
     setDetailOpen(true);
-    setConsoleOutput('');
-    setConsoleLoading(false);
-    if (task.jenkins_job_name) {
-      connectConsoleWS(task.id);
-    }
   };
 
   const columns: ProColumns<DeployTask>[] = [
@@ -190,7 +134,16 @@ export default function PublishTasks() {
     },
     { title: '应用', dataIndex: 'project_id', width: 180, render: (val) => findLabel(appOptions, val as number) },
     { title: '环境', dataIndex: 'env_id', width: 140, render: (val) => findLabel(envOptions, val as number) },
-    { title: 'K8s 集群', dataIndex: 'k8s_cluster_id', width: 160, render: (val) => findLabel(clusterOptions, val as number) },
+    {
+      title: '部署类型', dataIndex: 'deploy_type', width: 100,
+      render: (val) => val === 'docker' ? <Tag color="cyan">Docker</Tag> : <Tag color="blue">K8s</Tag>,
+    },
+    {
+      title: '集群/服务器', dataIndex: 'k8s_cluster_id', width: 160,
+      render: (_, row) => row.deploy_type === 'docker'
+        ? findLabel(linuxMachineOptions, row.server_id as number)
+        : findLabel(clusterOptions, row.k8s_cluster_id as number),
+    },
     { title: '命名空间', dataIndex: 'k8s_namespace', width: 110 },
     { title: 'Git 引用', dataIndex: 'git_ref', width: 120 },
     { title: '镜像标签', dataIndex: 'image_tag', ellipsis: true, width: 180 },
@@ -202,12 +155,6 @@ export default function PublishTasks() {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 220,
       render: (_, row) => [
         <Button key="detail" type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(row)}>详情</Button>,
-        row.jenkins_job_name ? (
-          <Button key="jenkins" type="link" size="small" icon={<FileTextOutlined />}
-            onClick={() => openDetail(row)}>
-            Jenkins 日志
-          </Button>
-        ) : null,
         hasComp('publish_task_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { try { await api.deleteDeployTask(row.id); message.success('已删除'); actionRef.current?.reload(); } catch (e: any) { if (!isHandledError(e)) message.error('删除失败'); } }}>
           <Button type="link" size="small" danger icon={<DeleteOutlined />} />
         </Popconfirm>,
@@ -276,9 +223,18 @@ export default function PublishTasks() {
         open={modalOpen}
         onOpenChange={(open) => { setModalOpen(open); if (!open) { setSelectedProjectId(undefined); setBuildTemplateOptions([]); setDeployTemplateOptions([]); } }}
         modalProps={{ transitionName: '', maskTransitionName: '' }}
+        formRef={formRef}
         onFinish={async (values) => {
           try {
-            const res = await api.createDeployTask(values);
+            const payload: CreateDeployTaskRequest = {
+              ...values,
+              deploy_type: values.deploy_type || 'k8s',
+            };
+            // docker 部署不需要 k8s_cluster_id
+            if (payload.deploy_type === 'docker') {
+              payload.k8s_cluster_id = undefined;
+            }
+            const res = await api.createDeployTask(payload);
             const taskId = (res as any)?.task_id;
             if (!taskId) {
               message.warning('任务已提交，但未返回任务ID');
@@ -294,7 +250,17 @@ export default function PublishTasks() {
         }}
       >
         <ProFormSelect name="project_id" label="应用" rules={[{ required: true }]} options={appOptions} showSearch
-          fieldProps={{ optionFilterProp: 'label', onChange: (val: number) => { setSelectedProjectId(val); } }} placeholder="请选择应用" />
+          fieldProps={{ optionFilterProp: 'label', onChange: (val: number) => {
+            setSelectedProjectId(val);
+            const eName = getAppEName(val);
+            if (formRef.current && eName) {
+              formRef.current.setFieldsValue({
+                jenkins_job_name: eName,
+                harbor_project: eName,
+                image_name: eName,
+              });
+            }
+          } }} placeholder="请选择应用" />
         <ProFormSelect name="build_template_id" label="构建模板" options={buildTemplateOptions} showSearch
           fieldProps={{ optionFilterProp: 'label', allowClear: true, loading: templateLoading, disabled: !selectedProjectId }}
           placeholder={!selectedProjectId ? '请先选择应用' : '留空则使用默认模板'} />
@@ -303,12 +269,30 @@ export default function PublishTasks() {
           placeholder={!selectedProjectId ? '请先选择应用' : '留空则使用默认模板'} />
         <ProFormSelect name="env_id" label="环境" rules={[{ required: true }]} options={envOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择环境" />
         <ProFormText name="git_ref" label="Git 引用（分支/标签）" rules={[{ required: true }]} placeholder="main" />
-        <ProFormSelect name="k8s_cluster_id" label="K8s 集群" rules={[{ required: true }]} options={clusterOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择K8s集群" />
-        <ProFormText name="k8s_namespace" label="K8s 命名空间" placeholder="default" />
-        <ProFormText name="jenkins_job_name" label="Jenkins 任务名称" rules={[{ required: true }]} placeholder="请输入Jenkins任务名称" />
-        <ProFormText name="harbor_project" label="Harbor 项目" rules={[{ required: true }]} placeholder="请输入Harbor项目" />
-        <ProFormText name="image_name" label="镜像名称" rules={[{ required: true }]} placeholder="请输入镜像名称" />
-        <ProFormText name="deployment_name" label="K8s Deployment 名称" placeholder="留空则自动按应用ID生成" />
+        <ProFormSelect name="deploy_type" label="部署类型" initialValue="k8s"
+          options={[{ label: 'K8s 部署', value: 'k8s' }, { label: 'Docker 部署 (Linux)', value: 'docker' }]} />
+        <ProFormDependency name={['deploy_type']}>
+          {({ deploy_type }) => {
+            if (deploy_type === 'docker') {
+              return (
+                <>
+                  <ProFormSelect name="server_id" label="目标服务器" rules={[{ required: true }]} options={linuxMachineOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择目标服务器" />
+                  <ProFormText name="deployment_name" label="容器名称" placeholder="留空则自动按应用ID生成" />
+                </>
+              );
+            }
+            return (
+              <>
+                <ProFormSelect name="k8s_cluster_id" label="K8s 集群" rules={[{ required: true }]} options={clusterOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择K8s集群" />
+                <ProFormText name="k8s_namespace" label="K8s 命名空间" placeholder="default" />
+                <ProFormText name="deployment_name" label="K8s Deployment 名称" placeholder="留空则自动按应用ID生成" />
+              </>
+            );
+          }}
+        </ProFormDependency>
+        <ProFormText name="jenkins_job_name" label="Jenkins 任务名称" rules={[{ required: true }]} placeholder="选择应用后自动填充" tooltip="默认使用应用英文名称，可在 Jenkins 中复用已有 Job" />
+        <ProFormText name="harbor_project" label="镜像仓库" rules={[{ required: true }]} placeholder="选择应用后自动填充" tooltip="镜像仓库中的项目命名空间，用于归类和权限隔离" />
+        <ProFormText name="image_name" label="镜像名称" rules={[{ required: true }]} placeholder="选择应用后自动填充" tooltip="默认使用应用英文名称，对应 Harbor 中的 repository 名称" />
       </ModalForm>
 
       {/* 任务详情 Drawer */}
@@ -316,32 +300,26 @@ export default function PublishTasks() {
         title={`任务详情 #${detailTask?.id ?? '-'}`}
         open={detailOpen} onClose={() => setDetailOpen(false)}
         width={680}
-        extra={
-          detailTask?.jenkins_job_name ? (
-            <>
-              <Badge
-                status={wsStatus === 'connected' ? 'success' : wsStatus === 'connecting' ? 'processing' : wsStatus === 'error' ? 'error' : 'default'}
-                text={wsStatus === 'connected' ? '实时连接' : wsStatus === 'connecting' ? '连接中...' : wsStatus === 'error' ? '连接失败' : '未连接'}
-              />
-              {wsStatus !== 'connected' && (
-                <Button size="small" onClick={() => detailTask && connectConsoleWS(detailTask.id)}>
-                  重连
-                </Button>
-              )}
-            </>
-          ) : null
-        }
       >
         {detailTask && (
           <>
             <Descriptions title="基本信息" column={2} size="small" bordered style={{ marginBottom: 16 }}>
               <Descriptions.Item label="应用">{findLabel(appOptions, detailTask.project_id)}</Descriptions.Item>
               <Descriptions.Item label="环境">{findLabel(envOptions, detailTask.env_id)}</Descriptions.Item>
-              <Descriptions.Item label="K8s 集群">{findLabel(clusterOptions, detailTask.k8s_cluster_id)}</Descriptions.Item>
-              <Descriptions.Item label="命名空间">{detailTask.k8s_namespace || '-'}</Descriptions.Item>
+              <Descriptions.Item label="部署类型">
+                {detailTask.deploy_type === 'docker' ? <Tag color="cyan">Docker</Tag> : <Tag color="blue">K8s</Tag>}
+              </Descriptions.Item>
+              {detailTask.deploy_type === 'docker' ? (
+                <Descriptions.Item label="目标服务器">{findLabel(linuxMachineOptions, detailTask.server_id)}</Descriptions.Item>
+              ) : (
+                <>
+                  <Descriptions.Item label="K8s 集群">{findLabel(clusterOptions, detailTask.k8s_cluster_id)}</Descriptions.Item>
+                  <Descriptions.Item label="命名空间">{detailTask.k8s_namespace || '-'}</Descriptions.Item>
+                </>
+              )}
               <Descriptions.Item label="Git 引用">{detailTask.git_ref || '-'}</Descriptions.Item>
               <Descriptions.Item label="镜像标签">{detailTask.image_tag || '-'}</Descriptions.Item>
-              <Descriptions.Item label="Harbor 项目">{detailTask.harbor_project || '-'}</Descriptions.Item>
+              <Descriptions.Item label="镜像仓库">{detailTask.harbor_project || '-'}</Descriptions.Item>
               <Descriptions.Item label="镜像名称">{detailTask.image_name || '-'}</Descriptions.Item>
               <Descriptions.Item label="Deployment">{detailTask.deployment_name || '-'}</Descriptions.Item>
               <Descriptions.Item label="状态">
@@ -362,13 +340,17 @@ export default function PublishTasks() {
 
             <Descriptions title="部署参数" column={2} size="small" bordered style={{ marginBottom: 16 }}>
               <Descriptions.Item label="部署模板 ID">{detailTask.deployment_template_id ?? '默认'}</Descriptions.Item>
-              <Descriptions.Item label="K8s Deployment">{detailTask.deployment_name || '-'}</Descriptions.Item>
+              {detailTask.deploy_type === 'docker' ? (
+                <Descriptions.Item label="容器名称">{detailTask.deployment_name || '-'}</Descriptions.Item>
+              ) : (
+                <Descriptions.Item label="K8s Deployment">{detailTask.deployment_name || '-'}</Descriptions.Item>
+              )}
             </Descriptions>
 
             {detailTask.error_message && (
               <Descriptions title="错误信息" column={1} size="small" bordered style={{ marginBottom: 16 }}>
                 <Descriptions.Item label="错误详情">
-                  <Text type="danger">{detailTask.error_message}</Text>
+                  <Tag color="error">{detailTask.error_message}</Tag>
                 </Descriptions.Item>
               </Descriptions>
             )}
@@ -376,13 +358,7 @@ export default function PublishTasks() {
             {detailTask.jenkins_job_name && (
               <>
                 <Descriptions title="Jenkins 控制台输出" column={1} size="small" bordered style={{ marginBottom: 8 }} />
-                {(detailTask.jenkins_build_number ?? 0) > 0 ? (
-                  <Paragraph style={{ fontFamily: 'monospace', fontSize: 12, background: '#1a1a2e', color: '#e0e0e0', padding: 12, borderRadius: 4, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
-                    {consoleOutput || '加载中...'}
-                  </Paragraph>
-                ) : (
-                  <Text type="secondary">任务尚未开始构建，暂无控制台输出</Text>
-                )}
+                <JenkinsConsolePanel taskId={detailTask.id} />
               </>
             )}
           </>

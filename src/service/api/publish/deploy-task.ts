@@ -8,8 +8,10 @@ export interface DeployTask {
   git_ref?: string;
   image_tag?: string;
   status?: string;
+  deploy_type?: string;
   k8s_cluster_id?: number;
   k8s_namespace?: string;
+  server_id?: number;
   jenkins_job_name?: string;
   jenkins_build_number?: number;
   harbor_project?: string;
@@ -17,6 +19,7 @@ export interface DeployTask {
   deployment_name?: string;
   build_template_id?: number | null;
   deployment_template_id?: number | null;
+  docker_compose_path?: string;
   error_message?: string;
   log_path?: string;
   started_at?: string;
@@ -29,8 +32,13 @@ export interface CreateDeployTaskRequest {
   project_id: number;
   env_id: number;
   git_ref: string;
-  k8s_cluster_id: number;
+  deploy_type: string;
+  // k8s-specific
+  k8s_cluster_id?: number;
   k8s_namespace?: string;
+  // docker-specific
+  server_id?: number;
+  // common
   jenkins_job_name: string;
   harbor_project: string;
   image_name: string;

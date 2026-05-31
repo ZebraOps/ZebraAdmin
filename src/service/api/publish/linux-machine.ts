@@ -49,7 +49,7 @@ export const testLinuxConnection = (id: number) =>
 
 /** 获取主机上的 Docker 容器列表 */
 export const listLinuxContainers = (id: number) =>
-  http.get<DockerContainer[]>(`/cicd/api/linux-machines/${id}/containers`);
+  http.get<DockerContainer[]>(`/cicd/api/servers/${id}/containers`);
 
 /** 在容器中执行命令 */
 export const execContainerCommand = (serverId: number, containerId: string, command: string) =>
