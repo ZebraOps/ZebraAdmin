@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ProTable, ModalForm, ProFormText, ProFormTextArea, ProFormSelect,
+  ProTable, ModalForm, ProFormText, ProFormSelect,
   ProFormTreeSelect,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
-import { Button, message, Drawer, Tag, Popconfirm } from 'antd';
+import { Button, message, Drawer, Tag, Popconfirm, Tabs } from 'antd';
 import { isHandledError } from '@/service/request';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined,
@@ -18,6 +18,7 @@ import { fetchApplications } from '@/service/api/publish/applications';
 import { fetchLanguages } from '@/service/api/publish/language';
 import { fetchOrgTree } from '@/service/api/rbac/org';
 import type { OrgNode } from '@/service/api/rbac/org';
+import CodeEditor from '@/components/CodeEditor';
 
 interface TemplateHistory {
   id: number;
@@ -37,6 +38,10 @@ export default function PublishTemplatesBuild() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
   const [orgTreeData, setOrgTreeData] = useState<OrgNode[]>([]);
+
+  // Monaco 编辑器的值（ProForm 不直接支持 Monaco，需要手动管理）
+  const [dockerfileValue, setDockerfileValue] = useState('');
+  const [pipelineValue, setPipelineValue] = useState('');
 
   function toDeptTreeSelectData(nodes: OrgNode[]): any[] {
     return nodes.map(n => ({
@@ -104,6 +109,14 @@ export default function PublishTemplatesBuild() {
     }
   };
 
+  // 打开编辑时，加载 Monaco 值
+  const handleOpenModal = (record: BuildTemplate | null) => {
+    setEditRecord(record);
+    setDockerfileValue(record?.dockerfile ?? '');
+    setPipelineValue(record?.pipeline ?? '');
+    setModalOpen(true);
+  };
+
   const columns: ProColumns<BuildTemplate>[] = [
     { title: '模板名称', dataIndex: 'name' },
     {
@@ -142,7 +155,7 @@ export default function PublishTemplatesBuild() {
         </Button>,
         hasComp('publish_build_template_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
-          onClick={() => { setEditRecord(row); setModalOpen(true); }}
+          onClick={() => handleOpenModal(row)}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
         hasComp('publish_build_template_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => {
             await api.deleteBuildTemplate(row.id);
@@ -160,11 +173,11 @@ export default function PublishTemplatesBuild() {
     { title: '修改人', dataIndex: 'modifier', width: 120 },
     { title: '修改时间', dataIndex: 'created_at', valueType: 'dateTime', width: 170 },
     {
-      title: 'Dockerfile', dataIndex: 'dockerfile', ellipsis: true,
+      title: 'Dockerfile', dataIndex: 'dockerfile', width: 90,
       render: (val) => val ? <Tag color="blue">已变更</Tag> : <Tag>无</Tag>,
     },
     {
-      title: 'Pipeline', dataIndex: 'pipeline', ellipsis: true,
+      title: 'Pipeline', dataIndex: 'pipeline', width: 90,
       render: (val) => val ? <Tag color="purple">已变更</Tag> : <Tag>无</Tag>,
     },
   ];
@@ -206,7 +219,7 @@ export default function PublishTemplatesBuild() {
         }}
         headerTitle={t('route.publish_templates_build', { defaultValue: '构建模板' })}
         toolBarRender={() => [
-          hasComp('publish_build_template_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>
+          hasComp('publish_build_template_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal(null)}>
             {t('common.add', { defaultValue: '新增' })}
           </Button>
         ]}
@@ -217,12 +230,14 @@ export default function PublishTemplatesBuild() {
         key={editRecord?.id ?? 'new'}
         title={editRecord ? '编辑构建模板' : '新增构建模板'}
         open={modalOpen} onOpenChange={setModalOpen}
-        modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '' }}
+        modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '', destroyOnClose: true }}
         initialValues={editRecord ?? {}}
         onFinish={async (values) => {
           try {
-            if (editRecord?.id) await api.updateBuildTemplate(editRecord.id, values as any);
-            else await api.createBuildTemplate(values as any);
+            // 把 Monaco 编辑器的值合并到表单数据中
+            const submitData = { ...values, dockerfile: dockerfileValue, pipeline: pipelineValue };
+            if (editRecord?.id) await api.updateBuildTemplate(editRecord.id, submitData as any);
+            else await api.createBuildTemplate(submitData as any);
             message.success('保存成功');
             actionRef.current?.reload();
             return true;
@@ -237,8 +252,22 @@ export default function PublishTemplatesBuild() {
           options={languageOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
         <ProFormTreeSelect name="department" label="归属部门" placeholder="请选择部门"
           fieldProps={{ treeData: toDeptTreeSelectData(orgTreeData), allowClear: true, treeDefaultExpandAll: true, showSearch: true, treeNodeFilterProp: 'title' }} />
-        <ProFormTextArea name="dockerfile" label="Dockerfile" fieldProps={{ rows: 8, placeholder: 'FROM golang:1.25-alpine\nWORKDIR /app\nCOPY . .\nRUN go build -o main .\nCMD ["/app/main"]' }} />
-        <ProFormTextArea name="pipeline" label="Pipeline (Jenkinsfile)" fieldProps={{ rows: 8, placeholder: 'pipeline {\n  agent any\n  stages {\n    stage("Build") { steps { sh "make build" } }\n  }\n}' }} />
+        <div style={{ margin: '16px 0 8px', fontWeight: 600, fontSize: 14 }}>Dockerfile</div>
+        <CodeEditor
+          value={dockerfileValue}
+          onChange={setDockerfileValue}
+          language="dockerfile"
+          height="360px"
+          placeholder={`FROM golang:1.25-alpine\nWORKDIR /app\nCOPY . .\nRUN go build -o main .\nCMD ["./main"]`}
+        />
+        <div style={{ margin: '16px 0 8px', fontWeight: 600, fontSize: 14 }}>Pipeline (Jenkinsfile)</div>
+        <CodeEditor
+          value={pipelineValue}
+          onChange={setPipelineValue}
+          language="groovy"
+          height="360px"
+          placeholder={`pipeline {\n  agent any\n  stages {\n    stage('Build') {\n      steps {\n        sh 'make build'\n      }\n    }\n  }\n}`}
+        />
       </ModalForm>
 
       <Drawer
@@ -252,16 +281,20 @@ export default function PublishTemplatesBuild() {
           pagination={{ pageSize: 20 }} options={false}
           expandable={{
             expandedRowRender: (record) => (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Dockerfile</div>
-                  <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, maxHeight: 280, overflow: 'auto' }}>{record.dockerfile || '(无)'}</pre>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Pipeline</div>
-                  <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, maxHeight: 280, overflow: 'auto' }}>{record.pipeline || '(无)'}</pre>
-                </div>
-              </div>
+              <Tabs
+                items={[
+                  {
+                    key: 'dockerfile',
+                    label: 'Dockerfile',
+                    children: <CodeEditor value={record.dockerfile || ''} readOnly language="dockerfile" height="300px" />,
+                  },
+                  {
+                    key: 'pipeline',
+                    label: 'Pipeline',
+                    children: <CodeEditor value={record.pipeline || ''} readOnly language="groovy" height="300px" />,
+                  },
+                ]}
+              />
             ),
           }}
         />
