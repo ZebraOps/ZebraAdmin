@@ -252,20 +252,20 @@ export default function PublishTemplatesBuild() {
           options={languageOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
         <ProFormTreeSelect name="department" label="归属部门" placeholder="请选择部门"
           fieldProps={{ treeData: toDeptTreeSelectData(orgTreeData), allowClear: true, treeDefaultExpandAll: true, showSearch: true, treeNodeFilterProp: 'title' }} />
-        <div style={{ margin: '16px 0 8px', fontWeight: 600, fontSize: 14 }}>Dockerfile</div>
         <CodeEditor
           value={dockerfileValue}
           onChange={setDockerfileValue}
           language="dockerfile"
-          height="360px"
+          height="280px"
+          showToolbar
           placeholder={`FROM golang:1.25-alpine\nWORKDIR /app\nCOPY . .\nRUN go build -o main .\nCMD ["./main"]`}
         />
-        <div style={{ margin: '16px 0 8px', fontWeight: 600, fontSize: 14 }}>Pipeline (Jenkinsfile)</div>
         <CodeEditor
           value={pipelineValue}
           onChange={setPipelineValue}
           language="groovy"
-          height="360px"
+          height="280px"
+          showToolbar
           placeholder={`pipeline {\n  agent any\n  stages {\n    stage('Build') {\n      steps {\n        sh 'make build'\n      }\n    }\n  }\n}`}
         />
       </ModalForm>
@@ -286,12 +286,12 @@ export default function PublishTemplatesBuild() {
                   {
                     key: 'dockerfile',
                     label: 'Dockerfile',
-                    children: <CodeEditor value={record.dockerfile || ''} readOnly language="dockerfile" height="300px" />,
+                    children: <CodeEditor value={record.dockerfile || ''} readOnly language="dockerfile" height="300px" showToolbar />,
                   },
                   {
                     key: 'pipeline',
                     label: 'Pipeline',
-                    children: <CodeEditor value={record.pipeline || ''} readOnly language="groovy" height="300px" />,
+                    children: <CodeEditor value={record.pipeline || ''} readOnly language="groovy" height="300px" showToolbar />,
                   },
                 ]}
               />
