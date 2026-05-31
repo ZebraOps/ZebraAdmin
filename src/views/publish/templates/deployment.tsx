@@ -156,7 +156,7 @@ export default function PublishTemplatesDeployment() {
     {
       title: '类型', dataIndex: 'template_type', width: 110,
       valueType: 'select',
-      valueEnum: { k8s: { text: 'K8S' }, helm: { text: 'HELM' }, docker: { text: 'DOCKER' } },
+      valueEnum: { k8s: { text: 'K8S' }, helm: { text: 'HELM' }, docker: { text: 'DOCKER' }, linux: { text: 'LINUX/NGINX' } },
       render: (_, row) => row.template_type ? <Tag>{String(row.template_type).toUpperCase()}</Tag> : '-'
     },
     { title: '版本', dataIndex: 'version', width: 80, search: false },
@@ -304,14 +304,14 @@ export default function PublishTemplatesDeployment() {
         <ProFormText name="name" label="模板名称" rules={[{ required: true }]} placeholder="请输入模板名称" />
         <ProFormText name="display_name" label="显示名称" placeholder="请输入显示名称" />
         <ProFormSelect name="template_type" label="模板类型" placeholder="请选择模板类型"
-          options={[{ label: 'K8s YAML', value: 'k8s' }, { label: 'Helm Chart', value: 'helm' }, { label: 'Docker Compose', value: 'docker' }]} />
+          options={[{ label: 'K8s YAML', value: 'k8s' }, { label: 'Helm Chart', value: 'helm' }, { label: 'Docker Compose', value: 'docker' }, { label: 'Linux/Nginx 配置', value: 'linux' }]} />
         <ProFormText name="version" label="版本" placeholder="1.0" />
         <ProFormSelect name="status" label="状态" placeholder="请选择状态"
           options={[{ label: '激活', value: 'active' }, { label: '停用', value: 'inactive' }]} initialValue="active" />
         <div style={{ marginBottom: 4 }}>
           <div style={{ fontWeight: 600, marginBottom: 2 }}>模板内容</div>
           <div style={{ color: '#888', fontSize: 12, lineHeight: 1.5 }}>
-            K8s YAML / Helm Chart / Docker Compose 部署模板。支持占位符替换：<code>{'{{IMAGE_TAG}}'}</code> <code>{'{{NAMESPACE}}'}</code> <code>{'{{PROJECT_NAME}}'}</code> <code>{'{{ENV_NAME}}'}</code>
+            K8s YAML / Helm Chart / Docker Compose / Linux/Nginx 部署模板。支持占位符替换：<code>{'{{IMAGE_TAG}}'}</code> <code>{'{{NAMESPACE}}'}</code> <code>{'{{PROJECT_NAME}}'}</code> <code>{'{{ENV_NAME}}'}</code> <code>{'{{DEPLOYMENT_NAME}}'}</code> <code>{'{{DEPLOY_PATH}}'}</code>
           </div>
         </div>
         <CodeEditor

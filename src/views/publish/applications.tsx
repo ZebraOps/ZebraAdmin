@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ProTable, ModalForm, ProFormText, ProFormDigit, ProFormSelect, ProFormTextArea,
-  ProFormTreeSelect,
+  ProFormTreeSelect, ProFormDependency,
   type ActionType, type ProColumns, type ProFormInstance
 } from '@ant-design/pro-components';
 import { Button, message, Drawer, Tag, Space, Popconfirm } from 'antd';
@@ -18,6 +18,8 @@ import { fetchEnvironments } from '@/service/api/publish/environment';
 import { fetchBuildTemplates } from '@/service/api/publish/build-template';
 import { fetchDeployTemplates } from '@/service/api/publish/deploy-template';
 import { fetchRepos } from '@/service/api/publish/repos';
+import { fetchK8sClusters } from '@/service/api/publish/k8s-cluster';
+import { fetchLinuxMachines } from '@/service/api/publish/linux-machine';
 import { fetchOrgTree } from '@/service/api/rbac/org';
 import type { OrgNode } from '@/service/api/rbac/org';
 import { fetchLanguages } from '@/service/api/publish/language';
@@ -46,6 +48,8 @@ export default function PublishApplications() {
   const [repoOptions, setRepoOptions] = useState<{ label: string; value: number }[]>([]);
   const [orgTreeData, setOrgTreeData] = useState<OrgNode[]>([]);
   const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
+  const [clusterOptions, setClusterOptions] = useState<{ label: string; value: number }[]>([]);
+  const [linuxMachineOptions, setLinuxMachineOptions] = useState<{ label: string; value: number }[]>([]);
   const [repoDataMap, setRepoDataMap] = useState<Map<number, { department: string; language: string }>>(new Map());
   const formRef = useRef<ProFormInstance>(null);
 
@@ -59,11 +63,13 @@ export default function PublishApplications() {
   // 加载下拉数据
   const loadOptions = async () => {
     try {
-      const [envs, builds, deploys, repos] = await Promise.all([
+      const [envs, builds, deploys, repos, clusters, linuxMachines] = await Promise.all([
         fetchEnvironments({ size: 200 }),
         fetchBuildTemplates({ size: 200 }),
         fetchDeployTemplates({ size: 200 }),
         fetchRepos({ size: 200 }),
+        fetchK8sClusters({ page: 1, size: 200 }),
+        fetchLinuxMachines({ page: 1, size: 200 }),
       ]);
       setEnvOptions(((envs as any)?.records ?? []).map((e: any) => ({ label: `${e.name}${e.type ? ` (${e.type})` : ''}`, value: e.id })));
       setBuildTplOptions(((builds as any)?.records ?? []).map((e: any) => ({ label: `${e.name}${e.language ? ` (${e.language})` : ''}`, value: e.id })));
@@ -74,6 +80,8 @@ export default function PublishApplications() {
       const map = new Map<number, { department: string; language: string }>();
       repoList.forEach((r: any) => map.set(r.id, { department: r.repo_department || '', language: r.repo_language || '' }));
       setRepoDataMap(map);
+      setClusterOptions(((clusters as any)?.records ?? (clusters as any) ?? []).map((e: any) => ({ label: e.name, value: e.id })));
+      setLinuxMachineOptions(((linuxMachines as any)?.records ?? (linuxMachines as any) ?? []).map((e: any) => ({ label: `${e.name} (${e.host})`, value: e.id })));
       fetchOrgTree().then((res) => {
         setOrgTreeData((res as any) ?? []);
       }).catch(() => {});
@@ -173,12 +181,32 @@ export default function PublishApplications() {
     }
   ];
 
+  const TARGET_LABELS: Record<string, string> = { k8s: 'K8s', docker: 'Docker', linux: 'Linux/Nginx' };
+  const TARGET_COLORS: Record<string, string> = { k8s: 'blue', docker: 'cyan', linux: 'green' };
+
   const deployColumns: ProColumns<ApplicationDeployment>[] = [
     { title: 'ID', dataIndex: 'id', width: 70 },
     { title: '环境', dataIndex: 'environment_id', width: 160, render: (val) => findLabel(envOptions, val as number) },
+    {
+      title: '部署目标', dataIndex: 'deploy_target', width: 120,
+      render: (val) => {
+        const v = String(val ?? 'k8s');
+        return <Tag color={TARGET_COLORS[v]}>{TARGET_LABELS[v]}</Tag>;
+      },
+    },
     { title: '构建源', dataIndex: 'build_source', width: 90, render: (val) => <Tag>{String(val ?? 'tag')}</Tag> },
     { title: '构建模板', dataIndex: 'build_template_id', width: 180, render: (val) => findLabel(buildTplOptions, val as number) },
     { title: '部署模板', dataIndex: 'deployment_template_id', width: 180, render: (val) => findLabel(deployTplOptions, val as number) },
+    {
+      title: '目标', width: 160, search: false, render: (_, row) => {
+        if (row.deploy_target === 'k8s') return findLabel(clusterOptions, row.k8s_cluster_id as number);
+        if (row.deploy_target === 'docker' || row.deploy_target === 'linux') return findLabel(linuxMachineOptions, row.server_id as number);
+        return '-';
+      },
+    },
+    {
+      title: '部署路径', width: 180, search: false, render: (_, row) => row.deploy_target === 'linux' ? row.deploy_path || '-' : '-',
+    },
     { title: '描述', dataIndex: 'description', ellipsis: true },
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 130,
@@ -334,7 +362,7 @@ export default function PublishApplications() {
         initialValues={
           deployFormRecord
             ? { ...deployFormRecord }
-            : { application_id: deployApp?.id, build_source: 'tag' }
+            : { application_id: deployApp?.id, deploy_target: 'k8s', build_source: 'tag' }
         }
         onFinish={async (values) => {
           try {
@@ -356,6 +384,49 @@ export default function PublishApplications() {
       >
         <ProFormDigit name="application_id" label="应用ID" disabled fieldProps={{ precision: 0 }} />
         <ProFormSelect name="environment_id" label="环境" rules={[{ required: true }]} placeholder="请选择环境" options={envOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
+        <ProFormSelect
+          name="deploy_target" label="部署目标" rules={[{ required: true }]} placeholder="请选择部署目标"
+          options={[
+            { label: 'K8s 部署', value: 'k8s' },
+            { label: 'Docker Compose 部署', value: 'docker' },
+            { label: 'Linux 文件部署 (Nginx)', value: 'linux' },
+          ]}
+          initialValue="k8s"
+        />
+        <ProFormDependency name={['deploy_target']}>
+          {({ deploy_target }) => {
+            if (deploy_target === 'k8s') {
+              return (
+                <>
+                  <ProFormSelect name="k8s_cluster_id" label="K8s 集群" rules={[{ required: true }]}
+                    options={clusterOptions} showSearch fieldProps={{ optionFilterProp: 'label' }}
+                    placeholder="请选择K8s集群" />
+                  <ProFormText name="k8s_namespace" label="K8s 命名空间" placeholder="default" initialValue="default" />
+                </>
+              );
+            }
+            if (deploy_target === 'docker') {
+              return (
+                <ProFormSelect name="server_id" label="目标服务器" rules={[{ required: true }]}
+                  options={linuxMachineOptions} showSearch fieldProps={{ optionFilterProp: 'label' }}
+                  placeholder="请选择目标服务器" />
+              );
+            }
+            if (deploy_target === 'linux') {
+              return (
+                <>
+                  <ProFormSelect name="server_id" label="目标服务器" rules={[{ required: true }]}
+                    options={linuxMachineOptions} showSearch fieldProps={{ optionFilterProp: 'label' }}
+                    placeholder="请选择目标服务器" />
+                  <ProFormText name="deploy_path" label="部署路径" rules={[{ required: true }]}
+                    placeholder="/opt/zebra-deploy/my-app"
+                    tooltip="文件将被放置在此目录，由 Nginx 代理服务" />
+                </>
+              );
+            }
+            return null;
+          }}
+        </ProFormDependency>
         <ProFormSelect
           name="build_source" label="构建源" rules={[{ required: true }]} placeholder="请选择构建源"
           options={[{ label: 'Git Tag', value: 'tag' }, { label: 'Git Branch', value: 'branch' }]}

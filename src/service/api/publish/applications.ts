@@ -30,15 +30,20 @@ export const updateApplication = (id: number, data: Partial<Application>) =>
 export const deleteApplication = (id: number) =>
   http.delete(`/cicd/api/applications/${id}`);
 
-/** 应用部署配置（应用 + 环境 + 构建模板 + 部署模板的纱带） */
+/** 应用部署配置（应用 + 环境 + 部署目标 + 构建模板 + 部署模板） */
 export interface ApplicationDeployment {
   id: number;
   application_id: number;
   environment_id: number;
+  deploy_target: 'k8s' | 'docker' | 'linux';
   build_source?: 'tag' | 'branch';
   description?: string;
   build_template_id?: number | null;
   deployment_template_id?: number | null;
+  k8s_cluster_id?: number | null;
+  k8s_namespace?: string;
+  server_id?: number | null;
+  deploy_path?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -52,6 +57,10 @@ export const listApplicationDeployments = (applicationId: number) =>
 /** 根据环境 ID 获取部署配置列表 */
 export const listDeploymentsByEnvironment = (environmentId: number) =>
   http.get<ApplicationDeployment[]>('/cicd/api/application/template/environment', { environment_id: environmentId });
+
+/** 根据应用+环境查找部署配置（用于任务创建自动填充） */
+export const lookupDeploymentsByAppAndEnv = (applicationId: number, environmentId: number) =>
+  http.get<ApplicationDeployment[]>('/cicd/api/application/template/lookup', { application_id: applicationId, environment_id: environmentId });
 
 export const getApplicationDeployment = (id: number) =>
   http.get<ApplicationDeployment>(`/cicd/api/application/template/${id}`);

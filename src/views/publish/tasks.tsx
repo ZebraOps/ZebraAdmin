@@ -9,6 +9,8 @@ import { PlusOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/publish/deploy-task';
 import type { DeployTask, CreateDeployTaskRequest } from '@/service/api/publish/deploy-task';
+import * as deployApi from '@/service/api/publish/applications';
+import type { ApplicationDeployment } from '@/service/api/publish/applications';
 import { usePermission } from '@/hooks/usePermission';
 import { usePublishStore } from '@/store/publish';
 import JenkinsConsolePanel from '@/components/JenkinsConsolePanel';
@@ -21,6 +23,9 @@ const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   SUCCESS:   { color: 'success',    label: '成功'   },
   FAILED:    { color: 'error',      label: '失败'   },
 };
+
+const TARGET_LABELS: Record<string, string> = { k8s: 'K8s', docker: 'Docker', linux: 'Linux/Nginx' };
+const TARGET_COLORS: Record<string, string> = { k8s: 'blue', docker: 'cyan', linux: 'green' };
 
 const TERMINAL_STATUSES = new Set(['SUCCESS', 'FAILED']);
 const POLL_INTERVAL = 5000;
@@ -49,10 +54,14 @@ export default function PublishTasks() {
 
   // 模板选项（创建表单中，选择应用后动态加载）
   const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
+  const [selectedEnvId, setSelectedEnvId] = useState<number | undefined>(undefined);
   const [buildTemplateOptions, setBuildTemplateOptions] = useState<{ label: string; value: number }[]>([]);
   const [deployTemplateOptions, setDeployTemplateOptions] = useState<{ label: string; value: number }[]>([]);
   const [templateLoading, setTemplateLoading] = useState(false);
   const formRef = useRef<ProFormInstance<CreateDeployTaskRequest>>(null);
+
+  // 部署配置自动填充
+  const [deploymentConfigs, setDeploymentConfigs] = useState<ApplicationDeployment[]>([]);
 
   // 任务详情 Drawer
   const [detailOpen, setDetailOpen] = useState(false);
@@ -79,6 +88,18 @@ export default function PublishTasks() {
       setTemplateLoading(false);
     });
   }, [selectedProjectId]);
+
+  // 选择应用+环境后，自动加载部署配置用于填充
+  useEffect(() => {
+    if (!selectedProjectId || !selectedEnvId) {
+      setDeploymentConfigs([]);
+      return;
+    }
+    deployApi.lookupDeploymentsByAppAndEnv(selectedProjectId, selectedEnvId).then((res) => {
+      const configs = Array.isArray(res) ? res : (res as any)?.records ?? [];
+      setDeploymentConfigs(configs as ApplicationDeployment[]);
+    }).catch(() => setDeploymentConfigs([]));
+  }, [selectedProjectId, selectedEnvId]);
 
   const findLabel = (opts: { label: string; value: number | string }[], v?: number) =>
     opts.find((o) => o.value === v)?.label ?? (v ? `#${v}` : '-');
@@ -135,14 +156,20 @@ export default function PublishTasks() {
     { title: '应用', dataIndex: 'project_id', width: 180, render: (val) => findLabel(appOptions, val as number) },
     { title: '环境', dataIndex: 'env_id', width: 140, render: (val) => findLabel(envOptions, val as number) },
     {
-      title: '部署类型', dataIndex: 'deploy_type', width: 100,
-      render: (val) => val === 'docker' ? <Tag color="cyan">Docker</Tag> : <Tag color="blue">K8s</Tag>,
+      title: '部署目标', dataIndex: 'deploy_target', width: 100,
+      render: (val, row) => {
+        const v = (val || row.deploy_type || 'k8s') as string;
+        return <Tag color={TARGET_COLORS[v]}>{TARGET_LABELS[v] || v}</Tag>;
+      },
     },
     {
       title: '集群/服务器', dataIndex: 'k8s_cluster_id', width: 160,
-      render: (_, row) => row.deploy_type === 'docker'
-        ? findLabel(linuxMachineOptions, row.server_id as number)
-        : findLabel(clusterOptions, row.k8s_cluster_id as number),
+      render: (_, row) => {
+        const target = row.deploy_target || row.deploy_type;
+        if (target === 'docker' || target === 'linux')
+          return findLabel(linuxMachineOptions, row.server_id as number);
+        return findLabel(clusterOptions, row.k8s_cluster_id as number);
+      },
     },
     { title: '命名空间', dataIndex: 'k8s_namespace', width: 110 },
     { title: 'Git 引用', dataIndex: 'git_ref', width: 120 },
@@ -156,7 +183,7 @@ export default function PublishTasks() {
       render: (_, row) => [
         <Button key="detail" type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(row)}>详情</Button>,
         hasComp('publish_task_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { try { await api.deleteDeployTask(row.id); message.success('已删除'); actionRef.current?.reload(); } catch (e: any) { if (!isHandledError(e)) message.error('删除失败'); } }}>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+          <Button type="link" size="small" danger icon={<DeleteOutlined />}/>
         </Popconfirm>,
       ].filter(Boolean),
     },
@@ -221,18 +248,25 @@ export default function PublishTasks() {
       <ModalForm<CreateDeployTaskRequest>
         title="创建发布任务"
         open={modalOpen}
-        onOpenChange={(open) => { setModalOpen(open); if (!open) { setSelectedProjectId(undefined); setBuildTemplateOptions([]); setDeployTemplateOptions([]); } }}
+        onOpenChange={(open) => { setModalOpen(open); if (!open) { setSelectedProjectId(undefined); setSelectedEnvId(undefined); setBuildTemplateOptions([]); setDeployTemplateOptions([]); setDeploymentConfigs([]); } }}
         modalProps={{ transitionName: '', maskTransitionName: '' }}
         formRef={formRef}
         onFinish={async (values) => {
           try {
             const payload: CreateDeployTaskRequest = {
               ...values,
-              deploy_type: values.deploy_type || 'k8s',
+              deploy_target: values.deploy_target || 'k8s',
+              deploy_type: values.deploy_target || 'k8s', // 兼容旧后端
             };
-            // docker 部署不需要 k8s_cluster_id
-            if (payload.deploy_type === 'docker') {
+            // docker/linux 部署不需要 k8s_cluster_id
+            if (payload.deploy_target === 'docker' || payload.deploy_target === 'linux') {
               payload.k8s_cluster_id = undefined;
+              payload.k8s_namespace = undefined;
+            }
+            // k8s 部署不需要 server_id / deploy_path
+            if (payload.deploy_target === 'k8s') {
+              payload.server_id = undefined;
+              payload.deploy_path = undefined;
             }
             const res = await api.createDeployTask(payload);
             const taskId = (res as any)?.task_id;
@@ -261,19 +295,58 @@ export default function PublishTasks() {
               });
             }
           } }} placeholder="请选择应用" />
+        <ProFormSelect name="env_id" label="环境" rules={[{ required: true }]} options={envOptions} showSearch
+          fieldProps={{ optionFilterProp: 'label', onChange: (val: number) => {
+            setSelectedEnvId(val);
+          } }} placeholder="请选择环境" />
+
+        {/* 部署配置自动填充 — 选择应用+环境后可选 */}
+        {deploymentConfigs.length > 0 && (
+          <ProFormSelect
+            name="deployment_config_id"
+            label="部署配置"
+            tooltip="选择后自动填充部署目标、集群/服务器、模板等字段"
+            options={deploymentConfigs.map(dc => ({
+              label: `${TARGET_LABELS[dc.deploy_target] || dc.deploy_target} — ${dc.description || `配置 #${dc.id}`}`,
+              value: dc.id,
+            }))}
+            placeholder="选择部署配置以自动填充"
+            fieldProps={{
+              onChange: (val: number) => {
+                const config = deploymentConfigs.find(dc => dc.id === val);
+                if (config && formRef.current) {
+                  formRef.current.setFieldsValue({
+                    deploy_target: config.deploy_target,
+                    k8s_cluster_id: config.k8s_cluster_id ?? undefined,
+                    k8s_namespace: config.k8s_namespace || 'default',
+                    server_id: config.server_id ?? undefined,
+                    deploy_path: config.deploy_path || undefined,
+                    build_template_id: config.build_template_id ?? undefined,
+                    deployment_template_id: config.deployment_template_id ?? undefined,
+                    deployment_name: `app-${config.application_id}`,
+                  });
+                }
+              },
+            }}
+          />
+        )}
+
         <ProFormSelect name="build_template_id" label="构建模板" options={buildTemplateOptions} showSearch
           fieldProps={{ optionFilterProp: 'label', allowClear: true, loading: templateLoading, disabled: !selectedProjectId }}
           placeholder={!selectedProjectId ? '请先选择应用' : '留空则使用默认模板'} />
         <ProFormSelect name="deployment_template_id" label="部署模板" options={deployTemplateOptions} showSearch
           fieldProps={{ optionFilterProp: 'label', allowClear: true, loading: templateLoading, disabled: !selectedProjectId }}
           placeholder={!selectedProjectId ? '请先选择应用' : '留空则使用默认模板'} />
-        <ProFormSelect name="env_id" label="环境" rules={[{ required: true }]} options={envOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择环境" />
         <ProFormText name="git_ref" label="Git 引用（分支/标签）" rules={[{ required: true }]} placeholder="main" />
-        <ProFormSelect name="deploy_type" label="部署类型" initialValue="k8s"
-          options={[{ label: 'K8s 部署', value: 'k8s' }, { label: 'Docker 部署 (Linux)', value: 'docker' }]} />
-        <ProFormDependency name={['deploy_type']}>
-          {({ deploy_type }) => {
-            if (deploy_type === 'docker') {
+        <ProFormSelect name="deploy_target" label="部署目标" initialValue="k8s"
+          options={[
+            { label: 'K8s 部署', value: 'k8s' },
+            { label: 'Docker Compose 部署 (Linux)', value: 'docker' },
+            { label: 'Linux 文件部署 (Nginx)', value: 'linux' },
+          ]} />
+        <ProFormDependency name={['deploy_target']}>
+          {({ deploy_target }) => {
+            if (deploy_target === 'docker') {
               return (
                 <>
                   <ProFormSelect name="server_id" label="目标服务器" rules={[{ required: true }]} options={linuxMachineOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择目标服务器" />
@@ -281,6 +354,18 @@ export default function PublishTasks() {
                 </>
               );
             }
+            if (deploy_target === 'linux') {
+              return (
+                <>
+                  <ProFormSelect name="server_id" label="目标服务器" rules={[{ required: true }]} options={linuxMachineOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择目标服务器" />
+                  <ProFormText name="deploy_path" label="部署路径" rules={[{ required: true }]}
+                    placeholder="/opt/zebra-deploy/my-app"
+                    tooltip="文件将被放置在此目录，由 Nginx 代理服务" />
+                  <ProFormText name="deployment_name" label="部署名称" placeholder="留空则自动按应用ID生成" />
+                </>
+              );
+            }
+            // k8s
             return (
               <>
                 <ProFormSelect name="k8s_cluster_id" label="K8s 集群" rules={[{ required: true }]} options={clusterOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择K8s集群" />
@@ -306,10 +391,18 @@ export default function PublishTasks() {
             <Descriptions title="基本信息" column={2} size="small" bordered style={{ marginBottom: 16 }}>
               <Descriptions.Item label="应用">{findLabel(appOptions, detailTask.project_id)}</Descriptions.Item>
               <Descriptions.Item label="环境">{findLabel(envOptions, detailTask.env_id)}</Descriptions.Item>
-              <Descriptions.Item label="部署类型">
-                {detailTask.deploy_type === 'docker' ? <Tag color="cyan">Docker</Tag> : <Tag color="blue">K8s</Tag>}
+              <Descriptions.Item label="部署目标">
+                {(() => {
+                  const v = (detailTask.deploy_target || detailTask.deploy_type || 'k8s') as string;
+                  return <Tag color={TARGET_COLORS[v]}>{TARGET_LABELS[v] || v}</Tag>;
+                })()}
               </Descriptions.Item>
-              {detailTask.deploy_type === 'docker' ? (
+              {(detailTask.deploy_target || detailTask.deploy_type) === 'linux' ? (
+                <>
+                  <Descriptions.Item label="目标服务器">{findLabel(linuxMachineOptions, detailTask.server_id)}</Descriptions.Item>
+                  <Descriptions.Item label="部署路径">{detailTask.deploy_path || '-'}</Descriptions.Item>
+                </>
+              ) : (detailTask.deploy_target || detailTask.deploy_type) === 'docker' ? (
                 <Descriptions.Item label="目标服务器">{findLabel(linuxMachineOptions, detailTask.server_id)}</Descriptions.Item>
               ) : (
                 <>
@@ -340,7 +433,7 @@ export default function PublishTasks() {
 
             <Descriptions title="部署参数" column={2} size="small" bordered style={{ marginBottom: 16 }}>
               <Descriptions.Item label="部署模板 ID">{detailTask.deployment_template_id ?? '默认'}</Descriptions.Item>
-              {detailTask.deploy_type === 'docker' ? (
+              {(detailTask.deploy_target || detailTask.deploy_type) === 'docker' ? (
                 <Descriptions.Item label="容器名称">{detailTask.deployment_name || '-'}</Descriptions.Item>
               ) : (
                 <Descriptions.Item label="K8s Deployment">{detailTask.deployment_name || '-'}</Descriptions.Item>

@@ -9,9 +9,11 @@ export interface DeployTask {
   image_tag?: string;
   status?: string;
   deploy_type?: string;
+  deploy_target?: 'k8s' | 'docker' | 'linux';
   k8s_cluster_id?: number;
   k8s_namespace?: string;
   server_id?: number;
+  deploy_path?: string;
   jenkins_job_name?: string;
   jenkins_build_number?: number;
   harbor_project?: string;
@@ -32,12 +34,15 @@ export interface CreateDeployTaskRequest {
   project_id: number;
   env_id: number;
   git_ref: string;
-  deploy_type: string;
+  deploy_target: 'k8s' | 'docker' | 'linux';
+  deploy_type?: string; // 兼容旧后端
   // k8s-specific
   k8s_cluster_id?: number;
   k8s_namespace?: string;
-  // docker-specific
+  // docker/linux-specific
   server_id?: number;
+  // linux-specific
+  deploy_path?: string;
   // common
   jenkins_job_name: string;
   harbor_project: string;
