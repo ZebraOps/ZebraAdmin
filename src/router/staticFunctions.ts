@@ -149,6 +149,7 @@ export const staticFunctions: StaticFunction[] = [
   { func_name: '关联仓库和部署模板', uri: '/cicd/api/templates/deployment/{id}/repos/{repoId}', method_type: 'POST', group_name: '发布功能' },
   { func_name: '取消仓库和部署模板关联', uri: '/cicd/api/templates/deployment/{id}/repos/{repoId}', method_type: 'DELETE', group_name: '发布功能' },
   { func_name: '获取部署模板关联仓库', uri: '/cicd/api/templates/deployment/{id}/repos', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '回退部署模板', uri: '/cicd/api/templates/deployment/{id}/rollback/{historyId}', method_type: 'POST', group_name: '发布功能' },
 
   // === CICD 发布管理 - K8s集群 ===
   { func_name: '获取K8s集群列表', uri: '/cicd/api/k8s/clusters', method_type: 'GET', group_name: '发布功能' },

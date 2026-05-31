@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ProTable, ModalForm, ProFormText, ProFormTextArea, ProFormSelect,
+  ProTable, ModalForm, ProFormText, ProFormSelect,
   ProFormTreeSelect,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Drawer, Space, Modal, Popconfirm } from 'antd';
+import { Button, Tag, message, Drawer, Space, Modal, Popconfirm, Tabs } from 'antd';
 import { isHandledError } from '@/service/request';
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, LinkOutlined, AppstoreOutlined,
+  PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, LinkOutlined, AppstoreOutlined, UndoOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermission } from '@/hooks/usePermission';
@@ -18,15 +18,23 @@ import { fetchApplications } from '@/service/api/publish/applications';
 import { fetchLanguages } from '@/service/api/publish/language';
 import { fetchOrgTree } from '@/service/api/rbac/org';
 import type { OrgNode } from '@/service/api/rbac/org';
+import CodeEditor from '@/components/CodeEditor';
 
 const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'default' };
 
 interface DeployTemplateHistoryItem {
   id: number;
-  template_id?: number;
+  deployment_template_id?: number;
   modifier?: string;
-  change_reason?: string;
+  name?: string;
+  display_name?: string;
+  description?: string;
+  template_type?: string;
+  content?: string;
+  variables?: string;
+  parameters?: string;
   version?: string;
+  change_reason?: string;
   created_at?: string;
 }
 
@@ -39,6 +47,20 @@ export default function PublishTemplatesDeployment() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
   const [orgTreeData, setOrgTreeData] = useState<OrgNode[]>([]);
+
+  // Monaco 编辑器的值（ProForm 不直接支持 Monaco，需要手动管理）
+  const [contentValue, setContentValue] = useState('');
+  const [variablesValue, setVariablesValue] = useState('');
+  const [parametersValue, setParametersValue] = useState('');
+
+  // 打开编辑时，加载 Monaco 值
+  const handleOpenModal = (record: DeployTemplate | null) => {
+    setEditRecord(record);
+    setContentValue(record?.content ?? '');
+    setVariablesValue(record?.variables ?? '');
+    setParametersValue(record?.parameters ?? '');
+    setModalOpen(true);
+  };
 
   function toDeptTreeSelectData(nodes: OrgNode[]): any[] {
     return nodes.map(n => ({
@@ -79,15 +101,21 @@ export default function PublishTemplatesDeployment() {
     return acc;
   }, {} as Record<string, { text: string }>);
 
-  const loadHistory = async (tpl: DeployTemplate) => {
+  const loadHistory = async (tpl: DeployTemplate, page?: number, size?: number) => {
     setHistoryLoading(true);
     try {
-      const list = await api.fetchDeployTemplateHistory(tpl.id);
-      const records = (list as any)?.records ?? (Array.isArray(list) ? list : []);
+      const params: Record<string, unknown> = {
+        page: page ?? 1,
+        size: size ?? 20,
+      };
+      const res = await api.fetchDeployTemplateHistory(tpl.id, params);
+      const records = (res as any)?.records ?? (Array.isArray(res) ? res : []);
       setHistoryList(records);
+      return { data: records, total: (res as any)?.total ?? 0 };
     } catch (e: any) {
       if (!isHandledError(e)) message.error(e?.message || '获取历史失败');
       setHistoryList([]);
+      return { data: [], total: 0 };
     } finally {
       setHistoryLoading(false);
     }
@@ -160,7 +188,7 @@ export default function PublishTemplatesDeployment() {
         >历史</Button>,
         hasComp('publish_deploy_template_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
-          onClick={() => { setEditRecord(row); setModalOpen(true); }}
+          onClick={() => handleOpenModal(row)}
         >{t('common.edit', { defaultValue: '编辑' })}</Button>,
         hasComp('publish_deploy_template_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => {
             await api.deleteDeployTemplate(row.id);
@@ -178,7 +206,35 @@ export default function PublishTemplatesDeployment() {
     { title: '修改人', dataIndex: 'modifier', width: 120 },
     { title: '版本', dataIndex: 'version', width: 100 },
     { title: '修改原因', dataIndex: 'change_reason', ellipsis: true },
+    {
+      title: '模板内容', dataIndex: 'content', width: 90, search: false,
+      render: (val) => val ? <Tag color="blue">已变更</Tag> : <Tag>无</Tag>,
+    },
+    {
+      title: '变量', dataIndex: 'variables', width: 90, search: false,
+      render: (val) => val ? <Tag color="purple">已变更</Tag> : <Tag>无</Tag>,
+    },
+    {
+      title: '参数', dataIndex: 'parameters', width: 90, search: false,
+      render: (val) => val ? <Tag color="green">已变更</Tag> : <Tag>无</Tag>,
+    },
     { title: '修改时间', dataIndex: 'created_at', valueType: 'dateTime', width: 170 },
+    {
+      title: '操作', key: 'actions', valueType: 'option', width: 100,
+      render: (_, row) => [
+        hasComp('publish_deploy_template_rollback') && <Popconfirm key="rollback" title={`确认回退到历史版本 #${row.id}？当前内容将被替换。`}
+          onConfirm={async () => {
+            try {
+              await api.rollbackDeployTemplate(historyTpl!.id, row.id);
+              message.success('回退成功');
+              loadHistory(historyTpl!);
+              actionRef.current?.reload();
+            } catch (e: any) { if (!isHandledError(e)) message.error(e?.message || '回退失败'); }
+          }}>
+          <Button type="link" size="small" icon={<UndoOutlined />}>回退</Button>
+        </Popconfirm>,
+      ].filter(Boolean),
+    },
   ];
 
   return (
@@ -217,7 +273,7 @@ export default function PublishTemplatesDeployment() {
         }}
         headerTitle={t('route.publish_templates_deployment', { defaultValue: '部署模板' })}
         toolBarRender={() => [
-          hasComp('publish_deploy_template_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setModalOpen(true); }}>
+          hasComp('publish_deploy_template_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal(null)}>
             {t('common.add', { defaultValue: '新增' })}
           </Button>
         ]}
@@ -228,12 +284,14 @@ export default function PublishTemplatesDeployment() {
         key={editRecord?.id ?? 'new'}
         title={editRecord ? '编辑部署模板' : '新增部署模板'}
         open={modalOpen} onOpenChange={setModalOpen}
-        modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '' }}
+        modalProps={{ onCancel: () => setModalOpen(false), transitionName: '', maskTransitionName: '', destroyOnClose: true }}
         initialValues={editRecord ?? {}}
         onFinish={async (values) => {
           try {
-            if (editRecord?.id) await api.updateDeployTemplate(editRecord.id, values as any);
-            else await api.createDeployTemplate(values as any);
+            // 把 Monaco 编辑器的值合并到表单数据中
+            const submitData = { ...values, content: contentValue, variables: variablesValue, parameters: parametersValue };
+            if (editRecord?.id) await api.updateDeployTemplate(editRecord.id, submitData as any);
+            else await api.createDeployTemplate(submitData as any);
             message.success('保存成功');
             actionRef.current?.reload();
             return true;
@@ -250,7 +308,48 @@ export default function PublishTemplatesDeployment() {
         <ProFormText name="version" label="版本" placeholder="1.0" />
         <ProFormSelect name="status" label="状态" placeholder="请选择状态"
           options={[{ label: '激活', value: 'active' }, { label: '停用', value: 'inactive' }]} initialValue="active" />
-        <ProFormTextArea name="content" label="模板内容 (YAML/JSON)" fieldProps={{ rows: 10, placeholder: '请输入模板内容' }} />
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>模板内容</div>
+          <div style={{ color: '#888', fontSize: 12, lineHeight: 1.5 }}>
+            K8s YAML / Helm Chart / Docker Compose 部署模板。支持占位符替换：<code>{'{{IMAGE_TAG}}'}</code> <code>{'{{NAMESPACE}}'}</code> <code>{'{{PROJECT_NAME}}'}</code> <code>{'{{ENV_NAME}}'}</code>
+          </div>
+        </div>
+        <CodeEditor
+          value={contentValue}
+          onChange={setContentValue}
+          language="yaml"
+          height="280px"
+          showToolbar
+          placeholder={`apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {{PROJECT_NAME}}\nspec:\n  replicas: 1\n  template:\n    spec:\n      containers:\n        - name: {{PROJECT_NAME}}\n          image: {{IMAGE_TAG}}`}
+        />
+        <div style={{ marginTop: 16, marginBottom: 4 }}>
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>变量定义</div>
+          <div style={{ color: '#888', fontSize: 12, lineHeight: 1.5 }}>
+            定义模板变量键值对，用于文档说明和变量默认值记录。格式为 JSON，如 <code>{"{ \"IMAGE_TAG\": \"latest\", \"NAMESPACE\": \"default\" }"}</code>
+          </div>
+        </div>
+        <CodeEditor
+          value={variablesValue}
+          onChange={setVariablesValue}
+          language="json"
+          height="200px"
+          showToolbar
+          placeholder={`{"IMAGE_TAG": "latest", "NAMESPACE": "default", "PROJECT_NAME": "my-app", "ENV_NAME": "dev"}`}
+        />
+        <div style={{ marginTop: 16, marginBottom: 4 }}>
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>参数定义</div>
+          <div style={{ color: '#888', fontSize: 12, lineHeight: 1.5 }}>
+            定义部署时可配置的参数 schema，包含类型和默认值。格式为 JSON，如 <code>{"{ \"replicas\": { \"type\": \"number\", \"default\": 1 } }"}</code>
+          </div>
+        </div>
+        <CodeEditor
+          value={parametersValue}
+          onChange={setParametersValue}
+          language="json"
+          height="200px"
+          showToolbar
+          placeholder={`{"replicas": {"type": "number", "default": 1}, "cpu_limit": {"type": "string", "default": "500m"}}`}
+        />
         <ProFormText name="description" label="描述" placeholder="请输入描述" />
         <ProFormTreeSelect name="department" label="归属部门" placeholder="请选择部门"
           fieldProps={{ treeData: toDeptTreeSelectData(orgTreeData), allowClear: true, treeDefaultExpandAll: true, showSearch: true, treeNodeFilterProp: 'title' }} />
@@ -266,6 +365,29 @@ export default function PublishTemplatesDeployment() {
           rowKey="id" search={false} columns={historyColumns}
           dataSource={historyList} loading={historyLoading}
           pagination={{ pageSize: 20 }} options={false}
+          expandable={{
+            expandedRowRender: (record) => (
+              <Tabs
+                items={[
+                  {
+                    key: 'content',
+                    label: '模板内容',
+                    children: <CodeEditor value={record.content || ''} readOnly language="yaml" height="300px" showToolbar />,
+                  },
+                  {
+                    key: 'variables',
+                    label: '变量',
+                    children: <CodeEditor value={record.variables || ''} readOnly language="json" height="300px" showToolbar />,
+                  },
+                  {
+                    key: 'parameters',
+                    label: '参数',
+                    children: <CodeEditor value={record.parameters || ''} readOnly language="json" height="300px" showToolbar />,
+                  },
+                ]}
+              />
+            ),
+          }}
         />
       </Drawer>
 

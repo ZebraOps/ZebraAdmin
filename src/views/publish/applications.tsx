@@ -362,7 +362,6 @@ export default function PublishApplications() {
         />
         <ProFormSelect name="build_template_id" label="构建模板" options={buildTplOptions} showSearch placeholder="请选择构建模板" fieldProps={{ optionFilterProp: 'label' }} />
         <ProFormSelect name="deployment_template_id" label="部署模板" options={deployTplOptions} showSearch placeholder="请选择部署模板" fieldProps={{ optionFilterProp: 'label' }} />
-        <ProFormDigit name="platform_credential_id" label="平台凭据ID" min={1} fieldProps={{ precision: 0 }} />
         <ProFormTextArea name="description" label="描述" fieldProps={{ rows: 3, placeholder: '请输入描述' }} />
       </ModalForm>
     </>

@@ -35,7 +35,6 @@ export interface ApplicationDeployment {
   id: number;
   application_id: number;
   environment_id: number;
-  platform_credential_id?: number | null;
   build_source?: 'tag' | 'branch';
   description?: string;
   build_template_id?: number | null;

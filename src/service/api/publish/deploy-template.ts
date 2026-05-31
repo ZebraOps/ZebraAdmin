@@ -32,8 +32,8 @@ export const updateDeployTemplate = (id: number, data: Partial<DeployTemplate>) 
 export const deleteDeployTemplate = (id: number) =>
   http.delete(`/cicd/api/templates/deployment/${id}`);
 
-export const fetchDeployTemplateHistory = (id: number) =>
-  http.get<unknown[]>(`/cicd/api/templates/deployment/${id}/history`);
+export const fetchDeployTemplateHistory = (id: number, params?: Record<string, unknown>) =>
+  http.get<PageResult<unknown>>(`/cicd/api/templates/deployment/${id}/history`, params);
 
 /** 关联应用和部署模板 */
 export const associateDeployTemplateApp = (templateId: number, applicationId: number) =>
@@ -46,3 +46,7 @@ export const disassociateDeployTemplateApp = (templateId: number, applicationId:
 /** 获取部署模板关联的应用列表 */
 export const fetchDeployTemplateApplications = (templateId: number) =>
   http.get<LinkedApplication[]>(`/cicd/api/templates/deployment/${templateId}/applications`);
+
+/** 回退部署模板到指定历史版本 */
+export const rollbackDeployTemplate = (templateId: number, historyId: number) =>
+  http.post<DeployTemplate>(`/cicd/api/templates/deployment/${templateId}/rollback/${historyId}`);
