@@ -29,7 +29,8 @@ import { usePublishStore } from '@/store/publish';
 export default function PublishApplications() {
   const { t } = useTranslation();
   const { hasComp } = usePermission();
-  const { jenkinsPlatformOptions, gitPlatformOptions, imageRegistryOptions } = usePublishStore();
+  const { jenkinsPlatformOptions, gitPlatformOptions, imageRegistryOptions, loadAll } = usePublishStore();
+  useEffect(() => { loadAll(); }, []);
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<Application | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
