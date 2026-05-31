@@ -52,3 +52,7 @@ export const testK8sConnection = (id: number) =>
 /** 获取集群指定命名空间下的 Pod 列表 */
 export const listK8sPods = (id: number, namespace?: string) =>
   http.get<PodInfo[]>(`/cicd/api/k8s/clusters/${id}/pods`, namespace ? { namespace } : undefined);
+
+/** 获取集群的命名空间列表（动态） */
+export const listK8sNamespaces = (id: number) =>
+  http.get<string[]>(`/cicd/api/k8s/clusters/${id}/namespaces`);

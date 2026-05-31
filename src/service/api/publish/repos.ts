@@ -33,3 +33,11 @@ export const deleteRepo = (id: number) =>
 /** 从 GitLab 获取仓库信息 */
 export const fetchRepoGitlabUrl = (repoId: number | string) =>
   http.get<string>(`/cicd/api/repos/gitlab-url/${repoId}`);
+
+/** 通过应用ID获取关联仓库的分支列表 */
+export const fetchRepoBranches = (applicationId: number) =>
+  http.get<string[]>('/cicd/api/repos/branches', { application_id: applicationId });
+
+/** 通过应用ID获取关联仓库的标签列表 */
+export const fetchRepoTags = (applicationId: number) =>
+  http.get<string[]>('/cicd/api/repos/tags', { application_id: applicationId });
