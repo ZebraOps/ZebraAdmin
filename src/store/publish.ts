@@ -8,6 +8,9 @@ import { fetchBuildTemplates, type BuildTemplate } from '@/service/api/publish/b
 import { fetchDeployTemplates, type DeployTemplate } from '@/service/api/publish/deploy-template';
 import { fetchRepos, type Repo } from '@/service/api/publish/repos';
 import { fetchOrgTree, type OrgNode } from '@/service/api/rbac/org';
+import { fetchJenkinsPlatforms, type JenkinsPlatform } from '@/service/api/publish/jenkins-platform';
+import { fetchGitPlatforms, type GitPlatform } from '@/service/api/publish/git-repo';
+import { fetchImageRegistries, type ImageRegistry } from '@/service/api/publish/image-registry';
 
 /** 通用下拉选项项 */
 interface OptionItem {
@@ -26,6 +29,9 @@ interface PublishState {
   deployTplOptions: OptionItem[];
   repoOptions: OptionItem[];
   orgTreeData: OrgNode[];
+  jenkinsPlatformOptions: OptionItem[];
+  gitPlatformOptions: OptionItem[];
+  imageRegistryOptions: OptionItem[];
 
   // 原始数据缓存（供复杂页面使用）
   apps: Application[];
@@ -36,6 +42,9 @@ interface PublishState {
   buildTemplates: BuildTemplate[];
   deployTemplates: DeployTemplate[];
   repos: Repo[];
+  jenkinsPlatforms: JenkinsPlatform[];
+  gitPlatforms: GitPlatform[];
+  imageRegistries: ImageRegistry[];
 
   // 加载状态
   loading: boolean;
@@ -71,6 +80,15 @@ function mapDeployTplOptions(items: DeployTemplate[]): OptionItem[] {
 function mapRepoOptions(items: Repo[]): OptionItem[] {
   return items.map(r => ({ label: `${r.c_name} (${r.e_name})`, value: r.id }));
 }
+function mapJenkinsPlatformOptions(items: JenkinsPlatform[]): OptionItem[] {
+  return items.map(j => ({ label: `${j.display_name || j.name} (${j.url})`, value: j.id }));
+}
+function mapGitPlatformOptions(items: GitPlatform[]): OptionItem[] {
+  return items.map(g => ({ label: `${g.display_name || g.name} (${g.url})`, value: g.id }));
+}
+function mapImageRegistryOptions(items: ImageRegistry[]): OptionItem[] {
+  return items.map(i => ({ label: `${i.name} (${i.url})`, value: i.id }));
+}
 
 /** 解析分页结果，提取 records */
 function extractRecords<T>(res: unknown): T[] {
@@ -92,6 +110,9 @@ export const usePublishStore = create<PublishState>((set, get) => ({
   deployTplOptions: [],
   repoOptions: [],
   orgTreeData: [],
+  jenkinsPlatformOptions: [],
+  gitPlatformOptions: [],
+  imageRegistryOptions: [],
   apps: [],
   envs: [],
   clusters: [],
@@ -100,6 +121,9 @@ export const usePublishStore = create<PublishState>((set, get) => ({
   buildTemplates: [],
   deployTemplates: [],
   repos: [],
+  jenkinsPlatforms: [],
+  gitPlatforms: [],
+  imageRegistries: [],
   loading: false,
   loaded: false,
 
@@ -118,6 +142,9 @@ export const usePublishStore = create<PublishState>((set, get) => ({
         fetchDeployTemplates({ page: 1, size: 200 }),
         fetchRepos({ page: 1, size: 200 }),
         fetchOrgTree(),
+        fetchJenkinsPlatforms({ page: 1, size: 200 }),
+        fetchGitPlatforms({ page: 1, size: 200 }),
+        fetchImageRegistries({ page: 1, size: 200 }),
       ]);
 
       const apps = extractRecords<Application>(results[0].status === 'fulfilled' ? results[0].value : []);
@@ -129,6 +156,9 @@ export const usePublishStore = create<PublishState>((set, get) => ({
       const deployTemplates = extractRecords<DeployTemplate>(results[6].status === 'fulfilled' ? results[6].value : []);
       const repos = extractRecords<Repo>(results[7].status === 'fulfilled' ? results[7].value : []);
       const orgTreeData = results[8].status === 'fulfilled' ? (results[8].value as OrgNode[] || []) : [];
+      const jenkinsPlatforms = extractRecords<JenkinsPlatform>(results[9].status === 'fulfilled' ? results[9].value : []);
+      const gitPlatforms = extractRecords<GitPlatform>(results[10].status === 'fulfilled' ? results[10].value : []);
+      const imageRegistries = extractRecords<ImageRegistry>(results[11].status === 'fulfilled' ? results[11].value : []);
 
       set({
         appOptions: mapAppOptions(apps),
@@ -140,6 +170,9 @@ export const usePublishStore = create<PublishState>((set, get) => ({
         deployTplOptions: mapDeployTplOptions(deployTemplates),
         repoOptions: mapRepoOptions(repos),
         orgTreeData,
+        jenkinsPlatformOptions: mapJenkinsPlatformOptions(jenkinsPlatforms),
+        gitPlatformOptions: mapGitPlatformOptions(gitPlatforms),
+        imageRegistryOptions: mapImageRegistryOptions(imageRegistries),
         apps,
         envs,
         clusters,
@@ -148,6 +181,9 @@ export const usePublishStore = create<PublishState>((set, get) => ({
         buildTemplates,
         deployTemplates,
         repos,
+        jenkinsPlatforms,
+        gitPlatforms,
+        imageRegistries,
         loaded: true,
       });
     } catch {
