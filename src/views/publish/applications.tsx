@@ -24,10 +24,12 @@ import { fetchOrgTree } from '@/service/api/rbac/org';
 import type { OrgNode } from '@/service/api/rbac/org';
 import { fetchLanguages } from '@/service/api/publish/language';
 import { usePermission } from '@/hooks/usePermission';
+import { usePublishStore } from '@/store/publish';
 
 export default function PublishApplications() {
   const { t } = useTranslation();
   const { hasComp } = usePermission();
+  const { jenkinsPlatformOptions, gitPlatformOptions, imageRegistryOptions } = usePublishStore();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<Application | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -206,6 +208,18 @@ export default function PublishApplications() {
     },
     {
       title: '部署路径', width: 180, search: false, render: (_, row) => row.deploy_target === 'linux' ? row.deploy_path || '-' : '-',
+    },
+    {
+      title: 'Jenkins', dataIndex: 'jenkins_platform_id', width: 140, search: false,
+      render: (val) => val ? jenkinsPlatformOptions.find(o => o.value === val)?.label ?? `#${val}` : '-',
+    },
+    {
+      title: 'Git平台', dataIndex: 'git_platform_id', width: 140, search: false,
+      render: (val) => val ? gitPlatformOptions.find(o => o.value === val)?.label ?? `#${val}` : '-',
+    },
+    {
+      title: '镜像仓库', dataIndex: 'image_repo_id', width: 140, search: false,
+      render: (val) => val ? imageRegistryOptions.find(o => o.value === val)?.label ?? `#${val}` : '-',
     },
     { title: '描述', dataIndex: 'description', ellipsis: true },
     {
@@ -433,6 +447,21 @@ export default function PublishApplications() {
         />
         <ProFormSelect name="build_template_id" label="构建模板" options={buildTplOptions} showSearch placeholder="请选择构建模板" fieldProps={{ optionFilterProp: 'label' }} />
         <ProFormSelect name="deployment_template_id" label="部署模板" options={deployTplOptions} showSearch placeholder="请选择部署模板" fieldProps={{ optionFilterProp: 'label' }} />
+        <ProFormSelect
+          name="jenkins_platform_id" label="Jenkins 平台" placeholder="不选则使用全局配置"
+          options={jenkinsPlatformOptions} showSearch allowClear
+          fieldProps={{ optionFilterProp: 'label' }}
+        />
+        <ProFormSelect
+          name="git_platform_id" label="Git 平台" placeholder="不选则使用全局配置"
+          options={gitPlatformOptions} showSearch allowClear
+          fieldProps={{ optionFilterProp: 'label' }}
+        />
+        <ProFormSelect
+          name="image_repo_id" label="镜像仓库" placeholder="不选则使用全局配置"
+          options={imageRegistryOptions} showSearch allowClear
+          fieldProps={{ optionFilterProp: 'label' }}
+        />
         <ProFormTextArea name="description" label="描述" fieldProps={{ rows: 3, placeholder: '请输入描述' }} />
       </ModalForm>
     </>
