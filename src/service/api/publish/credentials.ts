@@ -23,6 +23,7 @@ export interface SyncResult {
 }
 
 export interface JenkinsCredentialQuery {
+  credential_id?: string
   name?: string
   credential_type?: string
   status?: string
@@ -32,7 +33,7 @@ export interface JenkinsCredentialQuery {
 }
 
 export const fetchJenkinsCredentials = (params?: JenkinsCredentialQuery) =>
-  http.get<PageResult<JenkinsCredential>>('/cicd/api/jenkins-credentials', { params })
+  http.get<PageResult<JenkinsCredential>>('/cicd/api/jenkins-credentials', params as Record<string, unknown>)
 
 export const createJenkinsCredential = (data: Partial<JenkinsCredential>) =>
   http.post<JenkinsCredential>('/cicd/api/jenkins-credentials', data)
