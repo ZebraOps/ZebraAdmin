@@ -101,6 +101,7 @@ const enUS = {
         publish_config_language: 'Languages',
     publish_config_gitplatform: 'Git Platform',
     publish_config_jenkinsplatform: 'Jenkins',
+    publish_config_credentials: 'Credentials',
     publish_config_registry: 'Image Registry',
     publish_container: 'Containers',
     publish_container_k8s: 'K8s Clusters',

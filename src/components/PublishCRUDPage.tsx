@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, useEffect, type ReactNode, type Ref } from 'react';
 import { ProTable, ModalForm, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, message, Popconfirm } from 'antd';
 import { isHandledError } from '@/service/request';
@@ -52,6 +52,9 @@ interface CRUDPageConfig<T extends { id?: number }> {
 
   /** 是否隐藏搜索 */
   searchHidden?: boolean;
+
+  /** 外部 actionRef，允许父组件调用 reload() */
+  actionRef?: Ref<ActionType | undefined>;
 }
 
 /**
@@ -66,6 +69,18 @@ export default function PublishCRUDPage<T extends { id?: number }>(config: CRUDP
   const [editRecord, setEditRecord] = useState<T | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
+  // 将内部 actionRef 暴露给外部（只在 mount 后运行一次，此时 ProTable 已完成初始化）
+  useEffect(() => {
+    if (config.actionRef) {
+      if (typeof config.actionRef === 'function') {
+        config.actionRef(actionRef.current ?? undefined);
+      } else {
+        (config.actionRef as React.MutableRefObject<ActionType | undefined>).current = actionRef.current ?? undefined;
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const canAdd = config.addPerm ? hasComp(config.addPerm) : true;
   const canEdit = config.editPerm ? hasComp(config.editPerm) : true;

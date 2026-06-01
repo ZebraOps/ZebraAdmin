@@ -70,7 +70,8 @@ export const staticMenus: MenuNode[] = [
           { key: 'publish_config_registry', label: 'route.publish_config_registry', icon: 'carbon:container-registry', path: '/publish/config/registry' },
           { key: 'publish_config_language', label: 'route.publish_config_language', icon: 'mdi:code-tags', path: '/publish/config/language' },
           { key: 'publish_config_gitplatform', label: 'route.publish_config_gitplatform', icon: 'mdi:source-branch', path: '/publish/config/gitplatform' },
-          { key: 'publish_config_jenkinsplatform', label: 'route.publish_config_jenkinsplatform', icon: 'mdi:engine', path: '/publish/config/jenkinsplatform' }
+          { key: 'publish_config_jenkinsplatform', label: 'route.publish_config_jenkinsplatform', icon: 'mdi:engine', path: '/publish/config/jenkinsplatform' },
+          { key: 'publish_config_credentials', label: 'route.publish_config_credentials', icon: 'mdi:key-variant', path: '/publish/config/credentials' }
         ]
       },
       {
