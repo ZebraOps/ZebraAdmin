@@ -36,7 +36,7 @@ interface CRUDPageConfig<T extends { id?: number }> {
   extraActionRender?: (row: T) => ReactNode[];
 
   /** 表单字段 */
-  formFields: ReactNode;
+  formFields: ReactNode | ((record: T | null) => ReactNode);
   /** 表单初始值（新增时） */
   formInitialValues?: Partial<T>;
   /** 新增表单标题 */
@@ -154,6 +154,10 @@ export default function PublishCRUDPage<T extends { id?: number }>(config: CRUDP
     }
   };
 
+  const renderedFormFields = typeof config.formFields === 'function'
+    ? config.formFields(editRecord)
+    : config.formFields;
+
   // ProTable request 适配器（修正分页参数：page 而非 current offset）
   const requestAdapter = async (params: Record<string, unknown>) => {
     try {
@@ -213,7 +217,7 @@ export default function PublishCRUDPage<T extends { id?: number }>(config: CRUDP
           initialValues={editRecord ?? config.formInitialValues ?? {}}
           onFinish={handleFormFinish}
         >
-          {config.formFields}
+          {renderedFormFields}
         </ModalForm>
       )}
     </>

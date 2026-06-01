@@ -1,4 +1,4 @@
-import { type ProColumns } from '@ant-design/pro-components'
+import { ProFormSelect, ProFormText, ProFormTextArea, type ProColumns } from '@ant-design/pro-components'
 import { Tag, Button, Modal, Select, message } from 'antd'
 import { SyncOutlined } from '@ant-design/icons'
 import { startTransition, useState, useEffect, useRef, useCallback } from 'react'
@@ -21,6 +21,12 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const columns: ProColumns<JenkinsCredential>[] = [
+  {
+    title: 'Jenkins 平台',
+    dataIndex: 'jenkins_platform_id',
+    hideInTable: true,
+    valueType: 'select',
+  },
   { title: '凭据ID', dataIndex: 'credential_id', width: 200 },
   { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
   { title: '类型', dataIndex: 'credential_type', width: 160, search: false },
@@ -97,6 +103,22 @@ export default function PublishConfigCredentials() {
     return { data: (res as any)?.records ?? [], total: (res as any)?.total ?? 0 }
   }, [])
 
+  const searchColumns = columns.map((column) => {
+    if (column.dataIndex !== 'jenkins_platform_id') {
+      return column
+    }
+
+    return {
+      ...column,
+      fieldProps: {
+        options: platformOptions,
+        showSearch: true,
+        allowClear: true,
+        optionFilterProp: 'label',
+      },
+    }
+  })
+
   const syncButton = (
     <Button
       key="sync"
@@ -117,7 +139,7 @@ export default function PublishConfigCredentials() {
         key={tableVersion}
         rowKey="id"
         title="凭据管理"
-        columns={columns}
+        columns={searchColumns}
         fetchList={fetchList}
         createItem={(data) => api.createJenkinsCredential(data as any)}
         updateItem={(id, data) => api.updateJenkinsCredential(id, data as any)}
@@ -128,7 +150,68 @@ export default function PublishConfigCredentials() {
         formTitleCreate="新增凭据"
         formTitleEdit="编辑凭据"
         customToolbar={customToolbar}
-        formFields={<></>}
+        formInitialValues={{ scope: 'GLOBAL', status: 'active' }}
+        formFields={(record) => {
+          const isEdit = Boolean(record?.id)
+          return (
+            <>
+              <ProFormSelect
+                name="jenkins_platform_id"
+                label="Jenkins 平台"
+                rules={[{ required: true, message: '请选择 Jenkins 平台' }]}
+                options={platformOptions}
+                showSearch
+                disabled={isEdit}
+                fieldProps={{ optionFilterProp: 'label' }}
+                placeholder="请选择 Jenkins 平台"
+              />
+              <ProFormText
+                name="credential_id"
+                label="凭据ID"
+                rules={[{ required: true, message: '请输入凭据ID' }]}
+                disabled={isEdit}
+                placeholder="请输入 Jenkins 中的凭据ID"
+              />
+              <ProFormText
+                name="display_name"
+                label="显示名称"
+                rules={[{ required: true, message: '请输入显示名称' }]}
+                placeholder="请输入显示名称"
+              />
+              <ProFormText
+                name="credential_type"
+                label="凭据类型"
+                disabled={isEdit}
+                placeholder="如 UsernamePassword / SecretText"
+              />
+              <ProFormText name="username" label="用户名" placeholder="请输入用户名" />
+              <ProFormSelect
+                name="scope"
+                label="作用域"
+                options={[
+                  { label: 'GLOBAL', value: 'GLOBAL' },
+                  { label: 'SYSTEM', value: 'SYSTEM' },
+                ]}
+                placeholder="请选择作用域"
+              />
+              <ProFormSelect
+                name="status"
+                label="状态"
+                options={[
+                  { label: '正常', value: 'active' },
+                  { label: '已删除', value: 'synced_deleted' },
+                ]}
+                placeholder="请选择状态"
+              />
+              <ProFormTextArea
+                name="description"
+                label="描述"
+                fieldProps={{ rows: 3 }}
+                placeholder="请输入描述"
+              />
+            </>
+          )
+        }}
       />
       {/* 使用自定义 footer，完全绕开 Ant Design 对 async onOk 的内部 loading 管理 */}
       {syncModalOpen && (
