@@ -20,6 +20,7 @@ import { fetchDeployTemplates } from '@/service/api/publish/deploy-template';
 import { fetchRepos } from '@/service/api/publish/repos';
 import { fetchK8sClusters } from '@/service/api/publish/k8s-cluster';
 import { fetchLinuxMachines } from '@/service/api/publish/linux-machine';
+import { fetchJenkinsCredentials } from '@/service/api/publish/credentials';
 import { fetchOrgTree } from '@/service/api/rbac/org';
 import type { OrgNode } from '@/service/api/rbac/org';
 import { fetchLanguages } from '@/service/api/publish/language';
@@ -43,6 +44,9 @@ export default function PublishApplications() {
   const [deployLoading, setDeployLoading] = useState(false);
   const [deployFormOpen, setDeployFormOpen] = useState(false);
   const [deployFormRecord, setDeployFormRecord] = useState<ApplicationDeployment | null>(null);
+  const deployFormRef = useRef<ProFormInstance>(null);
+  const [jenkinsCredentialOptions, setJenkinsCredentialOptions] = useState<{ label: string; value: number }[]>([]);
+  const [jenkinsCredentialLoading, setJenkinsCredentialLoading] = useState(false);
 
   // 下拉选项缓存
   const [envOptions, setEnvOptions] = useState<{ label: string; value: number }[]>([]);
@@ -99,6 +103,34 @@ export default function PublishApplications() {
 
   useEffect(() => { loadOptions(); }, []);
 
+  const loadCredentialsByPlatform = async (platformId?: number | null) => {
+    if (!platformId) {
+      setJenkinsCredentialOptions([]);
+      return;
+    }
+
+    setJenkinsCredentialLoading(true);
+    try {
+      const res = await fetchJenkinsCredentials({
+        jenkins_platform_id: platformId,
+        status: 'active',
+        page: 1,
+        size: 200,
+      });
+      const records = (res as any)?.records ?? [];
+      setJenkinsCredentialOptions(
+        records.map((item: any) => ({
+          label: item.display_name || item.credential_id,
+          value: item.id,
+        })),
+      );
+    } catch {
+      setJenkinsCredentialOptions([]);
+    } finally {
+      setJenkinsCredentialLoading(false);
+    }
+  };
+
   const loadDeployments = async (appId: number) => {
     setDeployLoading(true);
     try {
@@ -117,6 +149,18 @@ export default function PublishApplications() {
     setDeployDrawerOpen(true);
     await loadDeployments(row.id);
   };
+
+  useEffect(() => {
+    if (!deployFormOpen) return;
+
+    const mode = deployFormRecord?.credential_mode || 'auto_create';
+    const platformId = deployFormRecord?.jenkins_platform_id;
+    if (mode === 'manual_select' && platformId) {
+      loadCredentialsByPlatform(platformId);
+      return;
+    }
+    setJenkinsCredentialOptions([]);
+  }, [deployFormOpen, deployFormRecord?.credential_mode, deployFormRecord?.jenkins_platform_id]);
 
   const findLabel = (opts: { label: string; value: number }[], v?: number | null) =>
     opts.find(o => o.value === v)?.label ?? (v ? `#${v}` : '-');
@@ -213,6 +257,21 @@ export default function PublishApplications() {
     {
       title: 'Jenkins', dataIndex: 'jenkins_platform_id', width: 140, search: false,
       render: (val) => val ? jenkinsPlatformOptions.find(o => o.value === val)?.label ?? `#${val}` : '-',
+    },
+    {
+      title: '凭据模式', dataIndex: 'credential_mode', width: 120, search: false,
+      render: (val) => {
+        const mode = String(val || 'auto_create');
+        return <Tag color={mode === 'manual_select' ? 'gold' : 'green'}>{mode === 'manual_select' ? '手动选择' : '自动创建'}</Tag>;
+      },
+    },
+    {
+      title: 'Jenkins凭据', dataIndex: 'jenkins_credential_id', width: 180, search: false,
+      render: (val, row) => {
+        if (!val) return '-';
+        const credentialID = (row as any)?.jenkins_credential?.credential_id;
+        return credentialID || `#${val}`;
+      },
     },
     {
       title: 'Git平台', dataIndex: 'git_platform_id', width: 140, search: false,
@@ -373,11 +432,12 @@ export default function PublishApplications() {
         key={`deploy-${deployFormRecord?.id ?? 'new'}`}
         title={deployFormRecord ? '编辑部署配置' : '新增部署配置'}
         open={deployFormOpen} onOpenChange={setDeployFormOpen}
+        formRef={deployFormRef}
         modalProps={{ onCancel: () => setDeployFormOpen(false), transitionName: '', maskTransitionName: '' }}
         initialValues={
           deployFormRecord
-            ? { ...deployFormRecord }
-            : { application_id: deployApp?.id, deploy_target: 'k8s', build_source: 'tag' }
+            ? { ...deployFormRecord, credential_mode: deployFormRecord.credential_mode || 'auto_create' }
+            : { application_id: deployApp?.id, deploy_target: 'k8s', build_source: 'tag', credential_mode: 'auto_create' }
         }
         onFinish={async (values) => {
           try {
@@ -449,10 +509,53 @@ export default function PublishApplications() {
         <ProFormSelect name="build_template_id" label="构建模板" options={buildTplOptions} showSearch placeholder="请选择构建模板" fieldProps={{ optionFilterProp: 'label' }} />
         <ProFormSelect name="deployment_template_id" label="部署模板" options={deployTplOptions} showSearch placeholder="请选择部署模板" fieldProps={{ optionFilterProp: 'label' }} />
         <ProFormSelect
+          name="credential_mode" label="凭据模式" rules={[{ required: true }]} placeholder="请选择凭据模式"
+          options={[
+            { label: '自动创建', value: 'auto_create' },
+            { label: '手动选择', value: 'manual_select' },
+          ]}
+          fieldProps={{
+            onChange: (mode) => {
+              if (mode !== 'manual_select') {
+                setJenkinsCredentialOptions([]);
+                deployFormRef.current?.setFieldsValue({ jenkins_credential_id: undefined });
+              }
+            },
+          }}
+        />
+        <ProFormSelect
           name="jenkins_platform_id" label="Jenkins 平台" placeholder="不选则使用全局配置"
           options={jenkinsPlatformOptions} showSearch allowClear
-          fieldProps={{ optionFilterProp: 'label' }}
+          fieldProps={{
+            optionFilterProp: 'label',
+            onChange: (platformId) => {
+              deployFormRef.current?.setFieldsValue({ jenkins_credential_id: undefined });
+              const mode = deployFormRef.current?.getFieldValue('credential_mode');
+              if (mode === 'manual_select') {
+                loadCredentialsByPlatform(platformId as number | undefined);
+              }
+            },
+          }}
         />
+        <ProFormDependency name={['credential_mode', 'jenkins_platform_id']}>
+          {({ credential_mode, jenkins_platform_id }) => {
+            if (credential_mode !== 'manual_select') {
+              return null;
+            }
+            return (
+              <ProFormSelect
+                name="jenkins_credential_id"
+                label="Jenkins 凭据"
+                rules={[{ required: true, message: '手动选择模式必须指定 Jenkins 凭据' }]}
+                options={jenkinsCredentialOptions}
+                showSearch
+                disabled={!jenkins_platform_id}
+                placeholder={jenkins_platform_id ? '请选择 Jenkins 凭据' : '请先选择 Jenkins 平台'}
+                fieldProps={{ optionFilterProp: 'label', loading: jenkinsCredentialLoading }}
+              />
+            );
+          }}
+        </ProFormDependency>
         <ProFormSelect
           name="git_platform_id" label="Git 平台" placeholder="不选则使用全局配置"
           options={gitPlatformOptions} showSearch allowClear

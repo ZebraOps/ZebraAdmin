@@ -37,6 +37,8 @@ export interface ApplicationDeployment {
   environment_id: number;
   deploy_target: 'k8s' | 'docker' | 'linux';
   build_source?: 'tag' | 'branch';
+  credential_mode?: 'auto_create' | 'manual_select';
+  jenkins_credential_id?: number | null;
   description?: string;
   build_template_id?: number | null;
   deployment_template_id?: number | null;
