@@ -23,6 +23,7 @@ export interface DeployTask {
   deployment_template_id?: number | null;
   docker_compose_path?: string;
   error_message?: string;
+  retry_count?: number;
   log_path?: string;
   started_at?: string;
   finished_at?: string;
@@ -84,3 +85,6 @@ export const deleteDeployTask = (id: number) =>
 
 export const batchDeleteDeployTasks = (ids: number[]) =>
   http.post<{ message: string }>('/cicd/api/deploys/batch-delete', { ids });
+
+export const retryDeployTask = (id: number) =>
+  http.post<{ task_id: number; retry_count: number }>(`/cicd/api/deploys/${id}/retry`);
