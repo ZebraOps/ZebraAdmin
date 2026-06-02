@@ -105,6 +105,12 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.error) {
+          // 后端返回错误信息，显示红色提示
+          if (xtermRef.current) {
+            xtermRef.current.write(`\r\n\x1b[31m[${data.error}]\x1b[0m\r\n`);
+          }
+        }
         if (data.output) {
           // 只追加增量部分（后端推送的是全量，前端只写差值）
           const prevLen = lastOutputRef.current.length;
