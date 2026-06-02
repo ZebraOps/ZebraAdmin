@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Button, Input, Modal, Space, Switch, Tooltip } from 'antd';
+import { Button, Input, Modal, Switch, Tooltip } from 'antd';
 import { ReloadOutlined, ThunderboltOutlined, PauseOutlined, ExpandOutlined, CompressOutlined, SearchOutlined } from '@ant-design/icons';
 import AnsiToHtml from 'ansi-to-html';
 import { localStg } from '@/utils/storage';
@@ -170,6 +170,15 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
     }
   }, [taskId, renderOutput]);
 
+  const openFullscreen = useCallback(() => {
+    updateFsOutput();
+    setFullscreenOpen(true);
+  }, [updateFsOutput]);
+
+  const closeFullscreen = useCallback(() => {
+    setFullscreenOpen(false);
+  }, []);
+
   const statusLabel = liveMode
     ? { connecting: '连接中', connected: '实时', closed: '已断开', error: '连接错误' }[wsStatus]
     : '手动';
@@ -195,13 +204,13 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
           <Button size="small" icon={<ReloadOutlined />} onClick={manualRefresh} loading={loading}>刷新</Button>
         )}
         {liveMode && wsStatus === 'closed' && (
-          <Button size="small" icon={<ReloadOutlined />} onClick={connect} disabled={wsStatus === 'connecting'}>重连</Button>
+          <Button size="small" icon={<ReloadOutlined />} onClick={connect}>重连</Button>
         )}
         <Tooltip title="搜索">
           <Button size="small" icon={<SearchOutlined />} onClick={() => setSearchVisible(!searchVisible)} />
         </Tooltip>
         <Tooltip title="放大视图">
-          <Button size="small" icon={<ExpandOutlined />} onClick={() => setFullscreenOpen(true)} />
+          <Button size="small" icon={<ExpandOutlined />} onClick={openFullscreen} />
         </Tooltip>
       </div>
 
@@ -226,16 +235,28 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
       <Modal
         title="Jenkins 控制台输出"
         open={fullscreenOpen}
-        onCancel={() => setFullscreenOpen(false)}
+        onCancel={closeFullscreen}
         footer={[
           <Input key="search" size="small" placeholder="搜索..." prefix={<SearchOutlined />} allowClear
             value={searchText} onChange={(e) => setSearchText(e.target.value)}
             style={{ width: 200, marginRight: 8 }} />,
           <Button key="refresh" icon={<ReloadOutlined />} onClick={fsRefresh}>刷新</Button>,
-          <Button key="close" icon={<CompressOutlined />} type="primary" onClick={() => setFullscreenOpen(false)}>关闭</Button>,
+          <Button key="close" icon={<CompressOutlined />} type="primary" onClick={closeFullscreen}>关闭</Button>,
         ]}
         width="90vw"
         style={{ top: 20 }}
+        getContainer={false}
+        maskClosable
+        keyboard
+        transitionName=""
+        maskTransitionName=""
+        afterOpenChange={(open) => {
+          if (open) {
+            updateFsOutput();
+            return;
+          }
+          setFsRenderedHtml('');
+        }}
         destroyOnHidden
       >
         <div ref={fsScrollRef} className="console-body console-body-fullscreen">
