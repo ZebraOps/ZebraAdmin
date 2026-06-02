@@ -1,132 +1,99 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Badge, Button, Modal, Space, Switch, Tooltip } from 'antd';
-import { ReloadOutlined, ThunderboltOutlined, PauseOutlined, ExpandOutlined, CompressOutlined } from '@ant-design/icons';
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import { WebLinksAddon } from '@xterm/addon-web-links';
+import { Button, Input, Modal, Space, Switch, Tooltip } from 'antd';
+import { ReloadOutlined, ThunderboltOutlined, PauseOutlined, ExpandOutlined, CompressOutlined, SearchOutlined } from '@ant-design/icons';
+import AnsiToHtml from 'ansi-to-html';
 import { localStg } from '@/utils/storage';
 import * as deployApi from '@/service/api/publish/deploy-task';
-import '@xterm/xterm/css/xterm.css';
+import './JenkinsConsolePanel.css';
 
 interface JenkinsConsolePanelProps {
   taskId: number;
 }
 
-const STATUS_MAP: Record<string, { status: 'default' | 'processing' | 'success' | 'error'; label: string }> = {
-  connecting: { status: 'processing', label: '连接中' },
-  connected:  { status: 'processing', label: '实时' },
-  closed:     { status: 'default',    label: '已断开' },
-  error:      { status: 'error',      label: '连接错误' },
-};
-
-/** 创建 xterm Terminal 实例的通用函数 */
-function createTerminal(): { term: Terminal; fitAddon: FitAddon } {
-  const term = new Terminal({
-    theme: {
-      background: '#1e1e1e',
-      foreground: '#d4d4d4',
-      cursor: '#d4d4d4',
-    },
-    fontFamily: 'JetBrains Mono, Menlo, Monaco, monospace',
-    fontSize: 13,
-    lineHeight: 1.2,
-    scrollback: 5000,
-    cursorBlink: false,
-    disableStdin: true,
-  });
-  const fitAddon = new FitAddon();
-  const webLinksAddon = new WebLinksAddon();
-  term.loadAddon(fitAddon);
-  term.loadAddon(webLinksAddon);
-  return { term, fitAddon };
-}
+const ansiConverter = new AnsiToHtml({
+  fg: '#d4d4d4',
+  bg: '#1e1e1e',
+  newline: true,
+  escapeXML: true,
+  stream: false,
+});
 
 export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps) {
-  const termRef = useRef<HTMLDivElement>(null);
-  const xtermRef = useRef<Terminal | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const fsScrollRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const lastOutputRef = useRef<string>(''); // 用于 WebSocket 模式只追加增量
-  const outputCacheRef = useRef<string>(''); // 缓存已获取的输出，用于放大视图同步
+  const lastOutputRef = useRef<string>('');
+  const outputCacheRef = useRef<string>('');
 
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'closed' | 'error'>('closed');
-  const [liveMode, setLiveMode] = useState(false); // 默认手动模式
+  const [liveMode, setLiveMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
-
-  // 放大视图的 refs
-  const fsTermRef = useRef<HTMLDivElement>(null);
-  const fsXtermRef = useRef<Terminal | null>(null);
-  const fsFitAddonRef = useRef<FitAddon | null>(null);
+  const [renderedHtml, setRenderedHtml] = useState('');
+  const [fsRenderedHtml, setFsRenderedHtml] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [searchVisible, setSearchVisible] = useState(false);
 
   const rawBaseURL = (import.meta.env.VITE_BASE_URL || '').trim();
   const wsBaseURL = rawBaseURL.replace(/^http/, 'ws').replace(/\/$/, '');
 
-  // 初始化内嵌 xterm
-  useEffect(() => {
-    if (!termRef.current) return;
-
-    const { term, fitAddon } = createTerminal();
-    term.open(termRef.current);
-    xtermRef.current = term;
-    fitAddonRef.current = fitAddon;
-    setTimeout(() => fitAddon.fit(), 100);
-
-    return () => {
-      term.dispose();
-      xtermRef.current = null;
-    };
-  }, []);
-
-  // 初始化放大视图 xterm（Modal 打开时创建）
-  useEffect(() => {
-    if (!fullscreenOpen || !fsTermRef.current) return;
-
-    const { term, fitAddon } = createTerminal();
-    // 放大视图用更大字号
-    term.options.fontSize = 14;
-    term.open(fsTermRef.current);
-    fsXtermRef.current = term;
-    fsFitAddonRef.current = fitAddon;
-    setTimeout(() => fitAddon.fit(), 100);
-
-    // 写入缓存内容
-    if (outputCacheRef.current) {
-      term.write(outputCacheRef.current);
+  // ANSI → HTML 渲染
+  const renderOutput = useCallback((raw: string) => {
+    const html = ansiConverter.toHtml(raw);
+    // 搜索高亮
+    if (searchText) {
+      const escaped = searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const highlighted = html.replace(
+        new RegExp(escaped, 'gi'),
+        (match) => `<span class="console-highlight">${match}</span>`
+      );
+      return highlighted;
     }
+    return html;
+  }, [searchText]);
 
-    return () => {
-      term.dispose();
-      fsXtermRef.current = null;
-    };
-  }, [fullscreenOpen]);
+  // 更新输出内容
+  const updateOutput = useCallback((raw: string, cache = true) => {
+    if (cache) outputCacheRef.current = raw;
+    setRenderedHtml(renderOutput(raw));
+    // 自动滚动到底部
+    setTimeout(() => {
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 50);
+  }, [renderOutput]);
 
-  // 手动刷新：通过 REST API 获取一次完整输出
+  // 更新放大视图
+  const updateFsOutput = useCallback(() => {
+    setFsRenderedHtml(renderOutput(outputCacheRef.current));
+    setTimeout(() => {
+      const el = fsScrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 50);
+  }, [renderOutput]);
+
+  // 搜索变化时重新渲染
+  useEffect(() => {
+    setRenderedHtml(renderOutput(outputCacheRef.current));
+    if (fullscreenOpen) setFsRenderedHtml(renderOutput(outputCacheRef.current));
+  }, [searchText, renderOutput, fullscreenOpen]);
+
+  // 手动刷新
   const manualRefresh = useCallback(async () => {
     setLoading(true);
     try {
       const res = await deployApi.getTaskConsole(taskId);
       const output = res?.output ?? '';
-      outputCacheRef.current = output;
-      if (xtermRef.current) {
-        xtermRef.current.clear();
-        xtermRef.current.write(output);
-      }
-      // 同步放大视图（如果正在显示）
-      if (fsXtermRef.current && fullscreenOpen) {
-        fsXtermRef.current.clear();
-        fsXtermRef.current.write(output);
-      }
+      updateOutput(output);
+      if (fullscreenOpen) updateFsOutput();
     } catch {
-      if (xtermRef.current) {
-        xtermRef.current.write('\r\n\x1b[31m[获取控制台输出失败]\x1b[0m\r\n');
-      }
+      updateOutput('\x1b[31m[获取控制台输出失败]\x1b[0m', false);
     } finally {
       setLoading(false);
     }
-  }, [taskId, fullscreenOpen]);
+  }, [taskId, updateOutput, fullscreenOpen, updateFsOutput]);
 
-  // 组件挂载时自动获取一次控制台输出（无论实时还是手动模式）
+  // 组件挂载时自动获取一次
   useEffect(() => {
     manualRefresh();
   }, [taskId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -140,8 +107,8 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
 
     setWsStatus('connecting');
     lastOutputRef.current = '';
-    if (xtermRef.current) xtermRef.current.clear();
     outputCacheRef.current = '';
+    updateOutput('', false);
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -151,34 +118,28 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
       try {
         const data = JSON.parse(event.data);
         if (data.error) {
-          const errText = `\r\n\x1b[31m[${data.error}]\x1b[0m\r\n`;
-          if (xtermRef.current) xtermRef.current.write(errText);
-          if (fsXtermRef.current && fullscreenOpen) fsXtermRef.current.write(errText);
+          const errAnsi = `\x1b[31m[${data.error}]\x1b[0m\n`;
+          outputCacheRef.current += errAnsi;
+          updateOutput(outputCacheRef.current);
         }
         if (data.output) {
-          const prevLen = lastOutputRef.current.length;
           const fullOutput = String(data.output);
-          if (fullOutput.length > prevLen) {
-            const delta = fullOutput.slice(prevLen);
-            if (xtermRef.current) xtermRef.current.write(delta);
-            if (fsXtermRef.current && fullscreenOpen) fsXtermRef.current.write(delta);
-          }
-          lastOutputRef.current = fullOutput;
           outputCacheRef.current = fullOutput;
+          updateOutput(fullOutput);
         }
         if (data.finished) {
           ws.close();
         }
       } catch {
-        if (xtermRef.current) xtermRef.current.write(event.data);
-        if (fsXtermRef.current && fullscreenOpen) fsXtermRef.current.write(event.data);
+        outputCacheRef.current += event.data;
+        updateOutput(outputCacheRef.current);
       }
     };
     ws.onerror = () => { setWsStatus('error'); };
     ws.onclose = () => { setWsStatus('closed'); wsRef.current = null; };
-  }, [taskId, wsBaseURL, fullscreenOpen]);
+  }, [taskId, wsBaseURL, updateOutput]);
 
-  // 切换实时/手动模式
+  // 切换模式
   const toggleMode = useCallback((live: boolean) => {
     setLiveMode(live);
     if (live) {
@@ -196,48 +157,34 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
     return () => { if (wsRef.current) wsRef.current.close(); };
   }, [liveMode, connect]);
 
-  // 窗口 resize 时 fit 两个 xterm
-  useEffect(() => {
-    const handleResize = () => {
-      fitAddonRef.current?.fit();
-      fsFitAddonRef.current?.fit();
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // 放大视图刷新按钮
+  // 放大视图刷新
   const fsRefresh = useCallback(async () => {
     try {
       const res = await deployApi.getTaskConsole(taskId);
       const output = res?.output ?? '';
       outputCacheRef.current = output;
-      if (fsXtermRef.current) {
-        fsXtermRef.current.clear();
-        fsXtermRef.current.write(output);
-      }
-      // 同步内嵌视图
-      if (xtermRef.current) {
-        xtermRef.current.clear();
-        xtermRef.current.write(output);
-      }
+      setRenderedHtml(renderOutput(output));
+      setFsRenderedHtml(renderOutput(output));
     } catch {
-      if (fsXtermRef.current) {
-        fsXtermRef.current.write('\r\n\x1b[31m[获取控制台输出失败]\x1b[0m\r\n');
-      }
+      setFsRenderedHtml(renderOutput('\x1b[31m[获取控制台输出失败]\x1b[0m'));
     }
-  }, [taskId]);
+  }, [taskId, renderOutput]);
 
-  const badgeInfo = liveMode
-    ? STATUS_MAP[wsStatus]
-    : { status: 'default' as const, label: '手动' };
+  const statusLabel = liveMode
+    ? { connecting: '连接中', connected: '实时', closed: '已断开', error: '连接错误' }[wsStatus]
+    : '手动';
+
+  const statusColor = liveMode
+    ? { connecting: 'processing', connected: 'processing', closed: 'default', error: 'error' }[wsStatus]
+    : 'default';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <Space>
-        <Badge status={badgeInfo.status} text={badgeInfo.label} />
+    <div className="console-panel">
+      <div className="console-toolbar">
+        <span className={`console-status console-status-${statusColor}`}>{statusLabel}</span>
         <Tooltip title={liveMode ? '切换为手动刷新' : '切换为实时推送'}>
           <Switch
+            size="small"
             checked={liveMode}
             onChange={toggleMode}
             checkedChildren={<ThunderboltOutlined />}
@@ -245,58 +192,55 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
           />
         </Tooltip>
         {!liveMode && (
-          <Button
-            size="small"
-            icon={<ReloadOutlined />}
-            onClick={manualRefresh}
-            loading={loading}
-          >
-            刷新
-          </Button>
+          <Button size="small" icon={<ReloadOutlined />} onClick={manualRefresh} loading={loading}>刷新</Button>
         )}
         {liveMode && wsStatus === 'closed' && (
-          <Button size="small" icon={<ReloadOutlined />} onClick={connect} disabled={wsStatus === 'connecting'}>
-            重连
-          </Button>
+          <Button size="small" icon={<ReloadOutlined />} onClick={connect} disabled={wsStatus === 'connecting'}>重连</Button>
         )}
+        <Tooltip title="搜索">
+          <Button size="small" icon={<SearchOutlined />} onClick={() => setSearchVisible(!searchVisible)} />
+        </Tooltip>
         <Tooltip title="放大视图">
           <Button size="small" icon={<ExpandOutlined />} onClick={() => setFullscreenOpen(true)} />
         </Tooltip>
-      </Space>
-      <div
-        ref={termRef}
-        style={{
-          width: '100%',
-          height: 400,
-          backgroundColor: '#1e1e1e',
-          borderRadius: 4,
-          padding: 4,
-        }}
-      />
+      </div>
 
-      {/* 放大视图 Modal */}
+      {searchVisible && (
+        <div className="console-search">
+          <Input
+            size="small"
+            placeholder="搜索关键字..."
+            prefix={<SearchOutlined />}
+            allowClear
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+        </div>
+      )}
+
+      <div ref={scrollRef} className="console-body">
+        <pre dangerouslySetInnerHTML={{ __html: renderedHtml || '<span class="console-empty">暂无输出，点击刷新获取</span>' }} />
+      </div>
+
+      {/* 放大视图 */}
       <Modal
         title="Jenkins 控制台输出"
         open={fullscreenOpen}
         onCancel={() => setFullscreenOpen(false)}
         footer={[
+          <Input key="search" size="small" placeholder="搜索..." prefix={<SearchOutlined />} allowClear
+            value={searchText} onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 200, marginRight: 8 }} />,
           <Button key="refresh" icon={<ReloadOutlined />} onClick={fsRefresh}>刷新</Button>,
-          <Button key="close" icon={<CompressOutlined />} type="primary" onClick={() => setFullscreenOpen(false)}>关闭放大</Button>,
+          <Button key="close" icon={<CompressOutlined />} type="primary" onClick={() => setFullscreenOpen(false)}>关闭</Button>,
         ]}
         width="90vw"
         style={{ top: 20 }}
         destroyOnClose
       >
-        <div
-          ref={fsTermRef}
-          style={{
-            width: '100%',
-            height: 'calc(90vh - 120px)',
-            backgroundColor: '#1e1e1e',
-            borderRadius: 4,
-            padding: 4,
-          }}
-        />
+        <div ref={fsScrollRef} className="console-body console-body-fullscreen">
+          <pre dangerouslySetInnerHTML={{ __html: fsRenderedHtml || '<span class="console-empty">暂无输出</span>' }} />
+        </div>
       </Modal>
     </div>
   );
