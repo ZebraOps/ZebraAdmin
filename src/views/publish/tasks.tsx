@@ -6,7 +6,7 @@ import {
 } from '@ant-design/pro-components';
 import { Button, Tag, message, Popconfirm, Drawer, Descriptions } from 'antd';
 import { isHandledError } from '@/service/request';
-import { PlusOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import * as api from '@/service/api/publish/deploy-task';
 import type { DeployTask, CreateDeployTaskRequest } from '@/service/api/publish/deploy-task';
@@ -207,6 +207,9 @@ export default function PublishTasks() {
     { title: '命名空间', dataIndex: 'k8s_namespace', width: 110 },
     { title: 'Git 引用', dataIndex: 'git_ref', width: 120 },
     { title: '镜像标签', dataIndex: 'image_tag', ellipsis: true, width: 180 },
+    { title: '重试次数', dataIndex: 'retry_count', width: 80, search: false,
+      render: (val) => val && val > 0 ? val : '-',
+    },
     { title: 'Jenkins 任务', dataIndex: 'jenkins_job_name', ellipsis: true, width: 180 },
     { title: 'Deployment', dataIndex: 'deployment_name', ellipsis: true, width: 160 },
     { title: '开始时间', dataIndex: 'started_at', valueType: 'dateTime', width: 170 },
@@ -215,6 +218,17 @@ export default function PublishTasks() {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 220,
       render: (_, row) => [
         <Button key="detail" type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(row)}>详情</Button>,
+        row.status === 'FAILED' && hasComp('publish_task_retry') && <Popconfirm key="retry" title="确认重试此任务？" onConfirm={async () => {
+          try {
+            await api.retryDeployTask(row.id);
+            message.success('任务已重试');
+            actionRef.current?.reload();
+          } catch (e: any) {
+            if (!isHandledError(e)) message.error(e?.message || '重试失败');
+          }
+        }}>
+          <Button type="link" size="small" icon={<RedoOutlined />}>重试</Button>
+        </Popconfirm>,
         hasComp('publish_task_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { try { await api.deleteDeployTask(row.id); message.success('已删除'); actionRef.current?.reload(); } catch (e: any) { if (!isHandledError(e)) message.error('删除失败'); } }}>
           <Button type="link" size="small" danger icon={<DeleteOutlined />} />
         </Popconfirm>,
