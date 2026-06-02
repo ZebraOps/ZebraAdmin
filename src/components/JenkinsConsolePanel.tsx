@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Button, Input, Modal, Switch, Tooltip } from 'antd';
-import { ReloadOutlined, ThunderboltOutlined, PauseOutlined, ExpandOutlined, CompressOutlined, SearchOutlined } from '@ant-design/icons';
+import { Button, Input, Modal, Tooltip } from 'antd';
+import { ReloadOutlined, ExpandOutlined, CompressOutlined, SearchOutlined } from '@ant-design/icons';
 import AnsiToHtml from 'ansi-to-html';
-import { localStg } from '@/utils/storage';
 import * as deployApi from '@/service/api/publish/deploy-task';
 import './JenkinsConsolePanel.css';
 
@@ -15,6 +14,10 @@ interface ConsoleError {
   detail?: string;
 }
 
+const TERMINAL_STATUSES = new Set(['SUCCESS', 'FAILED']);
+
+const POLL_INTERVAL = 3000; // 3 秒轮询间隔
+
 const ansiConverter = new AnsiToHtml({
   fg: '#d4d4d4',
   bg: '#1e1e1e',
@@ -26,12 +29,9 @@ const ansiConverter = new AnsiToHtml({
 export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fsScrollRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const lastOutputRef = useRef<string>('');
   const outputCacheRef = useRef<string>('');
 
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'closed' | 'error'>('closed');
-  const [liveMode, setLiveMode] = useState(false);
+  const [taskStatus, setTaskStatus] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [renderedHtml, setRenderedHtml] = useState('');
@@ -39,8 +39,8 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
   const [searchText, setSearchText] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
 
-  const rawBaseURL = (import.meta.env.VITE_BASE_URL || '').trim();
-  const wsBaseURL = rawBaseURL.replace(/^http/, 'ws').replace(/\/$/, '');
+  // 是否正在自动轮询（任务处于活跃状态）
+  const polling = taskStatus !== '' && !TERMINAL_STATUSES.has(taskStatus.toUpperCase());
 
   const mapConsoleErrorToHint = useCallback((error: unknown) => {
     const e = error as ConsoleError | undefined;
@@ -95,13 +95,20 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
     if (fullscreenOpen) setFsRenderedHtml(renderOutput(outputCacheRef.current));
   }, [searchText, renderOutput, fullscreenOpen]);
 
-  // 手动刷新
-  const manualRefresh = useCallback(async () => {
+  // 获取控制台输出（同时更新 taskStatus）
+  const fetchConsole = useCallback(async () => {
     setLoading(true);
     try {
       const res = await deployApi.getTaskConsole(taskId);
       const output = res?.output ?? '';
-      updateOutput(output);
+      const status = res?.status ?? '';
+      if (res?.error && !output) {
+        // 后端返回了错误信息但没有输出（如 Jenkins 构建尚未开始）
+        updateOutput(mapConsoleErrorToHint({ message: res.error }), false);
+      } else {
+        updateOutput(output);
+      }
+      setTaskStatus(status.toUpperCase());
       if (fullscreenOpen) updateFsOutput();
     } catch (error) {
       updateOutput(mapConsoleErrorToHint(error), false);
@@ -112,76 +119,31 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
 
   // 组件挂载时自动获取一次
   useEffect(() => {
-    manualRefresh();
+    fetchConsole();
   }, [taskId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // WebSocket 连接（实时模式）
-  const connect = useCallback(() => {
-    if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
-
-    const token = localStg.get<string>('token') || '';
-    const url = `${wsBaseURL}/cicd/api/deploys/${taskId}/console/stream?token=${token}`;
-
-    setWsStatus('connecting');
-    lastOutputRef.current = '';
-    outputCacheRef.current = '';
-    updateOutput('', false);
-
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
-
-    ws.onopen = () => { setWsStatus('connected'); };
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.error) {
-          const errAnsi = `\x1b[31m[${data.error}]\x1b[0m\n`;
-          outputCacheRef.current += errAnsi;
-          updateOutput(outputCacheRef.current);
-        }
-        if (data.output) {
-          const fullOutput = String(data.output);
-          outputCacheRef.current = fullOutput;
-          updateOutput(fullOutput);
-        }
-        if (data.finished) {
-          ws.close();
-        }
-      } catch {
-        outputCacheRef.current += event.data;
-        updateOutput(outputCacheRef.current);
-      }
-    };
-    ws.onerror = () => { setWsStatus('error'); };
-    ws.onclose = () => { setWsStatus('closed'); wsRef.current = null; };
-  }, [taskId, wsBaseURL, updateOutput]);
-
-  // 切换模式
-  const toggleMode = useCallback((live: boolean) => {
-    setLiveMode(live);
-    if (live) {
-      connect();
-    } else {
-      if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
-      setWsStatus('closed');
-      manualRefresh();
-    }
-  }, [connect, manualRefresh]);
-
-  // 实时模式自动连接
+  // 活跃状态时自动轮询
   useEffect(() => {
-    if (liveMode) connect();
-    return () => { if (wsRef.current) wsRef.current.close(); };
-  }, [liveMode, connect]);
+    if (!polling) return;
+    const timer = setInterval(fetchConsole, POLL_INTERVAL);
+    return () => clearInterval(timer);
+  }, [polling, fetchConsole]);
+
+  // 手动刷新（给用户显式控制）
+  const manualRefresh = useCallback(() => {
+    fetchConsole();
+  }, [fetchConsole]);
 
   // 放大视图刷新
   const fsRefresh = useCallback(async () => {
     try {
       const res = await deployApi.getTaskConsole(taskId);
       const output = res?.output ?? '';
+      const status = res?.status ?? '';
       outputCacheRef.current = output;
       setRenderedHtml(renderOutput(output));
       setFsRenderedHtml(renderOutput(output));
+      setTaskStatus(status.toUpperCase());
     } catch (error) {
       setFsRenderedHtml(renderOutput(mapConsoleErrorToHint(error)));
     }
@@ -196,33 +158,24 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
     setFullscreenOpen(false);
   }, []);
 
-  const statusLabel = liveMode
-    ? { connecting: '连接中', connected: '实时', closed: '已断开', error: '连接错误' }[wsStatus]
-    : '手动';
+  // 状态指示标签
+  const statusLabel = polling
+    ? '自动刷新'
+    : taskStatus === 'SUCCESS'
+      ? '构建成功'
+      : taskStatus === 'FAILED'
+        ? '构建失败'
+        : taskStatus
+          ? '已完成'
+          : '手动';
 
-  const statusColor = liveMode
-    ? { connecting: 'processing', connected: 'processing', closed: 'default', error: 'error' }[wsStatus]
-    : 'default';
+  const statusClass = polling ? 'console-status-active' : 'console-status-default';
 
   return (
     <div className="console-panel">
       <div className="console-toolbar">
-        <span className={`console-status console-status-${statusColor}`}>{statusLabel}</span>
-        <Tooltip title={liveMode ? '切换为手动刷新' : '切换为实时推送'}>
-          <Switch
-            size="small"
-            checked={liveMode}
-            onChange={toggleMode}
-            checkedChildren={<ThunderboltOutlined />}
-            unCheckedChildren={<PauseOutlined />}
-          />
-        </Tooltip>
-        {!liveMode && (
-          <Button size="small" icon={<ReloadOutlined />} onClick={manualRefresh} loading={loading}>刷新</Button>
-        )}
-        {liveMode && wsStatus === 'closed' && (
-          <Button size="small" icon={<ReloadOutlined />} onClick={connect}>重连</Button>
-        )}
+        <span className={`console-status ${statusClass}`}>{statusLabel}</span>
+        <Button size="small" icon={<ReloadOutlined />} onClick={manualRefresh} loading={loading}>刷新</Button>
         <Tooltip title="搜索">
           <Button size="small" icon={<SearchOutlined />} onClick={() => setSearchVisible(!searchVisible)} />
         </Tooltip>

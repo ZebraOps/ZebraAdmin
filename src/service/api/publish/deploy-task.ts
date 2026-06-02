@@ -78,7 +78,7 @@ export const getAvailableTemplates = (appId: number) =>
   http.get<TemplatesForTask>('/cicd/api/deploys/templates', { app_id: String(appId) } as Record<string, unknown>);
 
 export const getTaskConsole = (id: number) =>
-  http.get<{ output: string }>(`/cicd/api/deploys/${id}/console`);
+  http.get<{ output: string; status: string; error?: string }>(`/cicd/api/deploys/${id}/console`);
 
 export const deleteDeployTask = (id: number) =>
   http.delete<void>(`/cicd/api/deploys/${id}`);

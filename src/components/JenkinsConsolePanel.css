@@ -23,18 +23,13 @@
   color: #666;
 }
 
-.console-status-processing {
+.console-status-active {
   background: #e6f7ff;
   color: #1890ff;
-  animation: pulse 1.5s infinite;
+  animation: console-pulse 1.5s infinite;
 }
 
-.console-status-error {
-  background: #fff1f0;
-  color: #cf1322;
-}
-
-@keyframes pulse {
+@keyframes console-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
