@@ -308,7 +308,7 @@ export default function PublishTasks() {
               setSelectedProjectId(val);
               const eName = getAppEName(val);
               if (formRef.current && eName) {
-                formRef.current.setFieldsValue({ jenkins_job_name: eName, harbor_project: eName, image_name: eName });
+                formRef.current.setFieldsValue({ jenkins_job_name: eName, registry_project: eName, image_name: eName });
               }
             }}} placeholder="请选择应用" />
           <ProFormSelect name="env_id" label="环境" rules={[{ required: true }]} options={envOptions} showSearch
@@ -372,7 +372,7 @@ export default function PublishTasks() {
             }}
           </ProFormDependency>
           <ProFormText name="jenkins_job_name" label="Jenkins 任务名称" rules={[{ required: true }]} placeholder="选择应用后自动填充" tooltip="默认使用应用英文名称" />
-          <ProFormText name="harbor_project" label="镜像仓库" rules={[{ required: true }]} placeholder="选择应用后自动填充" tooltip="镜像仓库中的项目命名空间" />
+          <ProFormText name="registry_project" label="镜像仓库" rules={[{ required: true }]} placeholder="选择应用后自动填充" tooltip="镜像仓库中的项目命名空间" />
           <ProFormText name="image_name" label="镜像名称" rules={[{ required: true }]} placeholder="选择应用后自动填充" tooltip="对应 Harbor 中的 repository 名称" />
         </ProFormGroup>
 

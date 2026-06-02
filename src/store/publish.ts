@@ -86,8 +86,9 @@ function mapJenkinsPlatformOptions(items: JenkinsPlatform[]): OptionItem[] {
 function mapGitPlatformOptions(items: GitPlatform[]): OptionItem[] {
   return items.map(g => ({ label: `${g.display_name || g.name} (${g.url})`, value: g.id }));
 }
+const registryTypeLabels: Record<string, string> = { v2: 'V2', harbor: 'Harbor', acr: 'ACR' };
 function mapImageRegistryOptions(items: ImageRegistry[]): OptionItem[] {
-  return items.map(i => ({ label: `${i.name} (${i.url})`, value: i.id }));
+  return items.map(i => ({ label: `${i.name} (${i.url}) [${registryTypeLabels[i.type] || i.type}]`, value: i.id }));
 }
 
 /** 解析分页结果，提取 records */

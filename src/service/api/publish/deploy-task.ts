@@ -16,7 +16,7 @@ export interface DeployTask {
   deploy_path?: string;
   jenkins_job_name?: string;
   jenkins_build_number?: number;
-  harbor_project?: string;
+  registry_project?: string;
   image_name?: string;
   deployment_name?: string;
   build_template_id?: number | null;
@@ -46,7 +46,7 @@ export interface CreateDeployTaskRequest {
   deploy_path?: string;
   // common
   jenkins_job_name: string;
-  harbor_project: string;
+  registry_project: string;
   image_name: string;
   deployment_name?: string;
   build_template_id?: number;

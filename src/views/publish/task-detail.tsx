@@ -353,8 +353,8 @@ const TaskDetailPage: React.FC = () => {
 
             {selectedStage === 'PUSHING' && (
               <Descriptions column={1} size="small" bordered>
-                <Descriptions.Item label="Harbor仓库">{task.harbor_project || '--'}</Descriptions.Item>
-                <Descriptions.Item label="镜像">{task.harbor_project && task.image_name ? `${task.harbor_project}/${task.image_name}:${task.image_tag}` : '--'}</Descriptions.Item>
+                <Descriptions.Item label="镜像仓库">{task.registry_project || '--'}</Descriptions.Item>
+                <Descriptions.Item label="镜像">{task.registry_project && task.image_name ? `${task.registry_project}/${task.image_name}:${task.image_tag}` : '--'}</Descriptions.Item>
                 <Descriptions.Item label="开始时间">{selectedStageData?.started_at || '--'}</Descriptions.Item>
                 <Descriptions.Item label="完成时间">{selectedStageData?.finished_at || '--'}</Descriptions.Item>
                 <Descriptions.Item label="耗时">
