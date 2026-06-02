@@ -10,6 +10,11 @@ interface JenkinsConsolePanelProps {
   taskId: number;
 }
 
+interface ConsoleError {
+  message?: string;
+  detail?: string;
+}
+
 const ansiConverter = new AnsiToHtml({
   fg: '#d4d4d4',
   bg: '#1e1e1e',
@@ -36,6 +41,18 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
 
   const rawBaseURL = (import.meta.env.VITE_BASE_URL || '').trim();
   const wsBaseURL = rawBaseURL.replace(/^http/, 'ws').replace(/\/$/, '');
+
+  const mapConsoleErrorToHint = useCallback((error: unknown) => {
+    const e = error as ConsoleError | undefined;
+    const msg = e?.message || e?.detail || '';
+    if (/no Jenkins build info|构建信息|build info/i.test(msg)) {
+      return '\x1b[33m[Jenkins 构建尚未开始，请稍后刷新]\x1b[0m';
+    }
+    if (/task .* not found|not found|任务不存在/i.test(msg)) {
+      return '\x1b[33m[任务不存在或已被删除]\x1b[0m';
+    }
+    return '\x1b[31m[获取控制台输出失败]\x1b[0m';
+  }, []);
 
   // ANSI → HTML 渲染
   const renderOutput = useCallback((raw: string) => {
@@ -86,12 +103,12 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
       const output = res?.output ?? '';
       updateOutput(output);
       if (fullscreenOpen) updateFsOutput();
-    } catch {
-      updateOutput('\x1b[31m[获取控制台输出失败]\x1b[0m', false);
+    } catch (error) {
+      updateOutput(mapConsoleErrorToHint(error), false);
     } finally {
       setLoading(false);
     }
-  }, [taskId, updateOutput, fullscreenOpen, updateFsOutput]);
+  }, [taskId, updateOutput, fullscreenOpen, updateFsOutput, mapConsoleErrorToHint]);
 
   // 组件挂载时自动获取一次
   useEffect(() => {
@@ -165,10 +182,10 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
       outputCacheRef.current = output;
       setRenderedHtml(renderOutput(output));
       setFsRenderedHtml(renderOutput(output));
-    } catch {
-      setFsRenderedHtml(renderOutput('\x1b[31m[获取控制台输出失败]\x1b[0m'));
+    } catch (error) {
+      setFsRenderedHtml(renderOutput(mapConsoleErrorToHint(error)));
     }
-  }, [taskId, renderOutput]);
+  }, [taskId, renderOutput, mapConsoleErrorToHint]);
 
   const openFullscreen = useCallback(() => {
     updateFsOutput();
