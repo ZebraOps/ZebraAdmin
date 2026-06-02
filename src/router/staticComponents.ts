@@ -79,6 +79,7 @@ export const staticComponents: StaticComponent[] = [
   { component_name: 'publish_task_add', comp_desc: '发布-创建任务', group_name: '发布管理' },
   { component_name: 'publish_task_delete', comp_desc: '发布-删除任务', group_name: '发布管理' },
   { component_name: 'publish_task_batch_delete', comp_desc: '发布-批量删除任务', group_name: '发布管理' },
+  { component_name: 'publish_task_retry', comp_desc: '发布-重试任务', group_name: '发布管理' },
 
   // 发布管理 - 构建模板
   { component_name: 'publish_build_template_add', comp_desc: '发布-新增构建模板', group_name: '发布管理' },
