@@ -138,7 +138,7 @@ export default function PublishConfigCredentials() {
       <PublishCRUDPage<JenkinsCredential>
         key={tableVersion}
         rowKey="id"
-        title="凭据管理"
+        title="Jenkins凭据"
         columns={searchColumns}
         fetchList={fetchList}
         createItem={(data) => api.createJenkinsCredential(data as any)}
@@ -147,8 +147,8 @@ export default function PublishConfigCredentials() {
         addPerm="publish_credentials_add"
         editPerm="publish_credentials_edit"
         deletePerm="publish_credentials_delete"
-        formTitleCreate="新增凭据"
-        formTitleEdit="编辑凭据"
+        formTitleCreate="新增Jenkins凭据"
+        formTitleEdit="编辑Jenkins凭据"
         customToolbar={customToolbar}
         formInitialValues={{ scope: 'GLOBAL', status: 'active' }}
         formFields={(record) => {
