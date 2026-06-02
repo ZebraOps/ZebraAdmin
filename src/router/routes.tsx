@@ -30,6 +30,7 @@ const PermissionRoles = lazy(() => import('@/views/permission/roles'));
 const PublishApplications = lazy(() => import('@/views/publish/applications'));
 const PublishRepos = lazy(() => import('@/views/publish/repos'));
 const PublishTasks = lazy(() => import('@/views/publish/tasks'));
+const PublishTaskDetail = lazy(() => import('@/views/publish/task-detail'));
 const PublishTemplatesBuild = lazy(() => import('@/views/publish/templates/build'));
 const PublishTemplatesDeployment = lazy(() => import('@/views/publish/templates/deployment'));
 const PublishConfigEnv = lazy(() => import('@/views/publish/config/env'));
@@ -78,6 +79,7 @@ const routeConfig: RouteObject[] = [
       { path: '/publish/applications', element: <RouteOutlet><PublishApplications /></RouteOutlet> },
       { path: '/publish/repos', element: <RouteOutlet><PublishRepos /></RouteOutlet> },
       { path: '/publish/tasks', element: <RouteOutlet><PublishTasks /></RouteOutlet> },
+      { path: '/publish/tasks/:id', element: <RouteOutlet><PublishTaskDetail /></RouteOutlet> },
       { path: '/publish/templates/build', element: <RouteOutlet><PublishTemplatesBuild /></RouteOutlet> },
       { path: '/publish/templates/deployment', element: <RouteOutlet><PublishTemplatesDeployment /></RouteOutlet> },
       { path: '/publish/config/env', element: <RouteOutlet><PublishConfigEnv /></RouteOutlet> },

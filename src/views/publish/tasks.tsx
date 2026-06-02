@@ -4,10 +4,11 @@ import {
   ProFormGroup,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Popconfirm, Drawer, Descriptions } from 'antd';
+import { Button, Tag, message, Popconfirm } from 'antd';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 import * as api from '@/service/api/publish/deploy-task';
 import type { DeployTask, CreateDeployTaskRequest } from '@/service/api/publish/deploy-task';
 import * as deployApi from '@/service/api/publish/applications';
@@ -16,7 +17,6 @@ import { fetchRepoBranches, fetchRepoTags } from '@/service/api/publish/repos';
 import { listK8sNamespaces } from '@/service/api/publish/k8s-cluster';
 import { usePermission } from '@/hooks/usePermission';
 import { usePublishStore } from '@/store/publish';
-import JenkinsConsolePanel from '@/components/JenkinsConsolePanel';
 
 const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   PENDING:   { color: 'default',    label: '等待中' },
@@ -35,6 +35,7 @@ const POLL_INTERVAL = 5000;
 
 export default function PublishTasks() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { hasComp } = usePermission();
   const actionRef = useRef<ActionType>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,14 +75,6 @@ export default function PublishTasks() {
   const [namespaceLoading, setNamespaceLoading] = useState(false);
 
   const formRef = useRef<ProFormInstance<CreateDeployTaskRequest>>(null);
-
-  // 任务详情 Drawer
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailTask, setDetailTask] = useState<DeployTask | null>(null);
-
-  useEffect(() => {
-    if (!detailOpen) setDetailTask(null);
-  }, [detailOpen]);
 
   // 选择应用后：加载模板 + 分支/标签
   useEffect(() => {
@@ -162,11 +155,6 @@ export default function PublishTasks() {
     }
   };
 
-  const openDetail = (task: DeployTask) => {
-    setDetailTask(task);
-    setDetailOpen(true);
-  };
-
   const columns: ProColumns<DeployTask>[] = [
     { title: '任务ID', dataIndex: 'id', width: 80 },
     {
@@ -217,7 +205,7 @@ export default function PublishTasks() {
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 220,
       render: (_, row) => [
-        <Button key="detail" type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(row)}>详情</Button>,
+        <Button key="detail" type="link" size="small" icon={<EyeOutlined />} onClick={() => navigate(`/publish/tasks/${row.id}`)}>详情</Button>,
         row.status === 'FAILED' && hasComp('publish_task_retry') && <Popconfirm key="retry" title="确认重试此任务？" onConfirm={async () => {
           try {
             await api.retryDeployTask(row.id);
@@ -438,71 +426,6 @@ export default function PublishTasks() {
           </ProFormDependency>
         </ProFormGroup>
       </ModalForm>
-
-      {/* 任务详情 Drawer */}
-      <Drawer title={`任务详情 #${detailTask?.id ?? '-'}`} open={detailOpen} onClose={() => setDetailOpen(false)} width={680}>
-        {detailTask && (
-          <>
-            <Descriptions title="基本信息" column={2} size="small" bordered style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="应用">{findLabel(appOptions, detailTask.project_id)}</Descriptions.Item>
-              <Descriptions.Item label="环境">{findLabel(envOptions, detailTask.env_id)}</Descriptions.Item>
-              <Descriptions.Item label="部署目标">
-                {(() => { const v = (detailTask.deploy_target || detailTask.deploy_type || 'k8s') as string; return <Tag color={TARGET_COLORS[v]}>{TARGET_LABELS[v] || v}</Tag>; })()}
-              </Descriptions.Item>
-              {(detailTask.deploy_target || detailTask.deploy_type) === 'linux' ? (
-                <>
-                  <Descriptions.Item label="目标服务器">{findLabel(linuxMachineOptions, detailTask.server_id)}</Descriptions.Item>
-                  <Descriptions.Item label="部署路径">{detailTask.deploy_path || '-'}</Descriptions.Item>
-                </>
-              ) : (detailTask.deploy_target || detailTask.deploy_type) === 'docker' ? (
-                <Descriptions.Item label="目标服务器">{findLabel(linuxMachineOptions, detailTask.server_id)}</Descriptions.Item>
-              ) : (
-                <>
-                  <Descriptions.Item label="K8s 集群">{findLabel(clusterOptions, detailTask.k8s_cluster_id)}</Descriptions.Item>
-                  <Descriptions.Item label="命名空间">{detailTask.k8s_namespace || '-'}</Descriptions.Item>
-                </>
-              )}
-              <Descriptions.Item label="Git 引用">{detailTask.git_ref || '-'}</Descriptions.Item>
-              <Descriptions.Item label="镜像标签">{detailTask.image_tag || '-'}</Descriptions.Item>
-              <Descriptions.Item label="镜像仓库">{detailTask.harbor_project || '-'}</Descriptions.Item>
-              <Descriptions.Item label="镜像名称">{detailTask.image_name || '-'}</Descriptions.Item>
-              <Descriptions.Item label="Deployment">{detailTask.deployment_name || '-'}</Descriptions.Item>
-              <Descriptions.Item label="状态">
-                <Tag color={STATUS_CONFIG[String(detailTask.status).toUpperCase()]?.color ?? 'default'}>
-                  {STATUS_CONFIG[String(detailTask.status).toUpperCase()]?.label ?? detailTask.status}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="创建时间">{detailTask.created_at ?? '-'}</Descriptions.Item>
-              <Descriptions.Item label="开始时间">{detailTask.started_at ?? '-'}</Descriptions.Item>
-              <Descriptions.Item label="完成时间">{detailTask.finished_at ?? '-'}</Descriptions.Item>
-            </Descriptions>
-            <Descriptions title="构建参数" column={2} size="small" bordered style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="构建模板 ID">{detailTask.build_template_id ?? '默认'}</Descriptions.Item>
-              <Descriptions.Item label="Jenkins 任务">{detailTask.jenkins_job_name || '-'}</Descriptions.Item>
-              <Descriptions.Item label="构建编号">{detailTask.jenkins_build_number ?? '-'}</Descriptions.Item>
-            </Descriptions>
-            <Descriptions title="部署参数" column={2} size="small" bordered style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="部署模板 ID">{detailTask.deployment_template_id ?? '默认'}</Descriptions.Item>
-              {(detailTask.deploy_target || detailTask.deploy_type) === 'docker' ? (
-                <Descriptions.Item label="容器名称">{detailTask.deployment_name || '-'}</Descriptions.Item>
-              ) : (
-                <Descriptions.Item label="K8s Deployment">{detailTask.deployment_name || '-'}</Descriptions.Item>
-              )}
-            </Descriptions>
-            {detailTask.error_message && (
-              <Descriptions title="错误信息" column={1} size="small" bordered style={{ marginBottom: 16 }}>
-                <Descriptions.Item label="错误详情"><Tag color="error">{detailTask.error_message}</Tag></Descriptions.Item>
-              </Descriptions>
-            )}
-            {detailTask.jenkins_job_name && (
-              <>
-                <Descriptions title="Jenkins 控制台输出" column={1} size="small" bordered style={{ marginBottom: 8 }} />
-                <JenkinsConsolePanel taskId={detailTask.id} />
-              </>
-            )}
-          </>
-        )}
-      </Drawer>
     </>
   );
 }

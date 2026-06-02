@@ -1,0 +1,437 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router';
+import { Card, Descriptions, Button, Tag, Space, Spin, Row, Col, Typography, message } from 'antd';
+import { ArrowLeftOutlined, DeleteOutlined, RedoOutlined } from '@ant-design/icons';
+import { getDeployTask, deleteDeployTask, retryDeployTask, getTaskStages, type DeployTask, type StageHistory } from '@/service/api';
+import { usePublishStore } from '@/store/publish';
+import JenkinsConsolePanel from '@/components/JenkinsConsolePanel';
+
+const { Title, Text } = Typography;
+
+// Pipeline stages definition (order matters)
+const PIPELINE_STAGES = ['PENDING', 'BUILDING', 'PUSHING', 'DEPLOYING'] as const;
+
+// Stage display config
+const STAGE_CONFIG: Record<string, { desc: string }> = {
+  PENDING: { desc: '任务创建入队' },
+  BUILDING: { desc: 'Jenkins构建镜像' },
+  PUSHING: { desc: '推送至Harbor' },
+  DEPLOYING: { desc: '部署至目标环境' },
+};
+
+const TaskDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const publishStore = usePublishStore();
+
+  // Load dropdown data from shared store
+  useEffect(() => { publishStore.loadAll(); }, []);
+
+  const [task, setTask] = useState<DeployTask | null>(null);
+  const [stages, setStages] = useState<StageHistory[]>([]);
+  const [selectedStage, setSelectedStage] = useState<string>('BUILDING');
+  const [loading, setLoading] = useState(true);
+
+  const taskId = Number(id);
+
+  // Determine current active stage from task status
+  const getActiveStage = (taskStatus: string, stagesData: StageHistory[]): string => {
+    const runningStage = stagesData.find(s => s.status === 'running');
+    if (runningStage) return runningStage.stage;
+    // If no running stage, default to the last completed or current task status
+    if (PIPELINE_STAGES.includes(taskStatus as typeof PIPELINE_STAGES[number])) return taskStatus;
+    // Terminal states: show last stage
+    if (taskStatus === 'SUCCESS') return 'DEPLOYING';
+    if (taskStatus === 'FAILED') {
+      const failedStage = stagesData.find(s => s.status === 'failed');
+      return failedStage?.stage || taskStatus;
+    }
+    return 'BUILDING';
+  };
+
+  // Fetch task + stages data
+  const fetchData = useCallback(async () => {
+    try {
+      const taskData = await getDeployTask(taskId);
+      setTask(taskData);
+      const stagesData = await getTaskStages(taskId);
+      setStages(stagesData);
+
+      // Auto-select active stage on first load
+      if (stagesData.length > 0) {
+        setSelectedStage(getActiveStage(taskData.status || 'PENDING', stagesData));
+      }
+    } catch {
+      message.error('获取任务详情失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [taskId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Polling for non-terminal states
+  useEffect(() => {
+    if (!task) return;
+    const terminalStatuses = ['SUCCESS', 'FAILED'];
+    if (terminalStatuses.includes(task.status || '')) return;
+
+    const timer = setInterval(() => {
+      fetchData();
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [task?.status, fetchData]);
+
+  // Compute duration string from two timestamps
+  const computeDuration = (start: string, end: string): string => {
+    const s = new Date(start).getTime();
+    const e = new Date(end).getTime();
+    const diff = e - s;
+    if (diff < 1000) return `${diff}ms`;
+    if (diff < 60000) return `${(diff / 1000).toFixed(1)}s`;
+    if (diff < 3600000) return `${(diff / 60000).toFixed(1)}m`;
+    return `${(diff / 3600000).toFixed(1)}h`;
+  };
+
+  // Compute stage display state from stages data, with fallback from task status
+  const getStageState = (stageName: string): { status: string; startedAt?: string; finishedAt?: string; duration?: string; errorMsg?: string } => {
+    const record = stages.find(s => s.stage === stageName);
+    if (record) {
+      const duration = record.started_at && record.finished_at
+        ? computeDuration(record.started_at, record.finished_at)
+        : record.started_at && record.status === 'running'
+          ? '进行中...'
+          : '--';
+      return {
+        status: record.status,
+        startedAt: record.started_at,
+        finishedAt: record.finished_at,
+        duration,
+        errorMsg: record.error_message,
+      };
+    }
+
+    // Fallback: no stage_history records — infer from task status
+    if (!task) return { status: 'pending' };
+
+    const currentStatus = task.status || 'PENDING';
+    const stageOrder: readonly string[] = PIPELINE_STAGES;
+    const stageIdx = stageOrder.indexOf(stageName as typeof PIPELINE_STAGES[number]);
+    const currentIdx = stageOrder.indexOf(currentStatus as typeof PIPELINE_STAGES[number]);
+
+    // Terminal states
+    if (currentStatus === 'SUCCESS') {
+      return { status: 'success', startedAt: '--', finishedAt: '--', duration: '--' };
+    }
+    if (currentStatus === 'FAILED') {
+      // All stages before the failed point are success, the current stage is failed
+      if (stageIdx < currentIdx) return { status: 'success' };
+      if (stageIdx === currentIdx) return { status: 'failed', errorMsg: task.error_message };
+      return { status: 'pending' };
+    }
+
+    // Running states: stages before current are done, current is running, after are pending
+    if (stageIdx >= 0 && currentIdx >= 0) {
+      if (stageIdx < currentIdx) return { status: 'success' };
+      if (stageIdx === currentIdx) return { status: 'running', duration: '进行中...' };
+    }
+
+    return { status: 'pending' };
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteDeployTask(taskId);
+      message.success('删除成功');
+      navigate('/publish/tasks');
+    } catch {
+      message.error('删除失败');
+    }
+  };
+
+  const handleRetry = async () => {
+    try {
+      await retryDeployTask(taskId);
+      message.success('重试已提交');
+      fetchData();
+    } catch {
+      message.error('重试失败');
+    }
+  };
+
+  if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+  if (!task) return <div>任务不存在</div>;
+
+  // Selected stage data
+  const selectedStageData = stages.find(s => s.stage === selectedStage);
+  const taskStatus = task.status || 'PENDING';
+
+  // Resolve display names from publish store
+  const appName = (publishStore.apps || []).find(a => a.id === task.project_id)?.c_name || `#${task.project_id}`;
+  const envName = (publishStore.envs || []).find(e => e.id === task.env_id)?.name || `#${task.env_id}`;
+
+  return (
+    <div style={{ padding: 16, background: '#f5f5f5', minHeight: '100vh' }}>
+      {/* Page Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Space>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/publish/tasks')}>返回</Button>
+          <Title level={4} style={{ margin: 0 }}>任务详情 #{taskId}</Title>
+        </Space>
+        <Space>
+          {taskStatus === 'FAILED' && (
+            <Button icon={<RedoOutlined />} type="primary" onClick={handleRetry}>重试</Button>
+          )}
+          <Button icon={<DeleteOutlined />} danger onClick={handleDelete}>删除</Button>
+        </Space>
+      </div>
+
+      {/* Top: Basic Info Card */}
+      <Card
+        style={{ marginBottom: 16 }}
+        title="基本信息"
+        extra={<Tag color={taskStatus === 'SUCCESS' ? 'green' : taskStatus === 'FAILED' ? 'red' : 'blue'}>{taskStatus}</Tag>}
+      >
+        <Descriptions column={4} size="small">
+          <Descriptions.Item label="应用名称">{appName}</Descriptions.Item>
+          <Descriptions.Item label="目标环境">{envName}</Descriptions.Item>
+          <Descriptions.Item label="Git引用">{task.git_ref || '--'}</Descriptions.Item>
+          <Descriptions.Item label="镜像标签">{task.image_tag || '--'}</Descriptions.Item>
+          <Descriptions.Item label="部署目标">{task.deploy_target || '--'}</Descriptions.Item>
+          {task.deploy_target === 'k8s' && (
+            <>
+              <Descriptions.Item label="K8s集群">{task.k8s_cluster_id || '--'}</Descriptions.Item>
+              <Descriptions.Item label="命名空间">{task.k8s_namespace || '--'}</Descriptions.Item>
+            </>
+          )}
+          {task.deploy_target === 'linux' && (
+            <>
+              <Descriptions.Item label="服务器">{task.server_id || '--'}</Descriptions.Item>
+              <Descriptions.Item label="部署路径">{task.deploy_path || '--'}</Descriptions.Item>
+            </>
+          )}
+          <Descriptions.Item label="创建时间">{task.created_at || '--'}</Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      {/* Bottom: Left (flowchart) + Right (detail panel) */}
+      <Row gutter={16} style={{ minHeight: 400 }}>
+        {/* Left: Pipeline Flow */}
+        <Col span={14}>
+          <Card title="CICD 流程" styles={{ body: { padding: '12px 16px' } }}>
+            {/* Horizontal stage cards */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              {PIPELINE_STAGES.map((stageName) => {
+                const state = getStageState(stageName);
+                const config = STAGE_CONFIG[stageName];
+                const isSelected = selectedStage === stageName;
+                const borderColor = state.status === 'success' ? '#52c41a'
+                  : state.status === 'running' ? '#1890ff'
+                  : state.status === 'failed' ? '#ff4d4f'
+                  : '#d9d9d9';
+                const bgColor = state.status === 'success' ? '#f6ffed'
+                  : state.status === 'running' ? '#e6f7ff'
+                  : state.status === 'failed' ? '#fff2f0'
+                  : '#fafafa';
+                const textColor = state.status === 'success' ? '#52c41a'
+                  : state.status === 'running' ? '#1890ff'
+                  : state.status === 'failed' ? '#ff4d4f'
+                  : '#999';
+                const statusIcon = state.status === 'success' ? '✓'
+                  : state.status === 'running' ? '⟳'
+                  : state.status === 'failed' ? '✗'
+                  : '';
+                const statusText = state.duration || (state.status === 'pending' ? '等待中' : '--');
+
+                return (
+                  <div
+                    key={stageName}
+                    onClick={() => setSelectedStage(stageName)}
+                    style={{
+                      flex: 1,
+                      borderLeft: `3px solid ${borderColor}`,
+                      padding: '8px 10px',
+                      background: bgColor,
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+                      transition: 'box-shadow 0.2s',
+                    }}
+                  >
+                    <div style={{ fontWeight: 'bold', color: textColor, fontSize: 13 }}>
+                      {statusIcon} {stageName}
+                    </div>
+                    <div style={{ fontSize: 11, color: textColor, marginTop: 2 }}>{statusText}</div>
+                    <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>{config.desc}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Timeline progress bar */}
+            {stages.length > 0 && (
+              <div style={{ marginTop: 16, borderTop: '1px solid #eee', paddingTop: 12 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>时间线</Text>
+                <div style={{ position: 'relative', height: 6, background: '#d9d9d9', borderRadius: 3, marginTop: 6 }}>
+                  {stages.filter(s => s.status === 'success' || s.status === 'running').map((s) => {
+                    const totalStages = PIPELINE_STAGES.length;
+                    const stageIdx = PIPELINE_STAGES.indexOf(s.stage as typeof PIPELINE_STAGES[number]);
+                    if (stageIdx === -1) return null;
+                    const leftPct = (stageIdx / totalStages) * 100;
+                    const widthPct = (1 / totalStages) * 100;
+                    const color = s.status === 'success' ? '#52c41a' : '#1890ff';
+                    return (
+                      <div key={s.stage} style={{
+                        position: 'absolute',
+                        left: `${leftPct}%`,
+                        width: `${widthPct}%`,
+                        height: '100%',
+                        background: color,
+                        borderRadius: 3,
+                      }} />
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#999', marginTop: 4 }}>
+                  {PIPELINE_STAGES.map((sn) => {
+                    const state = getStageState(sn);
+                    return <span key={sn}>{state.startedAt ? new Date(state.startedAt).toLocaleTimeString() : '--:--'}</span>;
+                  })}
+                </div>
+              </div>
+            )}
+          </Card>
+        </Col>
+
+        {/* Right: Stage Detail Panel */}
+        <Col span={10}>
+          <Card title={selectedStage ? `${selectedStage} 阶段详情` : '阶段详情'} styles={{ body: { padding: '12px 16px' } }}>
+            {/* Stage-specific detail content */}
+            {selectedStage === 'PENDING' && (
+              <Descriptions column={1} size="small" bordered>
+                <Descriptions.Item label="触发方式">手动触发</Descriptions.Item>
+                <Descriptions.Item label="创建时间">{selectedStageData?.started_at || task.created_at || '--'}</Descriptions.Item>
+                <Descriptions.Item label="完成时间">{selectedStageData?.finished_at || '--'}</Descriptions.Item>
+                <Descriptions.Item label="耗时">{selectedStageData?.started_at && selectedStageData?.finished_at ? computeDuration(selectedStageData.started_at, selectedStageData.finished_at) : '--'}</Descriptions.Item>
+                <Descriptions.Item label="队列">Asynq deploy queue</Descriptions.Item>
+              </Descriptions>
+            )}
+
+            {selectedStage === 'BUILDING' && (
+              <>
+                <Descriptions column={1} size="small" bordered>
+                  <Descriptions.Item label="Jenkins Job">{task.jenkins_job_name || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="Build Number">{task.jenkins_build_number || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="构建模板">{task.build_template_id || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="镜像名称">{task.image_name || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="镜像标签">{task.image_tag || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="开始时间">{selectedStageData?.started_at || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="耗时">
+                    {selectedStageData?.started_at && selectedStageData?.finished_at
+                      ? computeDuration(selectedStageData.started_at, selectedStageData.finished_at)
+                      : selectedStageData?.started_at && selectedStageData?.status === 'running'
+                        ? '进行中...'
+                        : '--'}
+                  </Descriptions.Item>
+                  {selectedStageData?.error_message && (
+                    <Descriptions.Item label="错误信息">
+                      <Text type="danger">{selectedStageData.error_message}</Text>
+                    </Descriptions.Item>
+                  )}
+                </Descriptions>
+                {task.jenkins_job_name && (
+                  <div style={{ marginTop: 12 }}>
+                    <Text type="secondary" style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>Jenkins Console Output</Text>
+                    <JenkinsConsolePanel taskId={taskId} />
+                  </div>
+                )}
+              </>
+            )}
+
+            {selectedStage === 'PUSHING' && (
+              <Descriptions column={1} size="small" bordered>
+                <Descriptions.Item label="Harbor仓库">{task.harbor_project || '--'}</Descriptions.Item>
+                <Descriptions.Item label="镜像">{task.harbor_project && task.image_name ? `${task.harbor_project}/${task.image_name}:${task.image_tag}` : '--'}</Descriptions.Item>
+                <Descriptions.Item label="开始时间">{selectedStageData?.started_at || '--'}</Descriptions.Item>
+                <Descriptions.Item label="完成时间">{selectedStageData?.finished_at || '--'}</Descriptions.Item>
+                <Descriptions.Item label="耗时">
+                  {selectedStageData?.started_at && selectedStageData?.finished_at
+                    ? computeDuration(selectedStageData.started_at, selectedStageData.finished_at)
+                    : '--'}
+                </Descriptions.Item>
+                <Descriptions.Item label="验证状态">
+                  {selectedStageData?.status === 'success' ? <Tag color="green">镜像已确认存在</Tag>
+                    : selectedStageData?.status === 'running' ? <Tag color="blue">验证中...</Tag>
+                    : selectedStageData?.status === 'failed' ? <Tag color="red">验证失败</Tag>
+                    : <Tag>等待构建完成</Tag>}
+                </Descriptions.Item>
+                {selectedStageData?.error_message && (
+                  <Descriptions.Item label="错误信息">
+                    <Text type="danger">{selectedStageData.error_message}</Text>
+                  </Descriptions.Item>
+                )}
+              </Descriptions>
+            )}
+
+            {selectedStage === 'DEPLOYING' && (
+              <>
+                <Descriptions column={1} size="small" bordered>
+                  <Descriptions.Item label="部署类型">{task.deploy_target || '--'}</Descriptions.Item>
+                  {task.deploy_target === 'k8s' && (
+                    <>
+                      <Descriptions.Item label="K8s集群">{task.k8s_cluster_id || '--'}</Descriptions.Item>
+                      <Descriptions.Item label="命名空间">{task.k8s_namespace || '--'}</Descriptions.Item>
+                      <Descriptions.Item label="Deployment">{task.deployment_name || '--'}</Descriptions.Item>
+                      <Descriptions.Item label="部署方式">Server-Side Apply</Descriptions.Item>
+                    </>
+                  )}
+                  {task.deploy_target === 'docker' && (
+                    <>
+                      <Descriptions.Item label="服务器">{task.server_id || '--'}</Descriptions.Item>
+                      <Descriptions.Item label="Compose路径">{task.docker_compose_path || '--'}</Descriptions.Item>
+                    </>
+                  )}
+                  {task.deploy_target === 'linux' && (
+                    <>
+                      <Descriptions.Item label="服务器">{task.server_id || '--'}</Descriptions.Item>
+                      <Descriptions.Item label="部署路径">{task.deploy_path || '--'}</Descriptions.Item>
+                      <Descriptions.Item label="部署方式">Nginx静态部署</Descriptions.Item>
+                    </>
+                  )}
+                  <Descriptions.Item label="部署模板">{task.deployment_template_id || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="开始时间">{selectedStageData?.started_at || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="耗时">
+                    {selectedStageData?.started_at && selectedStageData?.finished_at
+                      ? computeDuration(selectedStageData.started_at, selectedStageData.finished_at)
+                      : selectedStageData?.started_at && selectedStageData?.status === 'running'
+                        ? '进行中...'
+                        : '--'}
+                  </Descriptions.Item>
+                  {selectedStageData?.error_message && (
+                    <Descriptions.Item label="错误信息">
+                      <Text type="danger">{selectedStageData.error_message}</Text>
+                    </Descriptions.Item>
+                  )}
+                </Descriptions>
+                {/* Deploy log summary if available */}
+                {selectedStageData?.log_summary && (
+                  <div style={{ marginTop: 12 }}>
+                    <Text type="secondary" style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>部署日志摘要</Text>
+                    <pre style={{ background: '#1e1e1e', color: '#0f0', padding: 8, borderRadius: 4, fontSize: 11, maxHeight: 120, overflow: 'auto' }}>
+                      {selectedStageData.log_summary}
+                    </pre>
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+export default TaskDetailPage;

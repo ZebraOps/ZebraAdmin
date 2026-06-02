@@ -207,11 +207,16 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
         open={fullscreenOpen}
         onCancel={closeFullscreen}
         footer={[
-          <Input key="search" size="small" placeholder="搜索..." prefix={<SearchOutlined />} allowClear
-            value={searchText} onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 200, marginRight: 8 }} />,
-          <Button key="refresh" icon={<ReloadOutlined />} onClick={fsRefresh}>刷新</Button>,
-          <Button key="close" icon={<CompressOutlined />} type="primary" onClick={closeFullscreen}>关闭</Button>,
+          searchVisible && (
+            <Input key="search" size="small" placeholder="搜索关键字..." allowClear
+              value={searchText} onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 200, marginRight: 8, verticalAlign: 'middle' }} />
+          ),
+          <Tooltip key="searchBtn" title={searchVisible ? '关闭搜索' : '搜索'}>
+            <Button size="small" icon={<SearchOutlined />} onClick={() => setSearchVisible(!searchVisible)} />
+          </Tooltip>,
+          <Button key="refresh" size="small" icon={<ReloadOutlined />} onClick={fsRefresh}>刷新</Button>,
+          <Button key="close" size="small" icon={<CompressOutlined />} type="primary" onClick={closeFullscreen}>关闭</Button>,
         ]}
         width="90vw"
         style={{ top: 20 }}
