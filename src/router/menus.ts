@@ -67,11 +67,11 @@ export const staticMenus: MenuNode[] = [
         children: [
           { key: 'publish_config_vendor', label: 'route.publish_config_vendor', icon: 'ic:baseline-cloud-sync', path: '/publish/config/vendor' },
           { key: 'publish_config_env', label: 'route.publish_config_env', icon: 'mdi:environment', path: '/publish/config/env' },
-          { key: 'publish_config_registry', label: 'route.publish_config_registry', icon: 'carbon:container-registry', path: '/publish/config/registry' },
           { key: 'publish_config_language', label: 'route.publish_config_language', icon: 'mdi:code-tags', path: '/publish/config/language' },
+          { key: 'publish_config_credentials', label: 'route.publish_config_credentials', icon: 'mdi:key-variant', path: '/publish/config/credentials' },
+          { key: 'publish_config_registry', label: 'route.publish_config_registry', icon: 'carbon:container-registry', path: '/publish/config/registry' },
           { key: 'publish_config_gitplatform', label: 'route.publish_config_gitplatform', icon: 'mdi:source-branch', path: '/publish/config/gitplatform' },
           { key: 'publish_config_jenkinsplatform', label: 'route.publish_config_jenkinsplatform', icon: 'mdi:engine', path: '/publish/config/jenkinsplatform' },
-          { key: 'publish_config_credentials', label: 'route.publish_config_credentials', icon: 'mdi:key-variant', path: '/publish/config/credentials' }
         ]
       },
       {

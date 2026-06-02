@@ -128,8 +128,8 @@ export const staticComponents: StaticComponent[] = [
   { component_name: 'publish_gitplatform_connect', comp_desc: '发布-测试Git平台连接', group_name: '发布管理' },
 
   // 发布管理 - Jenkins平台配置
-  { component_name: 'publish_jenkinsplatform_add', comp_desc: '发布-新增Jenkins配置', group_name: '发布管理' },
-  { component_name: 'publish_jenkinsplatform_edit', comp_desc: '发布-编辑Jenkins配置', group_name: '发布管理' },
-  { component_name: 'publish_jenkinsplatform_delete', comp_desc: '发布-删除Jenkins配置', group_name: '发布管理' },
+  { component_name: 'publish_jenkinsplatform_add', comp_desc: '发布-新增Jenkins平台', group_name: '发布管理' },
+  { component_name: 'publish_jenkinsplatform_edit', comp_desc: '发布-编辑Jenkins平台', group_name: '发布管理' },
+  { component_name: 'publish_jenkinsplatform_delete', comp_desc: '发布-删除Jenkins平台', group_name: '发布管理' },
   { component_name: 'publish_jenkinsplatform_connect', comp_desc: '发布-测试Jenkins连接', group_name: '发布管理' },
 ];

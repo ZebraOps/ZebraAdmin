@@ -38,7 +38,7 @@ export default function PublishConfigJenkinsPlatform() {
   return (
     <PublishCRUDPage<JenkinsPlatform>
       rowKey="id"
-      title="Jenkins配置"
+      title="Jenkins平台"
       columns={columns}
       fetchList={async (params) => {
         const res = await api.fetchJenkinsPlatforms(params);
@@ -50,8 +50,8 @@ export default function PublishConfigJenkinsPlatform() {
       addPerm="publish_jenkinsplatform_add"
       editPerm="publish_jenkinsplatform_edit"
       deletePerm="publish_jenkinsplatform_delete"
-      formTitleCreate="新增Jenkins配置"
-      formTitleEdit="编辑Jenkins配置"
+      formTitleCreate="新增Jenkins平台"
+      formTitleEdit="编辑Jenkins平台"
       formInitialValues={{ status: 'active' }}
       formFields={
         <>
