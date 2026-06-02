@@ -30,7 +30,7 @@ import { usePublishStore } from '@/store/publish';
 export default function PublishApplications() {
   const { t } = useTranslation();
   const { hasComp } = usePermission();
-  const { jenkinsPlatformOptions, gitPlatformOptions, imageRegistryOptions, loadAll } = usePublishStore();
+  const { jenkinsPlatformOptions, gitPlatformOptions, imageRegistryOptions, loadAll, refresh } = usePublishStore();
   useEffect(() => { loadAll(); }, []);
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<Application | null>(null);
@@ -221,6 +221,7 @@ export default function PublishApplications() {
             await api.deleteApplication(row.id);
             message.success('删除成功');
             actionRef.current?.reload();
+            refresh();
           }}>
           <Button type="link" size="small" danger icon={<DeleteOutlined />}>{t('common.delete', { defaultValue: '删除' })}</Button>
         </Popconfirm>
@@ -359,6 +360,7 @@ export default function PublishApplications() {
             else await api.createApplication(values as any);
             message.success('保存成功');
             actionRef.current?.reload();
+            refresh();
             return true;
           } catch (e: any) {
             if (!isHandledError(e)) message.error('保存失败');

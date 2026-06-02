@@ -38,7 +38,11 @@ export default function PublishConfigVendor() {
           <ProFormText name="name" label="名称" rules={[{ required: true }]} placeholder="请输入云厂商名称" />
           <ProFormText name="display_name" label="显示名称" placeholder="请输入显示名称" />
           <ProFormSelect name="provider" label="提供商" rules={[{ required: true }]} placeholder="请选择云提供商"
-            options={[{ label: '阿里云 (Aliyun)', value: 'aliyun' }, { label: '亚马逊云 (AWS)', value: 'aws' }, { label: '微软云 (Azure)', value: 'azure' }, { label: '谷歌云 (GCP)', value: 'gcp' }]} />
+            options={[{ label: '阿里云 (Aliyun)', value: 'aliyun' }, 
+            { label: '亚马逊云 (AWS)', value: 'aws' }, 
+            { label: '微软云 (Azure)', value: 'azure' }, 
+            { label: '谷歌云 (GCP)', value: 'gcp' },
+            { label: '本地云 (Local)', value: 'local' }]} />
           <ProFormText name="region" label="默认区域" placeholder="cn-hangzhou" />
           <ProFormText name="access_key" label="Access Key" placeholder="请输入 Access Key" />
           <ProFormText.Password name="secret_key" label="Secret Key" placeholder="请输入 Secret Key" />
