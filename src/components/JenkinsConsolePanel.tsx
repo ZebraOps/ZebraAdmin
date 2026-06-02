@@ -236,7 +236,7 @@ export default function JenkinsConsolePanel({ taskId }: JenkinsConsolePanelProps
         ]}
         width="90vw"
         style={{ top: 20 }}
-        destroyOnClose
+        destroyOnHidden
       >
         <div ref={fsScrollRef} className="console-body console-body-fullscreen">
           <pre dangerouslySetInnerHTML={{ __html: fsRenderedHtml || '<span class="console-empty">暂无输出</span>' }} />
