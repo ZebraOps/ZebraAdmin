@@ -118,13 +118,13 @@ export default function PublishTemplatesBuild() {
   };
 
   const columns: ProColumns<BuildTemplate>[] = [
-    { title: '模板名称', dataIndex: 'name' },
+    { title: '模板名称', dataIndex: 'name', ellipsis: true },
     {
       title: '语言', dataIndex: 'language', width: 100,
       valueType: 'select', valueEnum: languageEnum,
     },
     {
-      title: '归属部门', dataIndex: 'department', width: 140,
+      title: '归属部门', dataIndex: 'department', width: 120,
       search: { transform: (val) => val },
       render: (_, row) => row.department || '-',
       renderFormItem: () => (
@@ -140,10 +140,10 @@ export default function PublishTemplatesBuild() {
     },
     { title: '创建人', dataIndex: 'creator', width: 100 },
     { title: '修改人', dataIndex: 'updater', width: 100 },
-    { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 160, search: false },
+    { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 150, search: false },
     {
       title: t('common.actions', { defaultValue: '操作' }),
-      key: 'actions', valueType: 'option', fixed: 'right', width: 240,
+      key: 'actions', valueType: 'option', fixed: 'right', width: 200,
       render: (_, row) => [
         <Button key="apps" type="link" size="small" icon={<AppstoreOutlined />}
           onClick={() => { setAppsTpl(row); setAppsOpen(true); loadLinkedApps(row); }}>
@@ -169,19 +169,19 @@ export default function PublishTemplatesBuild() {
   ];
 
   const historyColumns: ProColumns<TemplateHistory>[] = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
-    { title: '修改人', dataIndex: 'modifier', width: 120 },
-    { title: '修改时间', dataIndex: 'created_at', valueType: 'dateTime', width: 170 },
+    { title: 'ID', dataIndex: 'id', width: 60 },
+    { title: '修改人', dataIndex: 'modifier', width: 100 },
+    { title: '修改时间', dataIndex: 'created_at', valueType: 'dateTime', width: 150 },
     {
-      title: 'Dockerfile', dataIndex: 'dockerfile', width: 90,
+      title: 'Dockerfile', dataIndex: 'dockerfile', width: 80,
       render: (val) => val ? <Tag color="blue">已变更</Tag> : <Tag>无</Tag>,
     },
     {
-      title: 'Pipeline', dataIndex: 'pipeline', width: 90,
+      title: 'Pipeline', dataIndex: 'pipeline', width: 80,
       render: (val) => val ? <Tag color="purple">已变更</Tag> : <Tag>无</Tag>,
     },
     {
-      title: '操作', key: 'actions', valueType: 'option', width: 100,
+      title: '操作', key: 'actions', valueType: 'option', width: 80,
       render: (_, row) => [
         <Popconfirm key="rollback" title={`确认回退到历史版本 #${row.id}？当前内容将被替换。`}
           onConfirm={async () => {
@@ -288,7 +288,7 @@ export default function PublishTemplatesBuild() {
 
       <Drawer
         title={`修改历史 — ${historyTpl?.name ?? ''}`}
-        placement="right" width={900}
+        placement="right" width="min(900px, 95vw)"
         open={historyOpen} onClose={() => setHistoryOpen(false)} destroyOnClose
       >
         <ProTable<TemplateHistory>
@@ -319,7 +319,7 @@ export default function PublishTemplatesBuild() {
       {/* 关联应用 Drawer */}
       <Drawer
         title={`关联应用 — ${appsTpl?.name ?? ''}`}
-        placement="right" width={900}
+        placement="right" width="min(900px, 95vw)"
         open={appsOpen} onClose={() => setAppsOpen(false)} destroyOnClose
         extra={<Button type="primary" size="small" icon={<LinkOutlined />} onClick={() => {
           fetchApplications({ size: 200 }).then((res) => {

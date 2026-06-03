@@ -85,8 +85,8 @@ export default function PublishRepos() {
   }, {} as Record<string, { text: string }>);
 
   const columns: ProColumns<Repo>[] = [
-    { title: '中文名称', dataIndex: 'c_name', width: 150 },
-    { title: '英文名称', dataIndex: 'e_name', width: 150 },
+    { title: '中文名称', dataIndex: 'c_name', ellipsis: true },
+    { title: '英文名称', dataIndex: 'e_name', ellipsis: true },
     { title: '仓库地址', dataIndex: 'repo_url', ellipsis: true, search: false },
     {
       title: '开发语言', dataIndex: 'repo_language', width: 100,
@@ -94,7 +94,7 @@ export default function PublishRepos() {
     },
     { title: '负责人', dataIndex: 'repo_manager', width: 100 },
     {
-      title: '归属部门', dataIndex: 'repo_department', width: 140,
+      title: '归属部门', dataIndex: 'repo_department', width: 120,
       search: { transform: (val) => val },
       render: (_, row) => row.repo_department || '-',
       renderFormItem: () => (

@@ -15,11 +15,11 @@ export default function OrgJob() {
   const { hasComp } = usePermission();
 
   const columns: ProColumns<Job>[] = [
-    { title: '岗位名称', dataIndex: 'job_name' },
-    { title: '岗位编码', dataIndex: 'job_code', render: v => v || '—' },
-    { title: '描述', dataIndex: 'description', search: false, render: v => v || '—' },
-    { title: '创建时间', dataIndex: 'ctime', width: 160, search: false, render: v => v || '—' },
-    { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 140,
+    { title: '岗位名称', dataIndex: 'job_name', ellipsis: true },
+    { title: '岗位编码', dataIndex: 'job_code', width: 120, render: v => v || '—' },
+    { title: '描述', dataIndex: 'description', ellipsis: true, search: false, render: v => v || '—' },
+    { title: '创建时间', dataIndex: 'ctime', width: 150, search: false, render: v => v || '—' },
+    { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 120,
       render: (_, row) => [
         hasComp('org_job_edit') && <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
         hasComp('org_job_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteJob(row.job_id); message.success('删除成功'); actionRef.current?.reload(); }}>

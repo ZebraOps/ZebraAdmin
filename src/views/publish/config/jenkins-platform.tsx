@@ -10,10 +10,10 @@ import PublishCRUDPage from '@/components/PublishCRUDPage';
 const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'default' };
 
 const columns: ProColumns<JenkinsPlatform>[] = [
-  { title: '名称', dataIndex: 'name' },
-  { title: '显示名称', dataIndex: 'display_name', search: false },
+  { title: '名称', dataIndex: 'name', ellipsis: true },
+  { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
   { title: '平台地址', dataIndex: 'url', ellipsis: true, search: false, copyable: true },
-  { title: '用户名', dataIndex: 'username', width: 120, search: false },
+  { title: '用户名', dataIndex: 'username', width: 100, search: false },
   { title: '状态', dataIndex: 'status', width: 80, search: false,
     render: (val) => val ? <Tag color={STATUS_COLORS[String(val)] ?? 'default'}>{String(val)}</Tag> : '-'
   },

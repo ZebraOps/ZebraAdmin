@@ -78,16 +78,16 @@ export default function PublishContainerLinux() {
   };
 
   const columns: ProColumns<LinuxMachine>[] = [
-    { title: '主机名称', dataIndex: 'name' },
-    { title: 'IP 地址', dataIndex: 'host', width: 140 },
-    { title: '端口', dataIndex: 'port', width: 70, search: false },
-    { title: '用户名', dataIndex: 'username', width: 100, search: false },
+    { title: '主机名称', dataIndex: 'name', ellipsis: true },
+    { title: 'IP 地址', dataIndex: 'host', width: 120 },
+    { title: '端口', dataIndex: 'port', width: 60, search: false },
+    { title: '用户名', dataIndex: 'username', width: 90, search: false },
     {
-      title: '认证方式', dataIndex: 'auth_type', width: 100, search: false,
+      title: '认证方式', dataIndex: 'auth_type', width: 90, search: false,
       render: (val) => val ? <Tag>{String(val) === 'key' ? 'SSH 密钥' : '密码'}</Tag> : '-'
     },
     {
-      title: '状态', dataIndex: 'is_active', width: 90,
+      title: '状态', dataIndex: 'is_active', width: 80,
       valueType: 'select',
       valueEnum: { 'true': { text: '活跃' }, 'false': { text: '停用' } },
       render: (_, row) => <Tag color={row.is_active ? 'success' : 'default'}>{row.is_active ? '活跃' : '停用'}</Tag>
@@ -97,16 +97,16 @@ export default function PublishContainerLinux() {
 
   const containerColumns: ProColumns<DockerContainer>[] = [
     {
-      title: '容器ID', dataIndex: 'id', width: 130,
+      title: '容器ID', dataIndex: 'id', width: 110,
       render: (val) => <span style={{ fontFamily: 'monospace' }}>{String(val ?? '').slice(0, 12)}</span>
     },
     {
-      title: '名称', dataIndex: 'names',
+      title: '名称', dataIndex: 'names', ellipsis: true,
       render: (val) => Array.isArray(val) ? val.join(', ') : String(val ?? '-')
     },
     { title: '镜像', dataIndex: 'image', ellipsis: true },
     {
-      title: '状态', dataIndex: 'status', width: 200,
+      title: '状态', dataIndex: 'status', width: 150,
       render: (val) => {
         const s = String(val ?? '');
         const color = s.toLowerCase().includes('up') ? 'success' : s.toLowerCase().includes('exit') ? 'default' : 'processing';
@@ -115,7 +115,7 @@ export default function PublishContainerLinux() {
     },
     { title: '端口', dataIndex: 'ports', ellipsis: true },
     {
-      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 100,
+      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 80,
       render: (_, row) => [
         <Button
           key="exec" type="link" size="small" icon={<CodeOutlined />}
@@ -190,7 +190,7 @@ export default function PublishContainerLinux() {
       {/* 容器列表抽屉 */}
       <Drawer
         title={`Docker 容器 — ${drawerHost?.name ?? ''}`}
-        placement="right" width={1000}
+        placement="right" width="min(1000px, 95vw)"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         destroyOnClose
@@ -212,7 +212,7 @@ export default function PublishContainerLinux() {
       {/* 容器命令执行 */}
       <Modal
         title={`容器命令执行 — ${execTarget?.container?.names?.[0] ?? execTarget?.container?.id ?? ''}`}
-        open={!!execTarget} width={780}
+        open={!!execTarget} width="min(780px, 90vw)"
         onCancel={() => { setExecTarget(null); setExecOutput(''); }}
         footer={null} destroyOnClose
       >

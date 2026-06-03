@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ProTable, ModalForm, ProFormText, ProFormSelect, ProFormDependency, ProFormInstance,
-  ProFormGroup,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Popconfirm } from 'antd';
+import { Button, Tag, message, Popconfirm, Card } from 'antd';
 import { isHandledError } from '@/service/request';
 import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -174,8 +173,8 @@ export default function PublishTasks() {
           allowClear placeholder="请选择状态" />
       ),
     },
-    { title: '应用', dataIndex: 'project_id', width: 180, render: (val) => findLabel(appOptions, val as number) },
-    { title: '环境', dataIndex: 'env_id', width: 140, render: (val) => findLabel(envOptions, val as number) },
+    { title: '应用', dataIndex: 'project_id', render: (val) => findLabel(appOptions, val as number) },
+    { title: '环境', dataIndex: 'env_id', width: 100, render: (val) => findLabel(envOptions, val as number) },
     {
       title: '部署目标', dataIndex: 'deploy_target', width: 100,
       render: (val, row) => {
@@ -184,7 +183,7 @@ export default function PublishTasks() {
       },
     },
     {
-      title: '集群/服务器', dataIndex: 'k8s_cluster_id', width: 160,
+      title: '集群/服务器', dataIndex: 'k8s_cluster_id', ellipsis: true,
       render: (_, row) => {
         const target = row.deploy_target || row.deploy_type;
         if (target === 'docker' || target === 'linux')
@@ -192,16 +191,16 @@ export default function PublishTasks() {
         return findLabel(clusterOptions, row.k8s_cluster_id as number);
       },
     },
-    { title: '命名空间', dataIndex: 'k8s_namespace', width: 110 },
-    { title: 'Git 引用', dataIndex: 'git_ref', width: 120 },
-    { title: '镜像标签', dataIndex: 'image_tag', ellipsis: true, width: 180 },
-    { title: '重试次数', dataIndex: 'retry_count', width: 80, search: false,
+    { title: '命名空间', dataIndex: 'k8s_namespace', width: 100 },
+    { title: 'Git 引用', dataIndex: 'git_ref', width: 100 },
+    { title: '镜像标签', dataIndex: 'image_tag', ellipsis: true },
+    { title: '重试次数', dataIndex: 'retry_count', width: 70, search: false,
       render: (val) => val && val > 0 ? val : '-',
     },
-    { title: 'Jenkins 任务', dataIndex: 'jenkins_job_name', ellipsis: true, width: 180 },
-    { title: 'Deployment', dataIndex: 'deployment_name', ellipsis: true, width: 160 },
-    { title: '开始时间', dataIndex: 'started_at', valueType: 'dateTime', width: 170 },
-    { title: '结束时间', dataIndex: 'finished_at', valueType: 'dateTime', width: 170 },
+    { title: 'Jenkins 任务', dataIndex: 'jenkins_job_name', ellipsis: true },
+    { title: 'Deployment', dataIndex: 'deployment_name', ellipsis: true },
+    { title: '开始时间', dataIndex: 'started_at', valueType: 'dateTime', width: 150 },
+    { title: '结束时间', dataIndex: 'finished_at', valueType: 'dateTime', width: 150 },
     {
       title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 220,
       render: (_, row) => [
@@ -263,7 +262,7 @@ export default function PublishTasks() {
       <ModalForm<CreateDeployTaskRequest>
         title="创建发布任务"
         open={modalOpen}
-        width={640}
+        width="min(900px, 95vw)"
         onOpenChange={(open) => {
           setModalOpen(open);
           if (!open) {
@@ -302,7 +301,7 @@ export default function PublishTasks() {
         }}
       >
         {/* ── 基本信息 ── */}
-        <ProFormGroup title="基本信息">
+        <Card title="基本信息" size="small" style={{ marginBottom: 16 }} styles={{ body: { padding: '12px 24px 0' } }}>
           <ProFormSelect name="project_id" label="应用" rules={[{ required: true }]} options={appOptions} showSearch
             fieldProps={{ optionFilterProp: 'label', onChange: (val: number) => {
               setSelectedProjectId(val);
@@ -342,10 +341,10 @@ export default function PublishTasks() {
                 }
               }}} />
           )}
-        </ProFormGroup>
+        </Card>
 
         {/* ── 构建配置 ── */}
-        <ProFormGroup title="构建配置">
+        <Card title="构建配置" size="small" style={{ marginBottom: 16 }} styles={{ body: { padding: '12px 24px 0' } }}>
           <ProFormSelect name="build_template_id" label="构建模板" options={buildTemplateOptions} showSearch
             fieldProps={{ optionFilterProp: 'label', allowClear: true, loading: templateLoading, disabled: !selectedProjectId }}
             placeholder={!selectedProjectId ? '请先选择应用' : '留空则使用默认模板'} />
@@ -374,10 +373,10 @@ export default function PublishTasks() {
           <ProFormText name="jenkins_job_name" label="Jenkins 任务名称" rules={[{ required: true }]} placeholder="选择应用后自动填充" tooltip="默认使用应用英文名称" />
           <ProFormText name="registry_project" label="镜像仓库" rules={[{ required: true }]} placeholder="选择应用后自动填充" tooltip="镜像仓库中的项目命名空间" />
           <ProFormText name="image_name" label="镜像名称" rules={[{ required: true }]} placeholder="选择应用后自动填充" tooltip="对应 Harbor 中的 repository 名称" />
-        </ProFormGroup>
+        </Card>
 
         {/* ── 部署目标 ── */}
-        <ProFormGroup title="部署目标">
+        <Card title="部署目标" size="small" styles={{ body: { padding: '12px 24px 0' } }}>
           <ProFormSelect name="deploy_target" label="部署目标" initialValue="k8s"
             options={[
               { label: 'K8s 部署', value: 'k8s' },
@@ -424,7 +423,7 @@ export default function PublishTasks() {
               );
             }}
           </ProFormDependency>
-        </ProFormGroup>
+        </Card>
       </ModalForm>
     </>
   );

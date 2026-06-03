@@ -200,7 +200,7 @@ export default function PermissionAuthor() {
       />
       <Drawer
         title={`配置权限 - ${currentRole?.role_name ?? ''}`}
-        open={drawerOpen} onClose={() => setDrawerOpen(false)} width={640}
+        open={drawerOpen} onClose={() => setDrawerOpen(false)} width="min(640px, 90vw)"
         extra={<Button type="primary" loading={saving} onClick={handleSave}>保存</Button>}
       >
         <Spin spinning={loading}>

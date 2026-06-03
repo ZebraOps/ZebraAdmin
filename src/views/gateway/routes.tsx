@@ -32,12 +32,12 @@ export default function GatewayRoutes() {
   };
 
   const columns: ProColumns<GatewayRoute>[] = [
-    { title: '前缀', dataIndex: 'prefix', render: (_, row) => <Tag color="blue">{row.prefix}</Tag> },
+    { title: '前缀', dataIndex: 'prefix', ellipsis: true, render: (_, row) => <Tag color="blue">{row.prefix}</Tag> },
     { title: '目标地址', dataIndex: 'target', ellipsis: true },
-    { title: '重写', dataIndex: 'rewrite', render: v => v || '—' },
+    { title: '重写', dataIndex: 'rewrite', width: 100, render: v => v || '—' },
     { title: '描述', dataIndex: 'description', ellipsis: true, render: v => v || '—' },
     {
-      title: '状态', dataIndex: 'enabled', width: 90, valueType: 'select',
+      title: '状态', dataIndex: 'enabled', width: 80, valueType: 'select',
       valueEnum: {
         true: { text: '启用' },
         false: { text: '禁用' }
@@ -46,9 +46,9 @@ export default function GatewayRoutes() {
         <Switch checked={!!row.enabled} onChange={(c) => handleToggle(row, c)} checkedChildren="启用" unCheckedChildren="禁用" size="small" />
       )
     },
-    { title: '创建时间', dataIndex: 'CreatedAt', valueType: 'dateTime', width: 170 },
+    { title: '创建时间', dataIndex: 'CreatedAt', valueType: 'dateTime', width: 150 },
     {
-      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 140,
+      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 120,
       render: (_, row) => [
         hasComp('gateway_route_edit') && <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
         hasComp('gateway_route_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteGatewayRoute(row.ID); message.success('删除成功'); actionRef.current?.reload(); }}>

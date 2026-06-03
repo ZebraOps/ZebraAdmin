@@ -7,20 +7,20 @@ import PublishCRUDPage from '@/components/PublishCRUDPage';
 const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'default' };
 
 const columns: ProColumns<Language>[] = [
-  { title: '语言名称', dataIndex: 'name' },
-  { title: '显示名称', dataIndex: 'display_name', search: false },
-  { title: '图标', dataIndex: 'icon', width: 100, search: false,
+  { title: '语言名称', dataIndex: 'name', ellipsis: true },
+  { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
+  { title: '图标', dataIndex: 'icon', width: 80, search: false,
     render: (val) => val ? <Tag color="blue">{String(val)}</Tag> : '-'
   },
-  { title: '排序', dataIndex: 'sort_order', width: 70, search: false },
+  { title: '排序', dataIndex: 'sort_order', width: 60, search: false },
   {
-    title: '状态', dataIndex: 'status', width: 90,
+    title: '状态', dataIndex: 'status', width: 80,
     valueType: 'select',
     valueEnum: { active: { text: '激活' }, inactive: { text: '停用' } },
     render: (_, row) => row.status ? <Tag color={STATUS_COLORS[String(row.status)] ?? 'default'}>{row.status === 'active' ? '激活' : '停用'}</Tag> : '-'
   },
   { title: '描述', dataIndex: 'description', ellipsis: true, search: false },
-  { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 160, search: false },
+  { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 150, search: false },
 ];
 
 export default function PublishConfigLanguage() {

@@ -8,20 +8,20 @@ const TYPE_COLORS: Record<string, string> = { dev: 'processing', test: 'warning'
 const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'default' };
 
 const columns: ProColumns<Environment>[] = [
-  { title: '名称', dataIndex: 'name' },
+  { title: '名称', dataIndex: 'name', ellipsis: true },
   {
-    title: '环境类型', dataIndex: 'type', width: 110,
+    title: '环境类型', dataIndex: 'type', width: 100,
     valueType: 'select',
     valueEnum: { dev: { text: 'DEV' }, test: { text: 'TEST' }, prod: { text: 'PROD' } },
     render: (_, row) => row.type ? <Tag color={TYPE_COLORS[String(row.type)] ?? 'default'}>{String(row.type).toUpperCase()}</Tag> : '-'
   },
   {
-    title: '状态', dataIndex: 'status', width: 90,
+    title: '状态', dataIndex: 'status', width: 80,
     valueType: 'select',
     valueEnum: { active: { text: '激活' }, inactive: { text: '停用' } },
     render: (_, row) => row.status ? <Tag color={STATUS_COLORS[String(row.status)] ?? 'default'}>{String(row.status)}</Tag> : '-'
   },
-  { title: '描述', dataIndex: 'description', search: false },
+  { title: '描述', dataIndex: 'description', ellipsis: true, search: false },
 ];
 
 export default function PublishConfigEnv() {

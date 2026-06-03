@@ -171,17 +171,17 @@ export default function PublishApplications() {
   }, {} as Record<string, { text: string }>);
 
   const columns: ProColumns<Application>[] = [
-    { title: '中文名称', dataIndex: 'c_name', width: 150 },
-    { title: '英文名称', dataIndex: 'e_name', width: 150 },
+    { title: '中文名称', dataIndex: 'c_name', ellipsis: true },
+    { title: '英文名称', dataIndex: 'e_name', ellipsis: true },
     {
-      title: '关联仓库', dataIndex: 'repo_id', width: 200,
+      title: '关联仓库', dataIndex: 'repo_id', ellipsis: true,
       valueType: 'select',
       fieldProps: { options: repoOptions, showSearch: true, optionFilterProp: 'label', allowClear: true },
       render: (_, row) => findLabel(repoOptions, row.repo_id as number)
     },
-    { title: '监听端口', dataIndex: 'listen_port', width: 90, search: false },
+    { title: '监听端口', dataIndex: 'listen_port', width: 80, search: false },
     {
-      title: '归属部门', dataIndex: 'department', width: 140,
+      title: '归属部门', dataIndex: 'department', width: 120,
       search: { transform: (val) => val },
       render: (_, row) => row.department || '-',
       renderFormItem: () => (
@@ -201,13 +201,13 @@ export default function PublishApplications() {
       title: '开发语言', dataIndex: 'language', width: 100,
       valueType: 'select', valueEnum: languageEnum,
     },
-    { title: '健康检查类型', dataIndex: 'health_check_type', width: 120, search: false },
-    { title: '部署配置数', dataIndex: 'deployment_count', width: 110, search: false, render: (val) => <Tag color={Number(val) > 0 ? 'processing' : 'default'}>{Number(val ?? 0)}</Tag> },
+    { title: '健康检查类型', dataIndex: 'health_check_type', width: 100, search: false },
+    { title: '部署配置数', dataIndex: 'deployment_count', width: 80, search: false, render: (val) => <Tag color={Number(val) > 0 ? 'processing' : 'default'}>{Number(val ?? 0)}</Tag> },
     { title: '描述', dataIndex: 'description', ellipsis: true, search: false },
-    { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 160, search: false },
+    { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 150, search: false },
     {
       title: t('common.actions', { defaultValue: '操作' }),
-      key: 'actions', valueType: 'option', fixed: 'right', width: 240,
+      key: 'actions', valueType: 'option', fixed: 'right', width: 200,
       render: (_, row) => [
         <Button
           key="deploys" type="link" size="small" icon={<AppstoreOutlined />}
@@ -233,20 +233,20 @@ export default function PublishApplications() {
   const TARGET_COLORS: Record<string, string> = { k8s: 'blue', docker: 'cyan', linux: 'green' };
 
   const deployColumns: ProColumns<ApplicationDeployment>[] = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
-    { title: '环境', dataIndex: 'environment_id', width: 160, render: (val) => findLabel(envOptions, val as number) },
+    { title: 'ID', dataIndex: 'id', width: 60 },
+    { title: '环境', dataIndex: 'environment_id', ellipsis: true, render: (val) => findLabel(envOptions, val as number) },
     {
-      title: '部署目标', dataIndex: 'deploy_target', width: 120,
+      title: '部署目标', dataIndex: 'deploy_target', width: 100,
       render: (val) => {
         const v = String(val ?? 'k8s');
         return <Tag color={TARGET_COLORS[v]}>{TARGET_LABELS[v]}</Tag>;
       },
     },
-    { title: '构建源', dataIndex: 'build_source', width: 90, render: (val) => <Tag>{String(val ?? 'tag')}</Tag> },
-    { title: '构建模板', dataIndex: 'build_template_id', width: 180, render: (val) => findLabel(buildTplOptions, val as number) },
-    { title: '部署模板', dataIndex: 'deployment_template_id', width: 180, render: (val) => findLabel(deployTplOptions, val as number) },
+    { title: '构建源', dataIndex: 'build_source', width: 80, render: (val) => <Tag>{String(val ?? 'tag')}</Tag> },
+    { title: '构建模板', dataIndex: 'build_template_id', ellipsis: true, render: (val) => findLabel(buildTplOptions, val as number) },
+    { title: '部署模板', dataIndex: 'deployment_template_id', ellipsis: true, render: (val) => findLabel(deployTplOptions, val as number) },
     {
-      title: '目标', width: 160, search: false, render: (_, row) => {
+      title: '目标', ellipsis: true, search: false, render: (_, row) => {
         if (row.deploy_target === 'k8s') return findLabel(clusterOptions, row.k8s_cluster_id as number);
         if (row.deploy_target === 'docker' || row.deploy_target === 'linux') return findLabel(linuxMachineOptions, row.server_id as number);
         return '-';
@@ -409,7 +409,7 @@ export default function PublishApplications() {
       {/* 部署配置抽屉 */}
       <Drawer
         title={`部署配置 — ${deployApp?.c_name ?? ''}`}
-        placement="right" width={1100}
+        placement="right" width="min(1100px, 95vw)"
         open={deployDrawerOpen}
         onClose={() => setDeployDrawerOpen(false)}
         destroyOnClose

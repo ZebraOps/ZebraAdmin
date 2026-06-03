@@ -63,7 +63,7 @@ export default function GlobalSearch({ open, onClose }: Props) {
       footer={null}
       title={null}
       closeIcon={null}
-      width={520}
+      width="min(520px, 90vw)"
       styles={{ body: { padding: 0 } }}
     >
       <div style={{ padding: '16px 16px 8px' }}>

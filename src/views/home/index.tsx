@@ -67,7 +67,7 @@ export default function HomePage() {
   const chartsFallback = (
     <Row gutter={[16, 16]}>
       <Col xs={24} lg={16}>
-        <div className="zb-animate-in zb-delay-5" style={{ ...cardStyle, minHeight: 332 }}>
+        <div className="zb-animate-in zb-delay-5" style={{ ...cardStyle, minHeight: 'min(332px, 50vh)' }}>
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--zb-text-1)' }}>
               {t('page.home.buildTrend', { defaultValue: '构建 / 部署趋势' })}
@@ -75,7 +75,7 @@ export default function HomePage() {
             <div className="zb-section-label" style={{ marginTop: 4 }}>LOADING CHARTS</div>
           </div>
           <div style={{ display: 'grid', gap: 12 }}>
-            <div style={{ height: 220, borderRadius: 'var(--zb-r)', background: 'var(--zb-surface2)' }} />
+            <div style={{ height: 'min(220px, 30vh)', borderRadius: 'var(--zb-r)', background: 'var(--zb-surface2)' }} />
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ width: 72, height: 10, borderRadius: 999, background: 'var(--zb-surface2)' }} />
               <div style={{ width: 72, height: 10, borderRadius: 999, background: 'var(--zb-surface2)' }} />
@@ -84,15 +84,15 @@ export default function HomePage() {
         </div>
       </Col>
       <Col xs={24} lg={8}>
-        <div className="zb-animate-in zb-delay-6" style={{ ...cardStyle, minHeight: 332 }}>
+        <div className="zb-animate-in zb-delay-6" style={{ ...cardStyle, minHeight: 'min(332px, 50vh)' }}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--zb-text-1)' }}>
               {t('page.home.deployStatus', { defaultValue: '部署状态分布' })}
             </div>
             <div className="zb-section-label" style={{ marginTop: 4 }}>LOADING CHARTS</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 240 }}>
-            <div style={{ width: 168, height: 168, borderRadius: '50%', background: 'var(--zb-surface2)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'min(240px, 35vh)' }}>
+            <div style={{ width: 'min(168px, 25vw)', height: 'min(168px, 25vw)', borderRadius: '50%', background: 'var(--zb-surface2)' }} />
           </div>
         </div>
       </Col>

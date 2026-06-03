@@ -51,7 +51,7 @@ export default function OrgUsers() {
     { title: '用户名', dataIndex: 'username', hideInTable: true },
     { title: '姓名', dataIndex: 'nickname', hideInTable: true },
     {
-      title: '用户', key: 'user', width: 200, search: false,
+      title: '用户', key: 'user', ellipsis: true, search: false,
       render: (_, row) => (
         <Space>
           <span
@@ -65,10 +65,10 @@ export default function OrgUsers() {
         </Space>
       )
     },
-    { title: '邮箱', dataIndex: 'email', render: v => v || '—' },
-    { title: '手机', dataIndex: 'tel', render: v => v || '—' },
+    { title: '邮箱', dataIndex: 'email', ellipsis: true, render: v => v || '—' },
+    { title: '手机', dataIndex: 'tel', width: 120, render: v => v || '—' },
     {
-      title: '部门', dataIndex: 'department', render: v => v || '—',
+      title: '部门', dataIndex: 'department', ellipsis: true, render: v => v || '—',
       valueType: 'treeSelect',
       fieldProps: {
         treeData: toTreeSelectData(orgTreeData),
@@ -81,14 +81,14 @@ export default function OrgUsers() {
     },
     { title: '角色', dataIndex: 'superuser', valueType: 'select', valueEnum: { '0': { text: '超管' }, '10': { text: '普通' } }, render: (_, row) => { const m = SUPERUSER_MAP[String((row as any).superuser)] ?? { label: String((row as any).superuser), color: 'default' }; return <Tag color={m.color}>{m.label}</Tag>; } },
     {
-      title: '状态', dataIndex: 'status', valueType: 'select', valueEnum: {
+      title: '状态', dataIndex: 'status', width: 80, valueType: 'select', valueEnum: {
         '0': { text: '启用' },
         '1': { text: '禁用' },
       },
       render: (_, row) => { const m = STATUS_MAP[String((row as any).status)] ?? { label: String((row as any).status), color: 'default' }; return <Tag color={m.color}>{m.label}</Tag>; }
     },
-    { title: '创建时间', dataIndex: 'ctime', width: 160, search: false },
-    { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 140,
+    { title: '创建时间', dataIndex: 'ctime', width: 150, search: false },
+    { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 120,
       render: (_, row) => [
         hasComp('org_user_edit') && <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
         hasComp('org_user_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteUser(row.user_id); message.success('删除成功'); actionRef.current?.reload(); }}>

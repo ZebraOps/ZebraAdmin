@@ -27,15 +27,15 @@ const columns: ProColumns<JenkinsCredential>[] = [
     hideInTable: true,
     valueType: 'select',
   },
-  { title: '凭据ID', dataIndex: 'credential_id', width: 200 },
+  { title: '凭据ID', dataIndex: 'credential_id', width: 180 },
   { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
-  { title: '类型', dataIndex: 'credential_type', width: 160, search: false },
-  { title: '用户名', dataIndex: 'username', width: 120, search: false },
-  { title: '作用域', dataIndex: 'scope', width: 100, search: false },
+  { title: '类型', dataIndex: 'credential_type', width: 140, search: false },
+  { title: '用户名', dataIndex: 'username', width: 100, search: false },
+  { title: '作用域', dataIndex: 'scope', width: 80, search: false },
   {
     title: '状态',
     dataIndex: 'status',
-    width: 100,
+    width: 80,
     search: false,
     render: (val) => {
       const v = String(val)
@@ -45,7 +45,7 @@ const columns: ProColumns<JenkinsCredential>[] = [
   {
     title: '最后同步',
     dataIndex: 'synced_at',
-    width: 180,
+    width: 150,
     search: false,
     render: (val) => (val ? String(val) : '-'),
   },

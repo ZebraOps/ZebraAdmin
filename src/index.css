@@ -165,7 +165,7 @@ body::before {
 }
 
 .zb-shell__content-inner {
-  max-width: 1600px;
+  max-width: min(1600px, 95vw);
   margin: 0 auto;
 }
 
@@ -526,7 +526,7 @@ body::before {
 }
 
 .zb-page__desc {
-  max-width: 720px;
+  max-width: min(720px, 90vw);
   margin: 10px 0 0;
   font-size: 14px;
   line-height: 1.7;

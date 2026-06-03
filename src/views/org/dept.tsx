@@ -51,8 +51,8 @@ export default function OrgDept() {
   }, []);
 
   const columns: ProColumns<OrgNode>[] = [
-    { title: '组织名称', dataIndex: 'org_name', width: 200 },
-    { title: '组织编码', dataIndex: 'org_code', width: 140 },
+    { title: '组织名称', dataIndex: 'org_name', ellipsis: true },
+    { title: '组织编码', dataIndex: 'org_code', width: 120 },
     {
       title: '类型', dataIndex: 'org_type', width: 80,
       render: (_, row) => {
@@ -61,9 +61,9 @@ export default function OrgDept() {
       }
     },
     { title: '排序', dataIndex: 'order_num', width: 60 },
-    { title: '创建时间', dataIndex: 'ctime', width: 160, render: v => v || '—' },
+    { title: '创建时间', dataIndex: 'ctime', width: 150, render: v => v || '—' },
     {
-      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 200,
+      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 180,
       render: (_, row) => [
         hasComp('org_dept_add') && <Button
           key="addChild" type="link" size="small" icon={<PlusOutlined />}

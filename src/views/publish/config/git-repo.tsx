@@ -10,9 +10,9 @@ import PublishCRUDPage from '@/components/PublishCRUDPage';
 const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'default' };
 
 const columns: ProColumns<GitPlatform>[] = [
-  { title: '名称', dataIndex: 'name' },
-  { title: '显示名称', dataIndex: 'display_name', search: false },
-  { title: '平台类型', dataIndex: 'platform_type', width: 100,
+  { title: '名称', dataIndex: 'name', ellipsis: true },
+  { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
+  { title: '平台类型', dataIndex: 'platform_type', width: 90,
     valueEnum: { gitlab: { text: 'GitLab' }, github: { text: 'GitHub' }, gitea: { text: 'Gitea' }, custom: { text: 'Custom' } }
   },
   { title: '平台地址', dataIndex: 'url', ellipsis: true, search: false, copyable: true },

@@ -65,7 +65,7 @@ export default function BaseLayout() {
             placement="left"
             open={mobileSiderOpen}
             onClose={() => setMobileSiderOpen(false)}
-            width={220}
+            width="min(220px, 80vw)"
             styles={{
               body: { padding: 0 },
               content: { background: 'var(--zb-sider-bg)', boxShadow: 'var(--zb-shadow)' },

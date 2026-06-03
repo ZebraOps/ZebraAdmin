@@ -63,16 +63,16 @@ export default function PermissionMenus() {
   };
 
   const columns: ProColumns<MenuItem>[] = [
-    { title: '菜单名称', dataIndex: 'menu_name' },
-    { title: '路径', dataIndex: 'path', render: (val) => val ? <Tag>{String(val)}</Tag> : '-' },
-    { title: '图标', dataIndex: 'icon', search: false },
-    { title: '排序', dataIndex: 'order_num', search: false },
+    { title: '菜单名称', dataIndex: 'menu_name', ellipsis: true },
+    { title: '路径', dataIndex: 'path', ellipsis: true, render: (val) => val ? <Tag>{String(val)}</Tag> : '-' },
+    { title: '图标', dataIndex: 'icon', width: 100, search: false },
+    { title: '排序', dataIndex: 'order_num', width: 60, search: false },
     {
-      title: '状态', dataIndex: 'status', valueType: 'select',
+      title: '状态', dataIndex: 'status', width: 80, valueType: 'select',
       valueEnum: { '0': { text: '启用', status: 'Success' }, '1': { text: '禁用', status: 'Error' } },
       render: (_, row) => { const s = STATUS_MAP[String(row.status)]; return s ? <Tag color={s.color}>{s.label}</Tag> : '-'; }
     },
-    { title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 200,
+    { title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 180,
       render: (_, row) => [
         <Button key="addChild" type="link" size="small" icon={<PlusOutlined />} onClick={() => { setEditRecord(null); setDefaultParentId(row.menu_id); setModalOpen(true); }}>子菜单</Button>,
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setDefaultParentId(undefined); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,

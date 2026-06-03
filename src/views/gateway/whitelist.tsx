@@ -18,7 +18,7 @@ export default function GatewayWhitelist() {
 
   const columns: ProColumns<Whitelist>[] = [
     {
-      title: '方法', dataIndex: 'method', width: 100, valueType: 'select',
+      title: '方法', dataIndex: 'method', width: 80, valueType: 'select',
       valueEnum: {
         GET: { text: 'GET' },
         POST: { text: 'POST' },
@@ -29,11 +29,11 @@ export default function GatewayWhitelist() {
       },
       render: (_, row) => <Tag color={METHOD_COLORS[row.method] ?? 'default'}>{row.method}</Tag>
     },
-    { title: '路径', dataIndex: 'path', render: (_, row) => <Tag>{row.path}</Tag> },
-    { title: '描述', dataIndex: 'description', render: v => v || '—' },
-    { title: '创建时间', dataIndex: 'CreatedAt', valueType: 'dateTime', width: 170 },
+    { title: '路径', dataIndex: 'path', ellipsis: true, render: (_, row) => <Tag>{row.path}</Tag> },
+    { title: '描述', dataIndex: 'description', ellipsis: true, render: v => v || '—' },
+    { title: '创建时间', dataIndex: 'CreatedAt', valueType: 'dateTime', width: 150 },
     {
-      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 80,
+      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 70,
       render: (_, row) => [
         hasComp('gateway_whitelist_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteWhitelist(row.ID); message.success('删除成功'); actionRef.current?.reload(); }}>
           <Button type="link" size="small" danger icon={<DeleteOutlined />} />

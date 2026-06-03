@@ -36,7 +36,7 @@ export default function ThemeDrawer() {
       title={t('icon.themeConfig')}
       open={themeDrawerVisible}
       onClose={closeThemeDrawer}
-      width={300}
+      width="min(300px, 85vw)"
       placement="right"
     >
       <Space direction="vertical" size={20} style={{ width: '100%' }}>

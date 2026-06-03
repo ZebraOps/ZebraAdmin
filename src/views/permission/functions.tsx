@@ -59,20 +59,20 @@ export default function PermissionFunctions() {
   const defaultGroupId = groups.find(g => g.group_name === '功能管理')?.group_id ?? groups[0]?.group_id;
 
   const columns: ProColumns<FunctionItem>[] = [
-    { title: '功能名称', dataIndex: 'func_name' },
-    { title: 'URI', dataIndex: 'uri', render: (val) => val ? <Tag>{String(val)}</Tag> : '-' },
+    { title: '功能名称', dataIndex: 'func_name', ellipsis: true },
+    { title: 'URI', dataIndex: 'uri', ellipsis: true, render: (val) => val ? <Tag>{String(val)}</Tag> : '-' },
     {
-      title: '请求方法', dataIndex: 'method_type', search: false,
+      title: '请求方法', dataIndex: 'method_type', width: 80, search: false,
       render: (_, row) => row.method_type ? <Tag color={METHOD_COLORS[row.method_type.toUpperCase()] ?? 'default'}>{row.method_type.toUpperCase()}</Tag> : '-'
     },
     {
-      title: '状态', dataIndex: 'status', valueType: 'select',
+      title: '状态', dataIndex: 'status', width: 80, valueType: 'select',
       valueEnum: { '0': { text: '启用', status: 'Success' }, '1': { text: '禁用', status: 'Error' } },
       render: (_, row) => { const s = STATUS_MAP[String(row.status)]; return s ? <Tag color={s.color}>{s.label}</Tag> : '-'; }
     },
-    { title: '创建时间', dataIndex: 'ctime', valueType: 'dateTime', search: false },
+    { title: '创建时间', dataIndex: 'ctime', valueType: 'dateTime', width: 150, search: false },
     {
-      title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
+      title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 120,
       render: (_, row) => [
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
         hasComp('permission_function_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteFunction(row.func_id); message.success('删除成功'); actionRef.current?.reload(); }}>

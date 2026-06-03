@@ -191,7 +191,7 @@ export default function GlobalHeader() {
         transitionName=""
         maskTransitionName=""
         destroyOnClose
-        width={680}
+        width="min(680px, 90vw)"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

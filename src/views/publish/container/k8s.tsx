@@ -56,13 +56,13 @@ export default function PublishContainerK8s() {
   };
 
   const columns: ProColumns<K8sCluster>[] = [
-    { title: '名称', dataIndex: 'name' },
+    { title: '名称', dataIndex: 'name', ellipsis: true },
     { title: 'API Server', dataIndex: 'api_server', ellipsis: true, search: false },
-    { title: '命名空间', dataIndex: 'namespace', width: 100, search: false },
-    { title: '云厂商', dataIndex: 'vendor', width: 100 },
-    { title: '所属环境', dataIndex: 'environment', width: 100 },
+    { title: '命名空间', dataIndex: 'namespace', width: 90, search: false },
+    { title: '云厂商', dataIndex: 'vendor', width: 90 },
+    { title: '所属环境', dataIndex: 'environment', width: 90 },
     {
-      title: '状态', dataIndex: 'enabled', width: 90,
+      title: '状态', dataIndex: 'enabled', width: 80,
       valueType: 'select',
       valueEnum: { 'true': { text: '启用' }, 'false': { text: '停用' } },
       render: (_, row) => <Tag color={row.enabled ? 'success' : 'default'}>{row.enabled ? '启用' : '停用'}</Tag>
@@ -73,16 +73,16 @@ export default function PublishContainerK8s() {
   const podColumns: ProColumns<PodInfo>[] = [
     { title: 'Pod 名称', dataIndex: 'name', ellipsis: true },
     {
-      title: '状态', dataIndex: 'status', width: 110,
+      title: '状态', dataIndex: 'status', width: 100,
       render: (val) => {
         const s = String(val ?? '');
         const color = s === 'Running' ? 'success' : s === 'Pending' ? 'warning' : s === 'Failed' ? 'error' : 'default';
         return <Tag color={color}>{s || '-'}</Tag>;
       }
     },
-    { title: '命名空间', dataIndex: 'namespace', width: 120 },
-    { title: '节点', dataIndex: 'node_name', width: 160, ellipsis: true },
-    { title: '启动时间', dataIndex: 'start_time', valueType: 'dateTime', width: 170 },
+    { title: '命名空间', dataIndex: 'namespace', width: 100 },
+    { title: '节点', dataIndex: 'node_name', ellipsis: true },
+    { title: '启动时间', dataIndex: 'start_time', valueType: 'dateTime', width: 150 },
   ];
 
   return (
@@ -139,7 +139,7 @@ export default function PublishContainerK8s() {
       {/* Pod 列表抽屉 */}
       <Drawer
         title={`Pod 列表 — ${podCluster?.name ?? ''}`}
-        placement="right" width={900}
+        placement="right" width="min(900px, 95vw)"
         open={podDrawerOpen}
         onClose={() => setPodDrawerOpen(false)}
         destroyOnClose

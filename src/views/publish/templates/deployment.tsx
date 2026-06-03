@@ -151,24 +151,24 @@ export default function PublishTemplatesDeployment() {
   };
 
   const columns: ProColumns<DeployTemplate>[] = [
-    { title: '模板名称', dataIndex: 'name' },
-    { title: '显示名称', dataIndex: 'display_name', search: false },
+    { title: '模板名称', dataIndex: 'name', ellipsis: true },
+    { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
     {
-      title: '类型', dataIndex: 'template_type', width: 110,
+      title: '类型', dataIndex: 'template_type', width: 100,
       valueType: 'select',
       valueEnum: { k8s: { text: 'K8S' }, helm: { text: 'HELM' }, docker: { text: 'DOCKER' }, linux: { text: 'LINUX/NGINX' } },
       render: (_, row) => row.template_type ? <Tag>{String(row.template_type).toUpperCase()}</Tag> : '-'
     },
-    { title: '版本', dataIndex: 'version', width: 80, search: false },
+    { title: '版本', dataIndex: 'version', width: 70, search: false },
     {
-      title: '状态', dataIndex: 'status', width: 90,
+      title: '状态', dataIndex: 'status', width: 80,
       valueType: 'select',
       valueEnum: { active: { text: '激活' }, inactive: { text: '停用' } },
       render: (_, row) => row.status ? <Tag color={STATUS_COLORS[String(row.status)] ?? 'default'}>{String(row.status)}</Tag> : '-'
     },
     { title: '描述', dataIndex: 'description', ellipsis: true, search: false },
     {
-      title: '归属部门', dataIndex: 'department', width: 140,
+      title: '归属部门', dataIndex: 'department', width: 120,
       search: { transform: (val) => val },
       render: (_, row) => row.department || '-',
       renderFormItem: () => (
@@ -178,7 +178,7 @@ export default function PublishTemplatesDeployment() {
     },
     {
       title: t('common.actions', { defaultValue: '操作' }),
-      key: 'actions', valueType: 'option', fixed: 'right', width: 280,
+      key: 'actions', valueType: 'option', fixed: 'right', width: 240,
       render: (_, row) => [
         <Button key="apps" type="link" size="small" icon={<AppstoreOutlined />}
           onClick={() => { setAppsTpl(row); setAppsOpen(true); loadLinkedApps(row); }}
@@ -202,25 +202,25 @@ export default function PublishTemplatesDeployment() {
   ];
 
   const historyColumns: ProColumns<DeployTemplateHistoryItem>[] = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
-    { title: '修改人', dataIndex: 'modifier', width: 120 },
-    { title: '版本', dataIndex: 'version', width: 100 },
+    { title: 'ID', dataIndex: 'id', width: 60 },
+    { title: '修改人', dataIndex: 'modifier', width: 100 },
+    { title: '版本', dataIndex: 'version', width: 80 },
     { title: '修改原因', dataIndex: 'change_reason', ellipsis: true },
     {
-      title: '模板内容', dataIndex: 'content', width: 90, search: false,
+      title: '模板内容', dataIndex: 'content', width: 80, search: false,
       render: (val) => val ? <Tag color="blue">已变更</Tag> : <Tag>无</Tag>,
     },
     {
-      title: '变量', dataIndex: 'variables', width: 90, search: false,
+      title: '变量', dataIndex: 'variables', width: 80, search: false,
       render: (val) => val ? <Tag color="purple">已变更</Tag> : <Tag>无</Tag>,
     },
     {
-      title: '参数', dataIndex: 'parameters', width: 90, search: false,
+      title: '参数', dataIndex: 'parameters', width: 80, search: false,
       render: (val) => val ? <Tag color="green">已变更</Tag> : <Tag>无</Tag>,
     },
-    { title: '修改时间', dataIndex: 'created_at', valueType: 'dateTime', width: 170 },
+    { title: '修改时间', dataIndex: 'created_at', valueType: 'dateTime', width: 150 },
     {
-      title: '操作', key: 'actions', valueType: 'option', width: 100,
+      title: '操作', key: 'actions', valueType: 'option', width: 80,
       render: (_, row) => [
         hasComp('publish_deploy_template_rollback') && <Popconfirm key="rollback" title={`确认回退到历史版本 #${row.id}？当前内容将被替换。`}
           onConfirm={async () => {
@@ -358,7 +358,7 @@ export default function PublishTemplatesDeployment() {
       {/* 历史抽屉 */}
       <Drawer
         title={`修改历史 — ${historyTpl?.name ?? ''}`}
-        placement="right" width={900}
+        placement="right" width="min(900px, 95vw)"
         open={historyOpen} onClose={() => setHistoryOpen(false)} destroyOnClose
       >
         <ProTable<DeployTemplateHistoryItem>
@@ -394,7 +394,7 @@ export default function PublishTemplatesDeployment() {
       {/* 关联应用 Drawer */}
       <Drawer
         title={`关联应用 — ${appsTpl?.name ?? ''}`}
-        placement="right" width={900}
+        placement="right" width="min(900px, 95vw)"
         open={appsOpen} onClose={() => setAppsOpen(false)} destroyOnClose
         extra={
           <Space>

@@ -15,11 +15,11 @@ export default function OrgPositions() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const columns: ProColumns<Position>[] = [
-    { title: '职位名称', dataIndex: 'position_name' },
-    { title: '职位编码', dataIndex: 'position_code', render: v => v || '—' },
-    { title: '描述', dataIndex: 'description', search: false, render: v => v || '—' },
-    { title: '创建时间', dataIndex: 'ctime', width: 160, search: false, render: v => v || '—' },
-    { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 140,
+    { title: '职位名称', dataIndex: 'position_name', ellipsis: true },
+    { title: '职位编码', dataIndex: 'position_code', width: 120, render: v => v || '—' },
+    { title: '描述', dataIndex: 'description', ellipsis: true, search: false, render: v => v || '—' },
+    { title: '创建时间', dataIndex: 'ctime', width: 150, search: false, render: v => v || '—' },
+    { title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 120,
       render: (_, row) => [
         hasComp('org_position_edit') && <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>编辑</Button>,
         hasComp('org_position_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deletePosition(row.position_id); message.success('删除成功'); actionRef.current?.reload(); }}>

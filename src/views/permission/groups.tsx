@@ -22,16 +22,16 @@ export default function PermissionGroups() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const columns: ProColumns<Group>[] = [
-    { title: '分组名称', dataIndex: 'group_name' },
+    { title: '分组名称', dataIndex: 'group_name', ellipsis: true },
     { title: '描述', dataIndex: 'description', ellipsis: true, search: false },
     {
-      title: '状态', dataIndex: 'status', valueType: 'select',
+      title: '状态', dataIndex: 'status', width: 80, valueType: 'select',
       valueEnum: { '0': { text: '启用', status: 'Success' }, '1': { text: '禁用', status: 'Error' } },
       render: (_, row) => { const s = STATUS_MAP[String(row.status)]; return s ? <Tag color={s.color}>{s.label}</Tag> : '-'; }
     },
-    { title: '创建时间', dataIndex: 'ctime', valueType: 'dateTime', search: false },
+    { title: '创建时间', dataIndex: 'ctime', valueType: 'dateTime', width: 150, search: false },
     {
-      title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 140,
+      title: t('common.actions', { defaultValue: '操作' }), key: 'actions', valueType: 'option', fixed: 'right', width: 120,
       render: (_, row) => [
         <Button key="edit" type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditRecord(row); setModalOpen(true); }}>{t('common.edit', { defaultValue: '编辑' })}</Button>,
         hasComp('permission_group_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { await api.deleteGroup(row.group_id); message.success('删除成功'); actionRef.current?.reload(); }}>
