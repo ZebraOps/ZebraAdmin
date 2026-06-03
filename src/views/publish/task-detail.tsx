@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { Card, Descriptions, Button, Tag, Space, Spin, Row, Col, Typography, message } from 'antd';
+import { Card, Descriptions, Button, Tag, Space, Spin, Row, Col, Typography, message, Divider } from 'antd';
 import { ArrowLeftOutlined, DeleteOutlined, RedoOutlined } from '@ant-design/icons';
 import { getDeployTask, deleteDeployTask, retryDeployTask, getTaskStages, type DeployTask, type StageHistory } from '@/service/api';
 import { usePublishStore } from '@/store/publish';
@@ -172,6 +172,13 @@ const TaskDetailPage: React.FC = () => {
   // Resolve display names from publish store
   const appName = (publishStore.apps || []).find(a => a.id === task.project_id)?.c_name || `#${task.project_id}`;
   const envName = (publishStore.envs || []).find(e => e.id === task.env_id)?.name || `#${task.env_id}`;
+  const clusterName = (publishStore.clusterOptions || []).find(c => c.value === task.k8s_cluster_id)?.label || `#${task.k8s_cluster_id}`;
+  const serverName = (publishStore.linuxMachineOptions || []).find(s => s.value === task.server_id)?.label || `#${task.server_id}`;
+  const buildTemplateName = (publishStore.buildTplOptions || []).find(t => t.value === task.build_template_id)?.label || (task.build_template_id ? `模板 #${task.build_template_id}` : '默认模板');
+  const deployTemplateName = (publishStore.deployTplOptions || []).find(t => t.value === task.deployment_template_id)?.label || (task.deployment_template_id ? `模板 #${task.deployment_template_id}` : '默认模板');
+
+  // TARGET_LABELS for display
+  const TARGET_LABELS: Record<string, string> = { k8s: 'Kubernetes', docker: 'Docker Compose', linux: 'Linux/Nginx' };
 
   return (
     <div style={{ padding: 16, background: '#f5f5f5', minHeight: '100vh' }}>
@@ -200,21 +207,65 @@ const TaskDetailPage: React.FC = () => {
           <Descriptions.Item label="目标环境">{envName}</Descriptions.Item>
           <Descriptions.Item label="Git引用">{task.git_ref || '--'}</Descriptions.Item>
           <Descriptions.Item label="镜像标签">{task.image_tag || '--'}</Descriptions.Item>
-          <Descriptions.Item label="部署目标">{task.deploy_target || '--'}</Descriptions.Item>
+          <Descriptions.Item label="部署目标">{TARGET_LABELS[task.deploy_target || 'k8s'] || task.deploy_target}</Descriptions.Item>
+          <Descriptions.Item label="创建时间">{task.created_at || '--'}</Descriptions.Item>
+          <Descriptions.Item label="开始时间">{task.started_at || '--'}</Descriptions.Item>
+          <Descriptions.Item label="结束时间">{task.finished_at || '--'}</Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      {/* Build Config Card */}
+      <Card title="构建配置" style={{ marginBottom: 16 }}>
+        <Descriptions column={4} size="small">
+          <Descriptions.Item label="构建模板">{buildTemplateName}</Descriptions.Item>
+          <Descriptions.Item label="Jenkins Job">{task.jenkins_job_name || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Build Number">{task.jenkins_build_number || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Git 引用">{task.git_ref || '--'}</Descriptions.Item>
+          <Descriptions.Item label="镜像仓库">{task.registry_project || '--'}</Descriptions.Item>
+          <Descriptions.Item label="镜像名称">{task.image_name || '--'}</Descriptions.Item>
+          <Descriptions.Item label="镜像标签">{task.image_tag || '--'}</Descriptions.Item>
+          <Descriptions.Item label="重试次数">{task.retry_count || 0}</Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      {/* Deploy Config Card */}
+      <Card title="部署配置" style={{ marginBottom: 16 }}>
+        <Descriptions column={4} size="small">
+          <Descriptions.Item label="部署模板">{deployTemplateName}</Descriptions.Item>
+          <Descriptions.Item label="部署类型">{TARGET_LABELS[task.deploy_target || 'k8s'] || task.deploy_target}</Descriptions.Item>
           {task.deploy_target === 'k8s' && (
             <>
-              <Descriptions.Item label="K8s集群">{task.k8s_cluster_id || '--'}</Descriptions.Item>
+              <Descriptions.Item label="K8s集群">{clusterName}</Descriptions.Item>
               <Descriptions.Item label="命名空间">{task.k8s_namespace || '--'}</Descriptions.Item>
+              <Descriptions.Item label="Deployment">{task.deployment_name || '--'}</Descriptions.Item>
+            </>
+          )}
+          {task.deploy_target === 'docker' && (
+            <>
+              <Descriptions.Item label="服务器">{serverName}</Descriptions.Item>
+              <Descriptions.Item label="Compose路径">{task.docker_compose_path || '--'}</Descriptions.Item>
+              <Descriptions.Item label="容器名称">{task.deployment_name || '--'}</Descriptions.Item>
             </>
           )}
           {task.deploy_target === 'linux' && (
             <>
-              <Descriptions.Item label="服务器">{task.server_id || '--'}</Descriptions.Item>
+              <Descriptions.Item label="服务器">{serverName}</Descriptions.Item>
               <Descriptions.Item label="部署路径">{task.deploy_path || '--'}</Descriptions.Item>
+              <Descriptions.Item label="部署名称">{task.deployment_name || '--'}</Descriptions.Item>
             </>
           )}
-          <Descriptions.Item label="创建时间">{task.created_at || '--'}</Descriptions.Item>
         </Descriptions>
+        {task.error_message && (
+          <Divider style={{ margin: '12px 0' }} />
+        )}
+        {task.error_message && (
+          <div>
+            <Text type="danger" strong>错误信息：</Text>
+            <pre style={{ background: '#fff2f0', padding: 8, borderRadius: 4, marginTop: 4, fontSize: 12, whiteSpace: 'pre-wrap' }}>
+              {task.error_message}
+            </pre>
+          </div>
+        )}
       </Card>
 
       {/* Bottom: Left (flowchart) + Right (detail panel) */}
