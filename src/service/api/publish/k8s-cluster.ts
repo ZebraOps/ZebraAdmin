@@ -65,3 +65,25 @@ export const listDeploymentPods = (id: number, deploymentName: string, namespace
 /** 获取集群的命名空间列表（动态） */
 export const listK8sNamespaces = (id: number) =>
   http.get<string[]>(`/cicd/api/k8s/clusters/${id}/namespaces`);
+
+/** Pod 日志响应 */
+export interface PodLogResponse {
+  output: string;
+  pod_name: string;
+  namespace: string;
+  container?: string;
+}
+
+/** 获取 Pod 日志（类似 kubectl logs） */
+export const getPodLogs = (
+  clusterId: number,
+  podName: string,
+  namespace?: string,
+  tail?: number,
+  container?: string,
+) =>
+  http.get<PodLogResponse>(`/cicd/api/k8s/clusters/${clusterId}/pods/${podName}/logs`, {
+    namespace: namespace || 'default',
+    tail: tail || 100,
+    ...(container ? { container } : {}),
+  });

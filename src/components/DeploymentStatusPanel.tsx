@@ -1,11 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Tag, Typography, Spin, Button, Empty, Space, Alert } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { Table, Tag, Typography, Spin, Button, Empty, Space, Alert, Tooltip, Modal } from 'antd';
+import { ReloadOutlined, CodeOutlined } from '@ant-design/icons';
 import { listDeploymentPods, type PodInfo } from '@/service/api/publish/k8s-cluster';
 import { listLinuxContainers, type DockerContainer } from '@/service/api/publish/linux-machine';
 import type { DeployTask } from '@/service/api/publish/deploy-task';
+import ServiceLogPanel from '@/components/ServiceLogPanel';
 
 const { Text } = Typography;
+
+interface LogTarget {
+  type: 'k8s' | 'docker';
+  clusterId?: number;
+  namespace?: string;
+  podName?: string;
+  container?: string;
+  serverId?: number;
+  containerId?: string;
+  title: string;
+}
 
 interface DeploymentStatusPanelProps {
   task: DeployTask;
@@ -37,6 +49,7 @@ const DeploymentStatusPanel: React.FC<DeploymentStatusPanelProps> = ({ task, tas
   const [containerData, setContainerData] = useState<DockerContainer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [logTarget, setLogTarget] = useState<LogTarget | null>(null);
 
   const fetchRuntimeInfo = useCallback(async () => {
     setLoading(true);
@@ -182,6 +195,25 @@ const DeploymentStatusPanel: React.FC<DeploymentStatusPanelProps> = ({ task, tas
                 <Text style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>{name || '--'}</Text>
               ),
             },
+            {
+              title: '操作',
+              width: 80,
+              render: (_, record: PodInfo) => (
+                <Tooltip title="查看日志">
+                  <Button
+                    size="small"
+                    icon={<CodeOutlined />}
+                    onClick={() => setLogTarget({
+                      type: 'k8s',
+                      clusterId: task.k8s_cluster_id!,
+                      namespace: task.k8s_namespace || 'default',
+                      podName: record.name,
+                      title: `Pod 日志: ${record.name}`,
+                    })}
+                  />
+                </Tooltip>
+              ),
+            },
           ]}
         />
       </div>
@@ -267,6 +299,24 @@ const DeploymentStatusPanel: React.FC<DeploymentStatusPanelProps> = ({ task, tas
                 <Text style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>{ports || '--'}</Text>
               ),
             },
+            {
+              title: '操作',
+              width: 80,
+              render: (_, record: DockerContainer) => (
+                <Tooltip title="查看日志">
+                  <Button
+                    size="small"
+                    icon={<CodeOutlined />}
+                    onClick={() => setLogTarget({
+                      type: 'docker',
+                      serverId: task.server_id!,
+                      containerId: record.id,
+                      title: `容器日志: ${record.names?.map(n => n.startsWith('/') ? n.slice(1) : n).join(', ') || record.id}`,
+                    })}
+                  />
+                </Tooltip>
+              ),
+            },
           ]}
         />
       </div>
@@ -288,6 +338,33 @@ const DeploymentStatusPanel: React.FC<DeploymentStatusPanelProps> = ({ task, tas
       {task.deploy_target === 'k8s' && renderK8sPanel()}
       {task.deploy_target === 'docker' && renderDockerPanel()}
       {task.deploy_target === 'linux' && renderLinuxPanel()}
+
+      {/* 日志查看 Modal */}
+      {logTarget && (
+        <Modal
+          title={logTarget.title}
+          open={true}
+          onCancel={() => setLogTarget(null)}
+          footer={null}
+          width="80vw"
+          style={{ top: 20 }}
+          destroyOnClose
+          maskClosable
+          keyboard
+          transitionName=""
+          maskTransitionName=""
+        >
+          <ServiceLogPanel
+            type={logTarget.type}
+            clusterId={logTarget.clusterId}
+            namespace={logTarget.namespace}
+            podName={logTarget.podName}
+            container={logTarget.container}
+            serverId={logTarget.serverId}
+            containerId={logTarget.containerId}
+          />
+        </Modal>
+      )}
     </div>
   );
 };

@@ -57,3 +57,19 @@ export const execContainerCommand = (serverId: number, containerId: string, comm
     `/cicd/api/servers/${serverId}/containers/${containerId}/exec`,
     { command }
   );
+
+/** 容器日志响应 */
+export interface ContainerLogResponse {
+  output: string;
+  container_id: string;
+}
+
+/** 获取容器日志（类似 docker logs） */
+export const getContainerLogs = (
+  serverId: number,
+  containerId: string,
+  tail?: number,
+) =>
+  http.get<ContainerLogResponse>(`/cicd/api/servers/${serverId}/containers/${containerId}/logs`, {
+    tail: tail || 100,
+  });
