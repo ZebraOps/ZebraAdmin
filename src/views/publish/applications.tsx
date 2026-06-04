@@ -162,8 +162,34 @@ export default function PublishApplications() {
     setJenkinsCredentialOptions([]);
   }, [deployFormOpen, deployFormRecord?.credential_mode, deployFormRecord?.jenkins_platform_id]);
 
-  const findLabel = (opts: { label: string; value: number }[], v?: number | null) =>
-    opts.find(o => o.value === v)?.label ?? (v ? `#${v}` : '-');
+  const findLabel = (
+    opts: { label: string; value: number }[],
+    v?: number | string | { id?: number | string; value?: number | string; label?: string; name?: string; display_name?: string } | null,
+  ) => {
+    if (v === null || v === undefined || v === '') return '-';
+
+    if (typeof v === 'object') {
+      if (typeof v.label === 'string' && v.label) return v.label;
+      if (typeof v.display_name === 'string' && v.display_name) return v.display_name;
+      if (typeof v.name === 'string' && v.name) return v.name;
+
+      const objectId = v.id ?? v.value;
+      if (objectId !== undefined && objectId !== null && objectId !== '') {
+        const idNum = Number(objectId);
+        const matched = Number.isNaN(idNum)
+          ? undefined
+          : opts.find((o) => Number(o.value) === idNum)?.label;
+        return matched ?? `#${String(objectId)}`;
+      }
+      return '-';
+    }
+
+    const idNum = Number(v);
+    const matched = Number.isNaN(idNum)
+      ? undefined
+      : opts.find((o) => Number(o.value) === idNum)?.label;
+    return matched ?? `#${String(v)}`;
+  };
 
   const languageEnum = languageOptions.reduce((acc, o) => {
     acc[o.value] = { text: o.label };
@@ -232,9 +258,17 @@ export default function PublishApplications() {
   const TARGET_LABELS: Record<string, string> = { k8s: 'K8s', docker: 'Docker', linux: 'Linux/Nginx' };
   const TARGET_COLORS: Record<string, string> = { k8s: 'blue', docker: 'cyan', linux: 'green' };
 
+  const hasLinuxDeployPath = deployList.some((item) => item.deploy_target === 'linux');
+
   const deployColumns: ProColumns<ApplicationDeployment>[] = [
     { title: 'ID', dataIndex: 'id', width: 60 },
-    { title: '环境', dataIndex: 'environment_id', ellipsis: true, render: (val) => findLabel(envOptions, val as number) },
+    {
+      title: '环境', dataIndex: 'environment_id', ellipsis: true,
+      render: (val, row) => {
+        const assocName = (row as any)?.environment?.name;
+        return assocName || findLabel(envOptions, val as number);
+      },
+    },
     {
       title: '部署目标', dataIndex: 'deploy_target', width: 100,
       render: (val) => {
@@ -243,8 +277,20 @@ export default function PublishApplications() {
       },
     },
     { title: '构建源', dataIndex: 'build_source', width: 80, render: (val) => <Tag>{String(val ?? 'tag')}</Tag> },
-    { title: '构建模板', dataIndex: 'build_template_id', ellipsis: true, render: (val) => findLabel(buildTplOptions, val as number) },
-    { title: '部署模板', dataIndex: 'deployment_template_id', ellipsis: true, render: (val) => findLabel(deployTplOptions, val as number) },
+    {
+      title: '构建模板', dataIndex: 'build_template_id', ellipsis: true,
+      render: (val, row) => {
+        const assocName = (row as any)?.build_template?.name;
+        return assocName || findLabel(buildTplOptions, val as number);
+      },
+    },
+    {
+      title: '部署模板', dataIndex: 'deployment_template_id', ellipsis: true,
+      render: (val, row) => {
+        const assocName = (row as any)?.deployment_template?.display_name || (row as any)?.deployment_template?.name;
+        return assocName || findLabel(deployTplOptions, val as number);
+      },
+    },
     {
       title: '目标', ellipsis: true, search: false, render: (_, row) => {
         if (row.deploy_target === 'k8s') return findLabel(clusterOptions, row.k8s_cluster_id as number);
@@ -252,9 +298,12 @@ export default function PublishApplications() {
         return '-';
       },
     },
-    {
-      title: '部署路径', width: 180, search: false, render: (_, row) => row.deploy_target === 'linux' ? row.deploy_path || '-' : '-',
-    },
+    ...(hasLinuxDeployPath
+      ? [{
+          title: '部署路径', width: 180, search: false,
+          render: (_: unknown, row: ApplicationDeployment) => row.deploy_target === 'linux' ? row.deploy_path || '-' : '-',
+        } as ProColumns<ApplicationDeployment>]
+      : []),
     {
       title: 'Jenkins', dataIndex: 'jenkins_platform_id', width: 140, search: false,
       render: (val) => val ? jenkinsPlatformOptions.find(o => o.value === val)?.label ?? `#${val}` : '-',

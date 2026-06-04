@@ -97,6 +97,28 @@ const TaskDetailPage: React.FC = () => {
     return `${(diff / 3600000).toFixed(1)}h`;
   };
 
+  const formatDateTime = (value?: string): string => {
+    if (!value) return '--';
+    // Go time.Time zero value can be serialized as 0001-01-01..., treat as empty.
+    if (value.startsWith('0001-01-01')) return '--';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    if (d.getFullYear() <= 1) return '--';
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+
+  const formatTimeOnly = (value?: string): string => {
+    if (!value) return '--:--:--';
+    if (value.startsWith('0001-01-01')) return '--:--:--';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '--:--:--';
+    if (d.getFullYear() <= 1) return '--:--:--';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+
   // Compute stage display state from stages data, with fallback from task status
   const getStageState = (stageName: string): { status: string; startedAt?: string; finishedAt?: string; duration?: string; errorMsg?: string } => {
     const record = stages.find(s => s.stage === stageName);
@@ -209,9 +231,9 @@ const TaskDetailPage: React.FC = () => {
           <Descriptions.Item label="Git引用">{task.git_ref || '--'}</Descriptions.Item>
           <Descriptions.Item label="镜像标签">{task.image_tag || '--'}</Descriptions.Item>
           <Descriptions.Item label="部署目标">{TARGET_LABELS[task.deploy_target || 'k8s'] || task.deploy_target}</Descriptions.Item>
-          <Descriptions.Item label="创建时间">{task.created_at || '--'}</Descriptions.Item>
-          <Descriptions.Item label="开始时间">{task.started_at || '--'}</Descriptions.Item>
-          <Descriptions.Item label="结束时间">{task.finished_at || '--'}</Descriptions.Item>
+          <Descriptions.Item label="创建时间">{formatDateTime(task.created_at)}</Descriptions.Item>
+          <Descriptions.Item label="开始时间">{formatDateTime(task.started_at)}</Descriptions.Item>
+          <Descriptions.Item label="结束时间">{formatDateTime(task.finished_at)}</Descriptions.Item>
         </Descriptions>
       </Card>
 
@@ -358,7 +380,7 @@ const TaskDetailPage: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#999', marginTop: 4 }}>
                   {PIPELINE_STAGES.map((sn) => {
                     const state = getStageState(sn);
-                    return <span key={sn}>{state.startedAt ? new Date(state.startedAt).toLocaleTimeString() : '--:--'}</span>;
+                    return <span key={sn}>{formatTimeOnly(state.startedAt)}</span>;
                   })}
                 </div>
               </div>
@@ -373,8 +395,8 @@ const TaskDetailPage: React.FC = () => {
             {selectedStage === 'PENDING' && (
               <Descriptions column={1} size="small" bordered>
                 <Descriptions.Item label="触发方式">手动触发</Descriptions.Item>
-                <Descriptions.Item label="创建时间">{selectedStageData?.started_at || task.created_at || '--'}</Descriptions.Item>
-                <Descriptions.Item label="完成时间">{selectedStageData?.finished_at || '--'}</Descriptions.Item>
+                <Descriptions.Item label="创建时间">{formatDateTime(selectedStageData?.started_at || task.created_at)}</Descriptions.Item>
+                <Descriptions.Item label="完成时间">{formatDateTime(selectedStageData?.finished_at)}</Descriptions.Item>
                 <Descriptions.Item label="耗时">{selectedStageData?.started_at && selectedStageData?.finished_at ? computeDuration(selectedStageData.started_at, selectedStageData.finished_at) : '--'}</Descriptions.Item>
                 <Descriptions.Item label="队列">Asynq deploy queue</Descriptions.Item>
               </Descriptions>
@@ -392,7 +414,7 @@ const TaskDetailPage: React.FC = () => {
                   </Descriptions.Item>
                   <Descriptions.Item label="镜像名称">{task.image_name || '--'}</Descriptions.Item>
                   <Descriptions.Item label="镜像标签">{task.image_tag || '--'}</Descriptions.Item>
-                  <Descriptions.Item label="开始时间">{selectedStageData?.started_at || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="开始时间">{formatDateTime(selectedStageData?.started_at)}</Descriptions.Item>
                   <Descriptions.Item label="耗时">
                     {selectedStageData?.started_at && selectedStageData?.finished_at
                       ? computeDuration(selectedStageData.started_at, selectedStageData.finished_at)
@@ -419,8 +441,8 @@ const TaskDetailPage: React.FC = () => {
               <Descriptions column={1} size="small" bordered>
                 <Descriptions.Item label="镜像仓库">{task.registry_project || '--'}</Descriptions.Item>
                 <Descriptions.Item label="镜像">{task.registry_project && task.image_name ? `${task.registry_project}/${task.image_name}:${task.image_tag}` : '--'}</Descriptions.Item>
-                <Descriptions.Item label="开始时间">{selectedStageData?.started_at || '--'}</Descriptions.Item>
-                <Descriptions.Item label="完成时间">{selectedStageData?.finished_at || '--'}</Descriptions.Item>
+                <Descriptions.Item label="开始时间">{formatDateTime(selectedStageData?.started_at)}</Descriptions.Item>
+                <Descriptions.Item label="完成时间">{formatDateTime(selectedStageData?.finished_at)}</Descriptions.Item>
                 <Descriptions.Item label="耗时">
                   {selectedStageData?.started_at && selectedStageData?.finished_at
                     ? computeDuration(selectedStageData.started_at, selectedStageData.finished_at)
@@ -470,7 +492,7 @@ const TaskDetailPage: React.FC = () => {
                       ? <Link to={`/publish/templates/deployment?name=${encodeURIComponent(deployTemplateName)}`}>{deployTemplateName}</Link>
                       : '默认模板'}
                   </Descriptions.Item>
-                  <Descriptions.Item label="开始时间">{selectedStageData?.started_at || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="开始时间">{formatDateTime(selectedStageData?.started_at)}</Descriptions.Item>
                   <Descriptions.Item label="耗时">
                     {selectedStageData?.started_at && selectedStageData?.finished_at
                       ? computeDuration(selectedStageData.started_at, selectedStageData.finished_at)

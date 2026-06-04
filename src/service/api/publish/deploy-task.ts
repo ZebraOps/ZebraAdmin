@@ -25,8 +25,8 @@ export interface DeployTask {
   error_message?: string;
   retry_count?: number;
   log_path?: string;
-  started_at?: string;
-  finished_at?: string;
+  started_at?: string | null;
+  finished_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }
