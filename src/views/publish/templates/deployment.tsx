@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import {
   ProTable, ModalForm, ProFormText, ProFormSelect,
   ProFormTreeSelect,
@@ -41,6 +42,7 @@ interface DeployTemplateHistoryItem {
 export default function PublishTemplatesDeployment() {
   const { t } = useTranslation();
   const { hasComp } = usePermission();
+  const [searchParams] = useSearchParams();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<DeployTemplate | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -68,6 +70,17 @@ export default function PublishTemplatesDeployment() {
       children: n.children?.length ? toDeptTreeSelectData(n.children) : undefined,
     }));
   }
+
+  // Pre-fill search from URL query param (when navigating from task detail)
+  const highlightName = searchParams.get('name');
+  useEffect(() => {
+    if (highlightName && actionRef.current) {
+      setTimeout(() => {
+        actionRef.current?.setFieldsValue({ name: highlightName });
+        actionRef.current?.reload();
+      }, 100);
+    }
+  }, [highlightName]);
 
   // 历史抽屉
   const [historyOpen, setHistoryOpen] = useState(false);

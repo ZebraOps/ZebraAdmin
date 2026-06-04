@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, Link } from 'react-router';
 import { Card, Descriptions, Button, Tag, Space, Spin, Row, Col, Typography, message, Divider } from 'antd';
 import { ArrowLeftOutlined, DeleteOutlined, RedoOutlined } from '@ant-design/icons';
 import { getDeployTask, deleteDeployTask, retryDeployTask, getTaskStages, type DeployTask, type StageHistory } from '@/service/api';
 import { usePublishStore } from '@/store/publish';
 import JenkinsConsolePanel from '@/components/JenkinsConsolePanel';
+import DeploymentStatusPanel from '@/components/DeploymentStatusPanel';
 
 const { Title, Text } = Typography;
 
@@ -217,7 +218,11 @@ const TaskDetailPage: React.FC = () => {
       {/* Build Config Card */}
       <Card title="构建配置" style={{ marginBottom: 16 }}>
         <Descriptions column={4} size="small">
-          <Descriptions.Item label="构建模板">{buildTemplateName}</Descriptions.Item>
+          <Descriptions.Item label="构建模板">
+            {task.build_template_id
+              ? <Link to={`/publish/templates/build?name=${encodeURIComponent(buildTemplateName)}`}>{buildTemplateName}</Link>
+              : buildTemplateName}
+          </Descriptions.Item>
           <Descriptions.Item label="Jenkins Job">{task.jenkins_job_name || '--'}</Descriptions.Item>
           <Descriptions.Item label="Build Number">{task.jenkins_build_number || '--'}</Descriptions.Item>
           <Descriptions.Item label="Git 引用">{task.git_ref || '--'}</Descriptions.Item>
@@ -231,7 +236,11 @@ const TaskDetailPage: React.FC = () => {
       {/* Deploy Config Card */}
       <Card title="部署配置" style={{ marginBottom: 16 }}>
         <Descriptions column={4} size="small">
-          <Descriptions.Item label="部署模板">{deployTemplateName}</Descriptions.Item>
+          <Descriptions.Item label="部署模板">
+            {task.deployment_template_id
+              ? <Link to={`/publish/templates/deployment?name=${encodeURIComponent(deployTemplateName)}`}>{deployTemplateName}</Link>
+              : deployTemplateName}
+          </Descriptions.Item>
           <Descriptions.Item label="部署类型">{TARGET_LABELS[task.deploy_target || 'k8s'] || task.deploy_target}</Descriptions.Item>
           {task.deploy_target === 'k8s' && (
             <>
@@ -376,7 +385,11 @@ const TaskDetailPage: React.FC = () => {
                 <Descriptions column={1} size="small" bordered>
                   <Descriptions.Item label="Jenkins Job">{task.jenkins_job_name || '--'}</Descriptions.Item>
                   <Descriptions.Item label="Build Number">{task.jenkins_build_number || '--'}</Descriptions.Item>
-                  <Descriptions.Item label="构建模板">{task.build_template_id || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="构建模板">
+                    {task.build_template_id
+                      ? <Link to={`/publish/templates/build?name=${encodeURIComponent(buildTemplateName)}`}>{buildTemplateName}</Link>
+                      : '默认模板'}
+                  </Descriptions.Item>
                   <Descriptions.Item label="镜像名称">{task.image_name || '--'}</Descriptions.Item>
                   <Descriptions.Item label="镜像标签">{task.image_tag || '--'}</Descriptions.Item>
                   <Descriptions.Item label="开始时间">{selectedStageData?.started_at || '--'}</Descriptions.Item>
@@ -452,7 +465,11 @@ const TaskDetailPage: React.FC = () => {
                       <Descriptions.Item label="部署方式">Nginx静态部署</Descriptions.Item>
                     </>
                   )}
-                  <Descriptions.Item label="部署模板">{task.deployment_template_id || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="部署模板">
+                    {task.deployment_template_id
+                      ? <Link to={`/publish/templates/deployment?name=${encodeURIComponent(deployTemplateName)}`}>{deployTemplateName}</Link>
+                      : '默认模板'}
+                  </Descriptions.Item>
                   <Descriptions.Item label="开始时间">{selectedStageData?.started_at || '--'}</Descriptions.Item>
                   <Descriptions.Item label="耗时">
                     {selectedStageData?.started_at && selectedStageData?.finished_at
@@ -467,6 +484,10 @@ const TaskDetailPage: React.FC = () => {
                     </Descriptions.Item>
                   )}
                 </Descriptions>
+                {/* Platform runtime status */}
+                {(taskStatus === 'DEPLOYING' || taskStatus === 'SUCCESS') && (
+                  <DeploymentStatusPanel task={task} taskStatus={taskStatus} />
+                )}
                 {/* Deploy log summary if available */}
                 {selectedStageData?.log_summary && (
                   <div style={{ marginTop: 12 }}>

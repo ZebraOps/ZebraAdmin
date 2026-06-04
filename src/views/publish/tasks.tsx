@@ -332,7 +332,7 @@ export default function PublishTasks() {
                     deploy_path: config.deploy_path || undefined,
                     build_template_id: config.build_template_id ?? undefined,
                     deployment_template_id: config.deployment_template_id ?? undefined,
-                    deployment_name: `${getAppEName(config.application_id)}-${config.application_id}`,
+                    deployment_name: getAppEName(config.application_id),
                   });
                   // 如果是 K8s 目标且有集群ID，自动加载命名空间
                   if (config.deploy_target === 'k8s' && config.k8s_cluster_id) {
@@ -389,7 +389,7 @@ export default function PublishTasks() {
                 return (
                   <>
                     <ProFormSelect name="server_id" label="目标服务器" rules={[{ required: true }]} options={linuxMachineOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择目标服务器" />
-                    <ProFormText name="deployment_name" label="容器名称" placeholder="留空则自动按应用英文名+ID生成" />
+                    <ProFormText name="deployment_name" label="容器名称" placeholder="留空则自动按应用英文名生成" />
                   </>
                 );
               }
@@ -399,7 +399,7 @@ export default function PublishTasks() {
                     <ProFormSelect name="server_id" label="目标服务器" rules={[{ required: true }]} options={linuxMachineOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择目标服务器" />
                     <ProFormText name="deploy_path" label="部署路径" rules={[{ required: true }]}
                       placeholder="/opt/zebra-deploy/my-app" tooltip="文件将被放置在此目录，由 Nginx 代理服务" />
-                    <ProFormText name="deployment_name" label="部署名称" placeholder="留空则自动按应用英文名+ID生成" />
+                    <ProFormText name="deployment_name" label="部署名称" placeholder="留空则自动按应用英文名生成" />
                   </>
                 );
               }
@@ -418,7 +418,7 @@ export default function PublishTasks() {
                       showSearch: true,
                     }}
                     placeholder="从集群获取或手动输入" initialValue="default" />
-                  <ProFormText name="deployment_name" label="K8s Deployment 名称" placeholder="留空则自动按应用英文名+ID生成" />
+                  <ProFormText name="deployment_name" label="K8s Deployment 名称" placeholder="留空则自动按应用英文名生成" />
                 </>
               );
             }}

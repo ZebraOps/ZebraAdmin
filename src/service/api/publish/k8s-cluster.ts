@@ -28,6 +28,8 @@ export interface PodInfo {
   namespace: string;
   start_time?: string;
   labels?: Record<string, string>;
+  restart_count?: number;
+  ready?: string;
 }
 
 export const fetchK8sClusters = (params?: Record<string, unknown>) =>
@@ -52,6 +54,13 @@ export const testK8sConnection = (id: number) =>
 /** 获取集群指定命名空间下的 Pod 列表 */
 export const listK8sPods = (id: number, namespace?: string) =>
   http.get<PodInfo[]>(`/cicd/api/k8s/clusters/${id}/pods`, namespace ? { namespace } : undefined);
+
+/** 根据Deployment名称获取关联Pod列表（自动查询Deployment的selector） */
+export const listDeploymentPods = (id: number, deploymentName: string, namespace?: string) =>
+  http.get<PodInfo[]>(`/cicd/api/k8s/clusters/${id}/deployment-pods`, {
+    deployment_name: deploymentName,
+    ...(namespace ? { namespace } : {}),
+  });
 
 /** 获取集群的命名空间列表（动态） */
 export const listK8sNamespaces = (id: number) =>

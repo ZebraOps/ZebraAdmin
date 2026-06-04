@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import {
   ProTable, ModalForm, ProFormText, ProFormSelect,
   ProFormTreeSelect,
@@ -32,6 +33,7 @@ interface TemplateHistory {
 export default function PublishTemplatesBuild() {
   const { t } = useTranslation();
   const { hasComp } = usePermission();
+  const [searchParams] = useSearchParams();
   const actionRef = useRef<ActionType>(null);
   const [editRecord, setEditRecord] = useState<BuildTemplate | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -49,6 +51,18 @@ export default function PublishTemplatesBuild() {
       children: n.children?.length ? toDeptTreeSelectData(n.children) : undefined,
     }));
   }
+
+  // Pre-fill search from URL query param (when navigating from task detail)
+  const highlightName = searchParams.get('name');
+  useEffect(() => {
+    if (highlightName && actionRef.current) {
+      // Small delay to ensure ProTable search form is ready
+      setTimeout(() => {
+        actionRef.current?.setFieldsValue({ name: highlightName });
+        actionRef.current?.reload();
+      }, 100);
+    }
+  }, [highlightName]);
 
   useEffect(() => {
     fetchLanguages({ size: 200 }).then((res) => {
