@@ -33,7 +33,6 @@ interface DeployTemplateHistoryItem {
   template_type?: string;
   content?: string;
   variables?: string;
-  parameters?: string;
   version?: string;
   change_reason?: string;
   created_at?: string;
@@ -53,14 +52,12 @@ export default function PublishTemplatesDeployment() {
   // Monaco 编辑器的值（ProForm 不直接支持 Monaco，需要手动管理）
   const [contentValue, setContentValue] = useState('');
   const [variablesValue, setVariablesValue] = useState('');
-  const [parametersValue, setParametersValue] = useState('');
 
   // 打开编辑时，加载 Monaco 值
   const handleOpenModal = (record: DeployTemplate | null) => {
     setEditRecord(record);
     setContentValue(record?.content ?? '');
     setVariablesValue(record?.variables ?? '');
-    setParametersValue(record?.parameters ?? '');
     setModalOpen(true);
   };
 
@@ -227,10 +224,6 @@ export default function PublishTemplatesDeployment() {
       title: '变量', dataIndex: 'variables', width: 80, search: false,
       render: (val) => val ? <Tag color="purple">已变更</Tag> : <Tag>无</Tag>,
     },
-    {
-      title: '参数', dataIndex: 'parameters', width: 80, search: false,
-      render: (val) => val ? <Tag color="green">已变更</Tag> : <Tag>无</Tag>,
-    },
     { title: '修改时间', dataIndex: 'created_at', valueType: 'dateTime', width: 150 },
     {
       title: '操作', key: 'actions', valueType: 'option', width: 80,
@@ -302,7 +295,7 @@ export default function PublishTemplatesDeployment() {
         onFinish={async (values) => {
           try {
             // 把 Monaco 编辑器的值合并到表单数据中
-            const submitData = { ...values, content: contentValue, variables: variablesValue, parameters: parametersValue };
+            const submitData = { ...values, content: contentValue, variables: variablesValue };
             if (editRecord?.id) await api.updateDeployTemplate(editRecord.id, submitData as any);
             else await api.createDeployTemplate(submitData as any);
             message.success('保存成功');
@@ -349,20 +342,6 @@ export default function PublishTemplatesDeployment() {
           showToolbar
           placeholder={`{"IMAGE_TAG": "latest", "NAMESPACE": "default", "PROJECT_NAME": "my-app", "ENV_NAME": "dev"}`}
         />
-        <div style={{ marginTop: 16, marginBottom: 4 }}>
-          <div style={{ fontWeight: 600, marginBottom: 2 }}>参数定义</div>
-          <div style={{ color: '#888', fontSize: 12, lineHeight: 1.5 }}>
-            定义部署时可配置的参数 schema，包含类型和默认值。格式为 JSON，如 <code>{"{ \"replicas\": { \"type\": \"number\", \"default\": 1 } }"}</code>
-          </div>
-        </div>
-        <CodeEditor
-          value={parametersValue}
-          onChange={setParametersValue}
-          language="json"
-          height="200px"
-          showToolbar
-          placeholder={`{"replicas": {"type": "number", "default": 1}, "cpu_limit": {"type": "string", "default": "500m"}}`}
-        />
         <ProFormText name="description" label="描述" placeholder="请输入描述" />
         <ProFormTreeSelect name="department" label="归属部门" placeholder="请选择部门"
           fieldProps={{ treeData: toDeptTreeSelectData(orgTreeData), allowClear: true, treeDefaultExpandAll: true, showSearch: true, treeNodeFilterProp: 'title' }} />
@@ -391,11 +370,6 @@ export default function PublishTemplatesDeployment() {
                     key: 'variables',
                     label: '变量',
                     children: <CodeEditor value={record.variables || ''} readOnly language="json" height="300px" showToolbar />,
-                  },
-                  {
-                    key: 'parameters',
-                    label: '参数',
-                    children: <CodeEditor value={record.parameters || ''} readOnly language="json" height="300px" showToolbar />,
                   },
                 ]}
               />

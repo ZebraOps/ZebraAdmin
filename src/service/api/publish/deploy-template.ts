@@ -10,7 +10,6 @@ export interface DeployTemplate {
   template_type?: string;
   content?: string;
   variables?: string;
-  parameters?: string;
   version?: string;
   status?: string;
   creator?: string;
