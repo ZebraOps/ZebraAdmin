@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ProTable, ModalForm, ProFormText, ProFormSelect, ProFormDependency, ProFormInstance,
+  ProTable, ModalForm, ProFormText, ProFormSelect, ProFormTreeSelect, ProFormDependency, ProFormInstance,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
 import { Button, Tag, message, Popconfirm, Card } from 'antd';
 import { isHandledError } from '@/service/request';
-import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import * as api from '@/service/api/publish/deploy-task';
@@ -14,6 +14,9 @@ import * as deployApi from '@/service/api/publish/applications';
 import type { ApplicationDeployment } from '@/service/api/publish/applications';
 import { fetchRepoBranches, fetchRepoTags } from '@/service/api/publish/repos';
 import { listK8sNamespaces } from '@/service/api/publish/k8s-cluster';
+import { fetchEnvironments } from '@/service/api/publish/environment';
+import { fetchOrgTree } from '@/service/api/rbac/org';
+import type { OrgNode } from '@/service/api/rbac/org';
 import { usePermission } from '@/hooks/usePermission';
 import { usePublishStore } from '@/store/publish';
 
@@ -42,8 +45,37 @@ export default function PublishTasks() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // 下拉选项（来自共享 store）
-  const { appOptions, envOptions, clusterOptions, linuxMachineOptions, apps, loadAll } = usePublishStore();
+  const { appOptions, clusterOptions, linuxMachineOptions, apps, loadAll } = usePublishStore();
   useEffect(() => { loadAll(); }, []);
+
+  // 搜索过滤条件选项
+  const [searchEnvOptions, setSearchEnvOptions] = useState<{ label: string; value: number }[]>([]);
+  const [orgTreeData, setOrgTreeData] = useState<OrgNode[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState<string | undefined>(undefined);
+
+  // 加载环境列表
+  useEffect(() => {
+    fetchEnvironments({ size: 200 }).then((res) => {
+      const records = (res as any)?.records ?? [];
+      setSearchEnvOptions(records.map((e: any) => ({ label: `${e.name}${e.type ? ` (${e.type})` : ''}`, value: e.id })));
+    }).catch(() => {});
+  }, []);
+
+  // 加载组织架构树
+  useEffect(() => {
+    fetchOrgTree().then((res) => {
+      setOrgTreeData((res as any) ?? []);
+    }).catch(() => {});
+  }, []);
+
+  // 根据部门过滤应用
+  const getFilteredAppOptions = (department?: string) => {
+    if (!department) return appOptions;
+    return appOptions.filter((app: any) => {
+      const appDept = app.department || apps.find(a => a.id === app.value)?.department;
+      return appDept === department;
+    });
+  };
 
   const getAppEName = (appId: number) => apps.find(a => a.id === appId)?.e_name ?? '';
 
@@ -57,6 +89,7 @@ export default function PublishTasks() {
   // 基本信息：应用、环境选择
   const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
   const [selectedEnvId, setSelectedEnvId] = useState<number | undefined>(undefined);
+  const [modalDepartment, setModalDepartment] = useState<string | undefined>(undefined);
 
   // 构建配置：模板、分支/标签
   const [buildTemplateOptions, setBuildTemplateOptions] = useState<{ label: string; value: number }[]>([]);
@@ -154,8 +187,60 @@ export default function PublishTasks() {
     }
   };
 
+  // 部门树选择数据处理
+  function toDeptTreeSelectData(nodes: OrgNode[]): any[] {
+    return nodes.map(n => ({
+      title: n.org_name,
+      value: n.org_name,
+      children: n.children?.length ? toDeptTreeSelectData(n.children) : undefined,
+    }));
+  }
+
   const columns: ProColumns<DeployTask>[] = [
-    { title: '任务ID', dataIndex: 'id', width: 80 },
+    { title: '任务ID', dataIndex: 'id', width: 80, search: false },
+    {
+      title: '环境', dataIndex: 'env_id', width: 100,
+      render: (val) => findLabel(searchEnvOptions, val as number),
+      renderFormItem: () => (
+        <ProFormSelect name="env_id" options={searchEnvOptions} showSearch allowClear
+          fieldProps={{ optionFilterProp: 'label' }} placeholder="请选择环境" />
+      ),
+    },
+    {
+      title: '归属部门', dataIndex: 'department', width: 120,
+      render: (_, row) => {
+        const app = apps.find(a => a.id === row.project_id);
+        return app?.department || '-';
+      },
+      renderFormItem: () => (
+        <ProFormTreeSelect name="department"
+          fieldProps={{
+            treeData: toDeptTreeSelectData(orgTreeData),
+            allowClear: true,
+            placeholder: '请选择部门',
+            treeDefaultExpandAll: true,
+            showSearch: true,
+            treeNodeFilterProp: 'title',
+          }} />
+      ),
+    },
+    {
+      title: '应用', dataIndex: 'project_id',
+      render: (val) => findLabel(appOptions, val as number),
+      renderFormItem: (_, { type, defaultRender, ...rest }, form) => {
+        const department = form.getFieldValue('department');
+        const filteredOptions = getFilteredAppOptions(department);
+        return (
+          <ProFormSelect name="project_id"
+            options={filteredOptions}
+            showSearch allowClear
+            fieldProps={{
+              optionFilterProp: 'label',
+            }}
+            placeholder={department ? '请选择该部门下的应用' : '请选择应用'} />
+        );
+      },
+    },
     {
       title: '状态', dataIndex: 'status', width: 110,
       search: { transform: (val) => val },
@@ -173,10 +258,8 @@ export default function PublishTasks() {
           allowClear placeholder="请选择状态" />
       ),
     },
-    { title: '应用', dataIndex: 'project_id', render: (val) => findLabel(appOptions, val as number) },
-    { title: '环境', dataIndex: 'env_id', width: 100, render: (val) => findLabel(envOptions, val as number) },
     {
-      title: '部署目标', dataIndex: 'deploy_target', width: 100,
+      title: '部署目标', dataIndex: 'deploy_target', width: 100, search: false,
       render: (val, row) => {
         const v = (val || row.deploy_type || 'k8s') as string;
         return <Tag color={TARGET_COLORS[v]}>{TARGET_LABELS[v] || v}</Tag>;
@@ -243,6 +326,8 @@ export default function PublishTasks() {
             const res = await api.listDeployTasks({
               status: params.status as string | undefined,
               project_id: params.project_id as number | undefined,
+              env_id: params.env_id as number | undefined,
+              department: params.department as string | undefined,
               page: params.current ?? 1, size: params.pageSize ?? 20,
             });
             const data = (res as any)?.data ?? res;
@@ -252,6 +337,9 @@ export default function PublishTasks() {
           } catch { return { data: [], total: 0, success: false }; }
         }}
         toolBarRender={() => [
+          <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reload()}>
+            刷新
+          </Button>,
           hasComp('publish_task_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
             {t('common.add', { defaultValue: '创建发布任务' })}
           </Button>
@@ -266,10 +354,15 @@ export default function PublishTasks() {
         onOpenChange={(open) => {
           setModalOpen(open);
           if (!open) {
-            setSelectedProjectId(undefined); setSelectedEnvId(undefined);
-            setBuildTemplateOptions([]); setDeployTemplateOptions([]);
-            setBranchOptions([]); setTagOptions([]);
-            setDeploymentConfigs([]); setNamespaceOptions([]);
+            setSelectedProjectId(undefined);
+            setSelectedEnvId(undefined);
+            setModalDepartment(undefined);
+            setBuildTemplateOptions([]);
+            setDeployTemplateOptions([]);
+            setBranchOptions([]);
+            setTagOptions([]);
+            setDeploymentConfigs([]);
+            setNamespaceOptions([]);
           }
         }}
         modalProps={{ transitionName: '', maskTransitionName: '' }}
@@ -302,16 +395,42 @@ export default function PublishTasks() {
       >
         {/* ── 基本信息 ── */}
         <Card title="基本信息" size="small" style={{ marginBottom: 16 }} styles={{ body: { padding: '12px 24px 0' } }}>
-          <ProFormSelect name="project_id" label="应用" rules={[{ required: true }]} options={appOptions} showSearch
-            fieldProps={{ optionFilterProp: 'label', onChange: (val: number) => {
-              setSelectedProjectId(val);
-              const eName = getAppEName(val);
-              if (formRef.current && eName) {
-                formRef.current.setFieldsValue({ jenkins_job_name: eName, registry_project: eName, image_name: eName });
-              }
-            }}} placeholder="请选择应用" />
-          <ProFormSelect name="env_id" label="环境" rules={[{ required: true }]} options={envOptions} showSearch
+          <ProFormSelect name="env_id" label="环境" rules={[{ required: true }]} options={searchEnvOptions} showSearch
             fieldProps={{ optionFilterProp: 'label', onChange: (val: number) => setSelectedEnvId(val) }} placeholder="请选择环境" />
+          <ProFormTreeSelect name="department" label="归属部门"
+            fieldProps={{
+              treeData: toDeptTreeSelectData(orgTreeData),
+              allowClear: true,
+              placeholder: '请选择部门（可选）',
+              treeDefaultExpandAll: true,
+              showSearch: true,
+              treeNodeFilterProp: 'title',
+              onChange: (val: string) => {
+                setModalDepartment(val);
+                formRef.current?.setFieldsValue({ project_id: undefined });
+              },
+            }} />
+          <ProFormDependency name={['department']}>
+            {({ department }) => (
+              <ProFormSelect
+                name="project_id"
+                label="应用"
+                rules={[{ required: true }]}
+                options={getFilteredAppOptions(department as string)}
+                showSearch
+                fieldProps={{
+                  optionFilterProp: 'label',
+                  onChange: (val: number) => {
+                    setSelectedProjectId(val);
+                    const eName = getAppEName(val);
+                    if (formRef.current && eName) {
+                      formRef.current.setFieldsValue({ jenkins_job_name: eName, registry_project: eName, image_name: eName });
+                    }
+                  },
+                }}
+                placeholder={department ? '请选择该部门下的应用' : '请选择应用'} />
+            )}
+          </ProFormDependency>
           {deploymentConfigs.length > 0 && (
             <ProFormSelect name="deployment_config_id" label="部署配置"
               tooltip="选择后自动填充部署目标、集群/服务器、模板等字段"
