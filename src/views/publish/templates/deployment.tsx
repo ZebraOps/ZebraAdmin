@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useSearchParams, useNavigate, useLocation } from 'react-router';
 import {
   ProTable, ModalForm, ProFormText, ProFormSelect,
   ProFormTreeSelect,
@@ -42,7 +42,10 @@ export default function PublishTemplatesDeployment() {
   const { t } = useTranslation();
   const { hasComp } = usePermission();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const actionRef = useRef<ActionType>(null);
+  const formRef = useRef<any>(null);
   const [editRecord, setEditRecord] = useState<DeployTemplate | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -52,6 +55,9 @@ export default function PublishTemplatesDeployment() {
   // Monaco 编辑器的值（ProForm 不直接支持 Monaco，需要手动管理）
   const [contentValue, setContentValue] = useState('');
   const [variablesValue, setVariablesValue] = useState('');
+
+  // URL 参数中的模板名称（用于预填搜索）
+  const urlTemplateName = searchParams.get('name');
 
   // 打开编辑时，加载 Monaco 值
   const handleOpenModal = (record: DeployTemplate | null) => {
@@ -67,17 +73,6 @@ export default function PublishTemplatesDeployment() {
       children: n.children?.length ? toDeptTreeSelectData(n.children) : undefined,
     }));
   }
-
-  // Pre-fill search from URL query param (when navigating from task detail)
-  const highlightName = searchParams.get('name');
-  useEffect(() => {
-    if (highlightName && actionRef.current) {
-      setTimeout(() => {
-        actionRef.current?.setFieldsValue({ name: highlightName });
-        actionRef.current?.reload();
-      }, 100);
-    }
-  }, [highlightName]);
 
   // 历史抽屉
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -105,6 +100,13 @@ export default function PublishTemplatesDeployment() {
       setOrgTreeData((res as any) ?? []);
     }).catch(() => {});
   }, []);
+
+  // 处理 URL 参数：设置表单值（request 函数会自动使用 urlTemplateName）
+  useEffect(() => {
+    if (urlTemplateName && formRef.current?.setFieldsValue) {
+      formRef.current.setFieldsValue({ name: urlTemplateName });
+    }
+  }, [urlTemplateName]);
 
   const languageEnum = languageOptions.reduce((acc, o) => {
     acc[o.value] = { text: o.label };
@@ -246,7 +248,7 @@ export default function PublishTemplatesDeployment() {
   return (
     <>
       <ProTable<DeployTemplate>
-        rowKey="id" actionRef={actionRef} columns={columns}
+        rowKey="id" actionRef={actionRef} formRef={formRef} columns={columns}
         rowSelection={hasComp('publish_deploy_template_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
         tableAlertOptionRender={hasComp('publish_deploy_template_delete') ? () => (
           <Popconfirm
@@ -269,7 +271,9 @@ export default function PublishTemplatesDeployment() {
               current: ((params.current ?? 1) - 1) * (params.pageSize ?? 20),
               size: params.pageSize ?? 20,
             };
-            if (params.name) query.name = params.name;
+            // 如果 URL 参数中有 name 且 params.name 为空，使用 URL 参数
+            const searchName = params.name || urlTemplateName;
+            if (searchName) query.name = searchName;
             if (params.template_type) query.template_type = params.template_type;
             if (params.status) query.status = params.status;
             if (params.department) query.department = params.department;
@@ -283,7 +287,16 @@ export default function PublishTemplatesDeployment() {
             {t('common.add', { defaultValue: '新增' })}
           </Button>
         ]}
-        search={{ labelWidth: 80 }} scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
+        search={{
+          labelWidth: 80,
+          onReset: () => {
+            // 重置时清除 URL 参数
+            if (urlTemplateName) {
+              navigate(location.pathname, { replace: true });
+            }
+          },
+        }}
+        scroll={{ x: 'max-content' }} pagination={{ pageSize: 20 }}
       />
 
       <ModalForm<Partial<DeployTemplate>>

@@ -201,6 +201,7 @@ const TaskDetailPage: React.FC = () => {
   const serverName = (publishStore.linuxMachineOptions || []).find(s => s.value === task.server_id)?.label || `#${task.server_id}`;
   const buildTemplateName = (publishStore.buildTplOptions || []).find(t => t.value === task.build_template_id)?.label || (task.build_template_id ? `模板 #${task.build_template_id}` : '默认模板');
   const deployTemplateName = (publishStore.deployTplOptions || []).find(t => t.value === task.deployment_template_id)?.label || (task.deployment_template_id ? `模板 #${task.deployment_template_id}` : '默认模板');
+  const deployTemplatePureName = deployTemplateName.replace(/\s*[（(][^）)]*[）)]\s*$/, '').trim() || deployTemplateName;
 
   // TARGET_LABELS for display
   const TARGET_LABELS: Record<string, string> = { k8s: 'Kubernetes', docker: 'Docker Compose', linux: 'Linux/Nginx' };
@@ -280,8 +281,8 @@ const TaskDetailPage: React.FC = () => {
         <Descriptions column={4} size="small">
           <Descriptions.Item label="部署模板">
             {task.deployment_template_id
-              ? <Link to={`/publish/templates/deployment?name=${encodeURIComponent(deployTemplateName)}`}>{deployTemplateName}</Link>
-              : deployTemplateName}
+              ? <Link to={`/publish/templates/deployment?name=${encodeURIComponent(deployTemplatePureName)}`}>{deployTemplatePureName}</Link>
+              : deployTemplatePureName}
           </Descriptions.Item>
           <Descriptions.Item label="部署类型">{TARGET_LABELS[task.deploy_target || 'k8s'] || task.deploy_target}</Descriptions.Item>
           {task.deploy_target === 'k8s' && (
@@ -505,7 +506,7 @@ const TaskDetailPage: React.FC = () => {
               )}
               <Descriptions.Item label="部署模板">
                 {task.deployment_template_id
-                  ? <Link to={`/publish/templates/deployment?name=${encodeURIComponent(deployTemplateName)}`}>{deployTemplateName}</Link>
+                  ? <Link to={`/publish/templates/deployment?name=${encodeURIComponent(deployTemplatePureName)}`}>{deployTemplatePureName}</Link>
                   : '默认模板'}
               </Descriptions.Item>
               <Descriptions.Item label="开始时间">{formatDateTime(selectedStageData?.started_at)}</Descriptions.Item>
