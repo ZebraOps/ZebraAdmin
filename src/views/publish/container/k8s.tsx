@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  ProFormText, ProFormTextArea, ProFormSwitch,
+  ProFormText, ProFormTextArea, ProFormSwitch, ProFormSelect,
   ProTable, type ProColumns,
 } from '@ant-design/pro-components';
 import { Button, Tag, message, Drawer, Input, Space, Tooltip } from 'antd';
@@ -11,8 +11,14 @@ import {
 import PublishCRUDPage from '@/components/PublishCRUDPage';
 import * as api from '@/service/api/publish/k8s-cluster';
 import type { K8sCluster, PodInfo } from '@/service/api/publish/k8s-cluster';
+import { usePublishStore } from '@/store/publish';
 
 export default function PublishContainerK8s() {
+  const publishStore = usePublishStore();
+
+  // Load dropdown data from shared store
+  useEffect(() => { publishStore.loadAll(); }, []);
+
   // 连接测试状态
   const [testingId, setTestingId] = useState<number | null>(null);
 
@@ -59,8 +65,22 @@ export default function PublishContainerK8s() {
     { title: '名称', dataIndex: 'name', ellipsis: true },
     { title: 'API Server', dataIndex: 'api_server', ellipsis: true, search: false },
     { title: '命名空间', dataIndex: 'namespace', width: 90, search: false },
-    { title: '云厂商', dataIndex: 'vendor', width: 90 },
-    { title: '所属环境', dataIndex: 'environment', width: 90 },
+    {
+      title: '云厂商', dataIndex: 'vendor', width: 90,
+      valueType: 'select',
+      valueEnum: (publishStore.vendorOptions || []).reduce((acc, o) => {
+        acc[o.value as string] = { text: o.label };
+        return acc;
+      }, {} as Record<string, { text: string }>),
+    },
+    {
+      title: '所属环境', dataIndex: 'environment', width: 90,
+      valueType: 'select',
+      valueEnum: (publishStore.envOptions || []).reduce((acc, o) => {
+        acc[o.value as string] = { text: o.label };
+        return acc;
+      }, {} as Record<string, { text: string }>),
+    },
     {
       title: '状态', dataIndex: 'enabled', width: 80,
       valueType: 'select',
@@ -125,8 +145,10 @@ export default function PublishContainerK8s() {
             <ProFormTextArea name="client_cert" label="客户端证书" fieldProps={{ rows: 4, placeholder: '-----BEGIN CERTIFICATE-----\n...' }} />
             <ProFormTextArea name="client_key" label="客户端私钥" fieldProps={{ rows: 4, placeholder: '-----BEGIN RSA PRIVATE KEY-----\n...' }} />
             <ProFormSwitch name="skip_verify" label="跳过证书验证" />
-            <ProFormText name="vendor" label="云厂商" placeholder="aliyun / aws / azure / gcp" />
-            <ProFormText name="environment" label="所属环境" placeholder="dev / test / prod" />
+            <ProFormSelect name="vendor" label="云厂商" placeholder="请选择云厂商"
+              options={publishStore.vendorOptions || []} showSearch fieldProps={{ optionFilterProp: 'label' }} />
+            <ProFormSelect name="environment" label="所属环境" placeholder="请选择所属环境"
+              options={(publishStore.envOptions || []).map(e => ({ label: e.label, value: e.value }))} showSearch fieldProps={{ optionFilterProp: 'label' }} />
             <ProFormSwitch name="enabled" label="启用" />
             <ProFormText name="description" label="描述" placeholder="请输入描述" />
           </>

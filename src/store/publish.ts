@@ -11,6 +11,7 @@ import { fetchOrgTree, type OrgNode } from '@/service/api/rbac/org';
 import { fetchJenkinsPlatforms, type JenkinsPlatform } from '@/service/api/publish/jenkins-platform';
 import { fetchGitPlatforms, type GitPlatform } from '@/service/api/publish/git-repo';
 import { fetchImageRegistries, type ImageRegistry } from '@/service/api/publish/image-registry';
+import { fetchVendors, type Vendor } from '@/service/api/publish/vendor';
 
 /** 通用下拉选项项 */
 interface OptionItem {
@@ -32,6 +33,7 @@ interface PublishState {
   jenkinsPlatformOptions: OptionItem[];
   gitPlatformOptions: OptionItem[];
   imageRegistryOptions: OptionItem[];
+  vendorOptions: OptionItem[];
 
   // 原始数据缓存（供复杂页面使用）
   apps: Application[];
@@ -45,6 +47,7 @@ interface PublishState {
   jenkinsPlatforms: JenkinsPlatform[];
   gitPlatforms: GitPlatform[];
   imageRegistries: ImageRegistry[];
+  vendors: Vendor[];
 
   // 加载状态
   loading: boolean;
@@ -90,6 +93,9 @@ const registryTypeLabels: Record<string, string> = { v2: 'V2', harbor: 'Harbor',
 function mapImageRegistryOptions(items: ImageRegistry[]): OptionItem[] {
   return items.map(i => ({ label: `${i.name} (${i.url}) [${registryTypeLabels[i.type] || i.type}]`, value: i.id }));
 }
+function mapVendorOptions(items: Vendor[]): OptionItem[] {
+  return items.map(v => ({ label: v.display_name || v.name, value: v.provider || v.name }));
+}
 
 /** 解析分页结果，提取 records */
 function extractRecords<T>(res: unknown): T[] {
@@ -114,6 +120,7 @@ export const usePublishStore = create<PublishState>((set, get) => ({
   jenkinsPlatformOptions: [],
   gitPlatformOptions: [],
   imageRegistryOptions: [],
+  vendorOptions: [],
   apps: [],
   envs: [],
   clusters: [],
@@ -125,6 +132,7 @@ export const usePublishStore = create<PublishState>((set, get) => ({
   jenkinsPlatforms: [],
   gitPlatforms: [],
   imageRegistries: [],
+  vendors: [],
   loading: false,
   loaded: false,
 
@@ -146,6 +154,7 @@ export const usePublishStore = create<PublishState>((set, get) => ({
         fetchJenkinsPlatforms({ page: 1, size: 200 }),
         fetchGitPlatforms({ page: 1, size: 200 }),
         fetchImageRegistries({ page: 1, size: 200 }),
+        fetchVendors({ page: 1, size: 200 }),
       ]);
 
       const apps = extractRecords<Application>(results[0].status === 'fulfilled' ? results[0].value : []);
@@ -160,6 +169,7 @@ export const usePublishStore = create<PublishState>((set, get) => ({
       const jenkinsPlatforms = extractRecords<JenkinsPlatform>(results[9].status === 'fulfilled' ? results[9].value : []);
       const gitPlatforms = extractRecords<GitPlatform>(results[10].status === 'fulfilled' ? results[10].value : []);
       const imageRegistries = extractRecords<ImageRegistry>(results[11].status === 'fulfilled' ? results[11].value : []);
+      const vendors = extractRecords<Vendor>(results[12].status === 'fulfilled' ? results[12].value : []);
 
       set({
         appOptions: mapAppOptions(apps),
@@ -174,6 +184,7 @@ export const usePublishStore = create<PublishState>((set, get) => ({
         jenkinsPlatformOptions: mapJenkinsPlatformOptions(jenkinsPlatforms),
         gitPlatformOptions: mapGitPlatformOptions(gitPlatforms),
         imageRegistryOptions: mapImageRegistryOptions(imageRegistries),
+        vendorOptions: mapVendorOptions(vendors),
         apps,
         envs,
         clusters,
@@ -185,6 +196,7 @@ export const usePublishStore = create<PublishState>((set, get) => ({
         jenkinsPlatforms,
         gitPlatforms,
         imageRegistries,
+        vendors,
         loaded: true,
       });
     } catch {
