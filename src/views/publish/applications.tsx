@@ -57,7 +57,7 @@ export default function PublishApplications() {
   const [languageOptions, setLanguageOptions] = useState<{ label: string; value: string }[]>([]);
   const [clusterOptions, setClusterOptions] = useState<{ label: string; value: number }[]>([]);
   const [linuxMachineOptions, setLinuxMachineOptions] = useState<{ label: string; value: number }[]>([]);
-  const [repoDataMap, setRepoDataMap] = useState<Map<number, { department: string; language: string }>>(new Map());
+  const [repoDataMap, setRepoDataMap] = useState<Map<number, { c_name: string; e_name: string; department: string; language: string; repo_url: string; repo_ssh_url: string; repo_desc: string }>>(new Map());
   const formRef = useRef<ProFormInstance>(null);
 
   function toDeptTreeSelectData(nodes: OrgNode[]): any[] {
@@ -83,9 +83,17 @@ export default function PublishApplications() {
       setDeployTplOptions(((deploys as any)?.records ?? []).map((e: any) => ({ label: e.display_name || e.name, value: e.id })));
       const repoList = (repos as any)?.records ?? [];
       setRepoOptions(repoList.map((e: any) => ({ label: `${e.c_name} (${e.e_name})`, value: e.id })));
-      // 缓存仓库的部门、语言信息用于自动填充
-      const map = new Map<number, { department: string; language: string }>();
-      repoList.forEach((r: any) => map.set(r.id, { department: r.repo_department || '', language: r.repo_language || '' }));
+      // 缓存仓库的详细信息用于自动填充
+      const map = new Map<number, { c_name: string; e_name: string; department: string; language: string; repo_url: string; repo_ssh_url: string; repo_desc: string }>();
+      repoList.forEach((r: any) => map.set(r.id, {
+        c_name: r.c_name || '',
+        e_name: r.e_name || '',
+        department: r.repo_department || '',
+        language: r.repo_language || '',
+        repo_url: r.repo_url || '',
+        repo_ssh_url: r.repo_ssh_url || '',
+        repo_desc: r.repo_desc || '',
+      }));
       setRepoDataMap(map);
       setClusterOptions(((clusters as any)?.records ?? (clusters as any) ?? []).map((e: any) => ({ label: e.name, value: e.id })));
       setLinuxMachineOptions(((linuxMachines as any)?.records ?? (linuxMachines as any) ?? []).map((e: any) => ({ label: `${e.name} (${e.host})`, value: e.id })));
@@ -417,20 +425,26 @@ export default function PublishApplications() {
           }
         }}
       >
-        <ProFormText name="c_name" label="中文名称" rules={[{ required: true }]} placeholder="请输入中文名称" />
-        <ProFormText name="e_name" label="英文名称" rules={[{ required: true }]} placeholder="请输入英文名称" />
         <ProFormSelect
-          name="repo_id" label="关联仓库" options={repoOptions} showSearch placeholder="请选择关联仓库"
+          name="repo_id" label="关联仓库" options={repoOptions} showSearch placeholder="请选择关联仓库（自动填充信息）"
           fieldProps={{
             optionFilterProp: 'label',
             onChange: (val) => {
               const data = val ? repoDataMap.get(val as number) : null;
-              if (data) {
-                formRef.current?.setFieldsValue({ department: data.department, language: data.language });
+              if (data && formRef.current) {
+                formRef.current.setFieldsValue({
+                  c_name: data.c_name,
+                  e_name: data.e_name,
+                  department: data.department,
+                  language: data.language,
+                  description: data.repo_desc,
+                });
               }
             },
           }}
         />
+        <ProFormText name="c_name" label="中文名称" rules={[{ required: true }]} placeholder="选择仓库后自动填充，或手动输入" />
+        <ProFormText name="e_name" label="英文名称" rules={[{ required: true }]} placeholder="选择仓库后自动填充，或手动输入" />
         <ProFormTreeSelect
           name="department" label="归属部门"
           fieldProps={{
@@ -452,7 +466,7 @@ export default function PublishApplications() {
           options={[{ label: 'HTTP', value: 'http' }, { label: 'TCP', value: 'tcp' }, { label: '自定义', value: 'custom' }]}
         />
         <ProFormText name="health_check_url" label="健康检查URL" placeholder="/health" />
-        <ProFormText name="description" label="描述" placeholder="请输入描述" />
+        <ProFormText name="description" label="描述" placeholder="选择仓库后自动填充，或手动输入" />
       </ModalForm>
 
       {/* 部署配置抽屉 */}

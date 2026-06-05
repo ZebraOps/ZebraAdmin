@@ -232,7 +232,7 @@ export default function PublishRepos() {
                     const proj = projectOptions.find(o => o.value === val)?.project;
                     if (proj && formRef.current) {
                       formRef.current.setFieldsValue({
-                        e_name: proj.path_with_namespace || proj.full_name || proj.name,
+                        e_name: proj.name,
                         repo_url: proj.http_url_to_repo || proj.html_url || '',
                         repo_ssh_url: proj.ssh_url_to_repo || proj.ssh_url || '',
                         repo_desc: proj.description || proj.desc || '',
