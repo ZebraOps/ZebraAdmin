@@ -1,4 +1,8 @@
 import { ProFormText, ProFormSelect, ProFormDependency, type ProColumns } from '@ant-design/pro-components';
+import { Button, message, Popconfirm } from 'antd';
+import { ApiOutlined } from '@ant-design/icons';
+import { isHandledError } from '@/service/request';
+import { useState } from 'react';
 import * as api from '@/service/api/publish/image-registry';
 import type { ImageRegistry, RegistryType } from '@/service/api/publish/image-registry';
 import PublishCRUDPage from '@/components/PublishCRUDPage';
@@ -22,6 +26,21 @@ const columns: ProColumns<ImageRegistry>[] = [
 ];
 
 export default function PublishConfigRegistry() {
+  const [testingId, setTestingId] = useState<number | null>(null);
+
+  const handleTestConnection = async (row: ImageRegistry) => {
+    if (!row.id) return;
+    setTestingId(row.id);
+    try {
+      const res = await api.testImageRegistryConnection(row.id);
+      message.success((res as any)?.message || '连接成功');
+    } catch (e: any) {
+      if (!isHandledError(e)) message.error(e?.message || '连接失败');
+    } finally {
+      setTestingId(null);
+    }
+  };
+
   return (
     <PublishCRUDPage<ImageRegistry>
       rowKey="id"
@@ -39,6 +58,23 @@ export default function PublishConfigRegistry() {
       deletePerm="publish_registry_delete"
       formTitleCreate="新增镜像仓库"
       formTitleEdit="编辑镜像仓库"
+      actionColumnWidth={200}
+      extraActionRender={(row) => [
+        <Popconfirm
+          key="test"
+          title="确认测试连接？"
+          onConfirm={() => handleTestConnection(row)}
+        >
+          <Button
+            type="link"
+            size="small"
+            icon={<ApiOutlined />}
+            loading={testingId === row.id}
+          >
+            测试
+          </Button>
+        </Popconfirm>,
+      ]}
       formFields={
         <>
           <ProFormText name="name" label="名称" rules={[{ required: true }]} placeholder="请输入仓库名称" />

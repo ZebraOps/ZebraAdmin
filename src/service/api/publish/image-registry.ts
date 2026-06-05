@@ -29,3 +29,6 @@ export const deleteImageRegistry = (id: number) =>
 
 export const fetchImageTags = (id: number, project: string, imageName: string) =>
   http.get<{ tags: string[] }>(`/cicd/api/image-registries/${id}/tags`, { project, imageName });
+
+export const testImageRegistryConnection = (id: number) =>
+  http.post<{ message: string }>(`/cicd/api/image-registries/${id}/connect`);

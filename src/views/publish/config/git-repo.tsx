@@ -1,5 +1,5 @@
 import { ProFormText, ProFormSelect, ProFormTextArea, ProFormGroup, type ProColumns } from '@ant-design/pro-components';
-import { Tag, Tooltip, Button, message } from 'antd';
+import { Tag, Button, message, Popconfirm } from 'antd';
 import { ApiOutlined } from '@ant-design/icons';
 import { isHandledError } from '@/service/request';
 import { useState } from 'react';
@@ -26,7 +26,7 @@ export default function PublishConfigGitPlatform() {
   const [testingId, setTestingId] = useState<number | null>(null);
 
   const handleTestConnection = async (row: GitPlatform) => {
-    setTestingId(row.id);
+    setTestingId(row.id!);
     try {
       const res = await api.testGitPlatformConnection(row.id!);
       message.success((res as any)?.message || '连接成功');
@@ -66,8 +66,22 @@ export default function PublishConfigGitPlatform() {
       formTitleCreate="新增Git平台配置"
       formTitleEdit="编辑Git平台配置"
       formInitialValues={{ platform_type: 'gitlab', auth_type: 'token', status: 'active' }}
-      customToolbar={[
-        <Button key="test-all" type="default" icon={<ApiOutlined />}>测试全部</Button>,
+      actionColumnWidth={200}
+      extraActionRender={(row) => [
+        <Popconfirm
+          key="test"
+          title="确认测试连接？"
+          onConfirm={() => handleTestConnection(row)}
+        >
+          <Button
+            type="link"
+            size="small"
+            icon={<ApiOutlined />}
+            loading={testingId === row.id}
+          >
+            测试
+          </Button>
+        </Popconfirm>,
       ]}
       formFields={
         <>

@@ -1,5 +1,5 @@
 import { ProFormText, ProFormSelect, ProFormTextArea, ProFormGroup, type ProColumns } from '@ant-design/pro-components';
-import { Tag, Tooltip, Button, message } from 'antd';
+import { Tag, Button, message, Popconfirm } from 'antd';
 import { ApiOutlined } from '@ant-design/icons';
 import { isHandledError } from '@/service/request';
 import { useState } from 'react';
@@ -24,7 +24,7 @@ export default function PublishConfigJenkinsPlatform() {
   const [testingId, setTestingId] = useState<number | null>(null);
 
   const handleTestConnection = async (row: JenkinsPlatform) => {
-    setTestingId(row.id);
+    setTestingId(row.id!);
     try {
       const res = await api.testJenkinsPlatformConnection(row.id!);
       message.success((res as any)?.message || '连接成功');
@@ -53,6 +53,23 @@ export default function PublishConfigJenkinsPlatform() {
       formTitleCreate="新增Jenkins平台"
       formTitleEdit="编辑Jenkins平台"
       formInitialValues={{ status: 'active' }}
+      actionColumnWidth={200}
+      extraActionRender={(row) => [
+        <Popconfirm
+          key="test"
+          title="确认测试连接？"
+          onConfirm={() => handleTestConnection(row)}
+        >
+          <Button
+            type="link"
+            size="small"
+            icon={<ApiOutlined />}
+            loading={testingId === row.id}
+          >
+            测试
+          </Button>
+        </Popconfirm>,
+      ]}
       formFields={
         <>
           <ProFormGroup title="基本信息">
