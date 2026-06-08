@@ -29,6 +29,8 @@ export interface DeployTask {
   finished_at?: string | null;
   created_at?: string;
   updated_at?: string;
+  is_rollback?: boolean;
+  rollback_from?: number;
 }
 
 export interface CreateDeployTaskRequest {
@@ -88,3 +90,13 @@ export const batchDeleteDeployTasks = (ids: number[]) =>
 
 export const retryDeployTask = (id: number) =>
   http.post<{ task_id: number; retry_count: number }>(`/cicd/api/deploys/${id}/retry`);
+
+// 回滚相关 API
+export const getRollbackHistory = (taskId: number, params?: { page?: number; size?: number }) =>
+  http.get<PageResult<DeployTask>>(`/cicd/api/deploys/${taskId}/rollback-history`, params as Record<string, unknown>);
+
+export const rollbackDeploy = (taskId: number, historyTaskId: number) =>
+  http.post<{ task_id: number; image_tag: string; is_rollback: boolean; rollback_from: number }>(
+    `/cicd/api/deploys/${taskId}/rollback`,
+    { history_task_id: historyTaskId }
+  );

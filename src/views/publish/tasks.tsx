@@ -3,13 +3,14 @@ import {
   ProTable, ModalForm, ProFormText, ProFormSelect, ProFormTreeSelect, ProFormDependency, ProFormInstance,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Popconfirm, Card } from 'antd';
+import { Button, Tag, message, Popconfirm, Card, Tooltip } from 'antd';
 import { isHandledError } from '@/service/request';
-import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined, ReloadOutlined, HistoryOutlined, RollbackOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import * as api from '@/service/api/publish/deploy-task';
 import type { DeployTask, CreateDeployTaskRequest } from '@/service/api/publish/deploy-task';
+import { getRollbackHistory, rollbackDeploy } from '@/service/api/publish/deploy-task';
 import * as deployApi from '@/service/api/publish/applications';
 import type { ApplicationDeployment } from '@/service/api/publish/applications';
 import { fetchRepoBranches, fetchRepoTags } from '@/service/api/publish/repos';
@@ -278,16 +279,29 @@ export default function PublishTasks() {
     { title: 'Git 引用', dataIndex: 'git_ref', width: 100 },
     { title: '镜像标签', dataIndex: 'image_tag', ellipsis: true },
     { title: '重试次数', dataIndex: 'retry_count', width: 70, search: false,
-      render: (val) => val && val > 0 ? val : '-',
+      render: (val, row) => {
+        if (row.is_rollback) {
+          return <Tooltip title={`从任务 #${row.rollback_from} 回滚`}>
+            <Tag color="orange" icon={<RollbackOutlined />}>回滚</Tag>
+          </Tooltip>;
+        }
+        return val && val > 0 ? val : '-';
+      },
     },
     { title: 'Jenkins 任务', dataIndex: 'jenkins_job_name', ellipsis: true },
     { title: 'Deployment', dataIndex: 'deployment_name', ellipsis: true },
     { title: '开始时间', dataIndex: 'started_at', valueType: 'dateTime', width: 150 },
     { title: '结束时间', dataIndex: 'finished_at', valueType: 'dateTime', width: 150 },
     {
-      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 220,
+      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 280,
       render: (_, row) => [
         <Button key="detail" type="link" size="small" icon={<EyeOutlined />} onClick={() => navigate(`/publish/tasks/${row.id}`)}>详情</Button>,
+        // 回滚按钮：仅在 SUCCESS 或 FAILED 状态显示
+        (row.status === 'SUCCESS' || row.status === 'FAILED') && hasComp('publish_task_rollback') && (
+          <Tooltip key="rollback" title="跳转到详情页选择历史版本回滚">
+            <Button type="link" size="small" icon={<HistoryOutlined />} onClick={() => navigate(`/publish/tasks/${row.id}`)}>回滚</Button>
+          </Tooltip>
+        ),
         row.status === 'FAILED' && hasComp('publish_task_retry') && <Popconfirm key="retry" title="确认重试此任务？" onConfirm={async () => {
           try {
             await api.retryDeployTask(row.id);

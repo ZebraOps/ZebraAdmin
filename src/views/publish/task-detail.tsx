@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
-import { Card, Descriptions, Button, Tag, Space, Spin, Typography, message, Divider } from 'antd';
-import { ArrowLeftOutlined, DeleteOutlined, RedoOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
-import { getDeployTask, deleteDeployTask, retryDeployTask, getTaskStages, type DeployTask, type StageHistory } from '@/service/api';
+import { Card, Descriptions, Button, Tag, Space, Spin, Typography, message, Divider, Drawer, Table, Popconfirm, Tooltip } from 'antd';
+import { ArrowLeftOutlined, DeleteOutlined, RedoOutlined, DownOutlined, RightOutlined, RollbackOutlined, HistoryOutlined } from '@ant-design/icons';
+import { getDeployTask, deleteDeployTask, retryDeployTask, getTaskStages, getRollbackHistory, rollbackDeploy, type DeployTask, type StageHistory } from '@/service/api';
 import { usePublishStore } from '@/store/publish';
 import JenkinsConsolePanel from '@/components/JenkinsConsolePanel';
 import DeploymentStatusPanel from '@/components/DeploymentStatusPanel';
@@ -34,6 +34,13 @@ const TaskDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showBuildConfig, setShowBuildConfig] = useState(false);
   const [showDeployConfig, setShowDeployConfig] = useState(false);
+
+  // 回滚相关状态
+  const [rollbackDrawerOpen, setRollbackDrawerOpen] = useState(false);
+  const [rollbackHistory, setRollbackHistory] = useState<DeployTask[]>([]);
+  const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [rollbackHistoryTotal, setRollbackHistoryTotal] = useState(0);
+  const [rollbackHistoryPage, setRollbackHistoryPage] = useState(1);
 
   const taskId = Number(id);
 
@@ -187,6 +194,41 @@ const TaskDetailPage: React.FC = () => {
     }
   };
 
+  // 加载回滚历史
+  const loadRollbackHistory = async (page: number = 1) => {
+    setRollbackLoading(true);
+    try {
+      const res = await getRollbackHistory(taskId, { page, size: 10 });
+      const records = Array.isArray(res) ? res : (res as any)?.records ?? [];
+      setRollbackHistory(records);
+      setRollbackHistoryTotal((res as any)?.total ?? records.length);
+      setRollbackHistoryPage(page);
+    } catch (err) {
+      message.error('加载历史版本失败');
+    } finally {
+      setRollbackLoading(false);
+    }
+  };
+
+  // 打开回滚 Drawer
+  const handleOpenRollbackDrawer = () => {
+    setRollbackDrawerOpen(true);
+    loadRollbackHistory(1);
+  };
+
+  // 执行回滚
+  const handleRollback = async (historyTaskId: number, historyImageTag: string) => {
+    try {
+      const result = await rollbackDeploy(taskId, historyTaskId);
+      message.success(`已创建回滚任务 #${result.task_id}，镜像版本: ${historyImageTag}`);
+      setRollbackDrawerOpen(false);
+      // 跳转到新创建的回滚任务
+      navigate(`/publish/tasks/${result.task_id}`);
+    } catch (err: any) {
+      message.error(err?.message || '回滚失败');
+    }
+  };
+
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
   if (!task) return <div>任务不存在</div>;
 
@@ -213,8 +255,17 @@ const TaskDetailPage: React.FC = () => {
         <Space>
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/publish/tasks')}>返回</Button>
           <Title level={4} style={{ margin: 0 }}>任务详情 #{taskId}</Title>
+          {task?.is_rollback && (
+            <Tooltip title={`从任务 #${task.rollback_from} 回滚`}>
+              <Tag color="orange" icon={<RollbackOutlined />}>回滚任务</Tag>
+            </Tooltip>
+          )}
         </Space>
         <Space>
+          {/* 回滚按钮：仅在 SUCCESS 或 FAILED 状态显示 */}
+          {(taskStatus === 'SUCCESS' || taskStatus === 'FAILED') && (
+            <Button icon={<HistoryOutlined />} onClick={handleOpenRollbackDrawer}>回滚</Button>
+          )}
           {taskStatus === 'FAILED' && (
             <Button icon={<RedoOutlined />} type="primary" onClick={handleRetry}>重试</Button>
           )}
@@ -539,6 +590,73 @@ const TaskDetailPage: React.FC = () => {
           </>
         )}
       </Card>
+
+      {/* 回滚历史 Drawer */}
+      <Drawer
+        title="选择回滚版本"
+        placement="right"
+        width={720}
+        open={rollbackDrawerOpen}
+        onClose={() => setRollbackDrawerOpen(false)}
+        loading={rollbackLoading}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Text type="secondary">选择一个历史成功版本进行回滚部署。回滚将使用历史版本的镜像标签重新部署。</Text>
+        </div>
+        <Table
+          dataSource={rollbackHistory}
+          rowKey="id"
+          loading={rollbackLoading}
+          pagination={{
+            current: rollbackHistoryPage,
+            total: rollbackHistoryTotal,
+            pageSize: 10,
+            onChange: (page) => loadRollbackHistory(page),
+          }}
+          columns={[
+            {
+              title: '任务ID',
+              dataIndex: 'id',
+              width: 80,
+              render: (id: number) => <Link to={`/publish/tasks/${id}`}>#{id}</Link>,
+            },
+            {
+              title: '镜像标签',
+              dataIndex: 'image_tag',
+              width: 150,
+              render: (tag: string) => <Tag color="blue">{tag}</Tag>,
+            },
+            {
+              title: 'Git引用',
+              dataIndex: 'git_ref',
+              width: 120,
+              ellipsis: true,
+            },
+            {
+              title: '部署时间',
+              dataIndex: 'finished_at',
+              width: 160,
+              render: (time?: string) => formatDateTime(time),
+            },
+            {
+              title: '操作',
+              width: 80,
+              render: (_, record) => (
+                <Popconfirm
+                  title="确认回滚"
+                  description={`确定回滚到镜像版本 ${record.image_tag} 吗？`}
+                  onConfirm={() => handleRollback(record.id, record.image_tag)}
+                  okText="确认"
+                  cancelText="取消"
+                >
+                  <Button type="link" size="small" icon={<RollbackOutlined />}>回滚</Button>
+                </Popconfirm>
+              ),
+            },
+          ]}
+          size="small"
+        />
+      </Drawer>
     </div>
   );
 };
