@@ -59,6 +59,11 @@ export default function PublishTasks() {
   const [modalOpen, setModalOpen] = useState(false);
   const [hasActive, setHasActive] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [dataSource, setDataSource] = useState<DeployTask[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
+  const dataSourceRef = useRef(dataSource);
+  useEffect(() => { dataSourceRef.current = dataSource; }, [dataSource]);
 
   // 下拉选项（来自共享 store）
   const { appOptions, clusterOptions, linuxMachineOptions, apps, loadAll } = usePublishStore();
@@ -95,12 +100,73 @@ export default function PublishTasks() {
 
   const getAppEName = (appId: number) => apps.find(a => a.id === appId)?.e_name ?? '';
 
+  // 加载任务列表
+  const loadTasks = async (params: { current?: number; pageSize?: number; status?: string; project_id?: number; env_id?: number; department?: string }) => {
+    setLoading(true);
+    try {
+      const res = await api.listDeployTasks({
+        status: params.status,
+        project_id: params.project_id,
+        env_id: params.env_id,
+        department: params.department,
+        page: params.current ?? pagination.current,
+        size: params.pageSize ?? pagination.pageSize,
+      });
+      const data = (res as any)?.data ?? res;
+      const records: DeployTask[] = data?.records ?? [];
+      const total = data?.total ?? 0;
+      setDataSource(records);
+      setPagination(prev => ({ ...prev, total, current: params.current ?? prev.current, pageSize: params.pageSize ?? prev.pageSize }));
+      setHasActive(records.some((t) => !TERMINAL_STATUSES.has(String(t.status ?? 'PENDING').toUpperCase())));
+      return { data: records, total, success: true };
+    } catch {
+      return { data: [], total: 0, success: false };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 轮询活跃任务状态（增量更新）
+  const pollActiveTasks = async () => {
+    const currentData = dataSourceRef.current;
+    if (currentData.length === 0) return;
+    const activeIds = currentData
+      .filter(t => !TERMINAL_STATUSES.has(String(t.status ?? 'PENDING').toUpperCase()))
+      .map(t => t.id);
+    if (activeIds.length === 0) {
+      setHasActive(false);
+      return;
+    }
+    try {
+      // 请求当前页数据，只更新活跃任务
+      const res = await api.listDeployTasks({
+        page: pagination.current,
+        size: pagination.pageSize,
+      });
+      const data = (res as any)?.data ?? res;
+      const newRecords: DeployTask[] = data?.records ?? [];
+      // 合并更新：用新数据覆盖活跃任务，终态任务保持不变
+      setDataSource(prev => prev.map(item => {
+        if (activeIds.includes(item.id)) {
+          const updated = newRecords.find(r => r.id === item.id);
+          return updated ?? item;
+        }
+        return item;
+      }));
+      // 检查是否还有活跃任务
+      const stillActive = newRecords.some((t: DeployTask) => !TERMINAL_STATUSES.has(String(t.status ?? 'PENDING').toUpperCase()));
+      setHasActive(stillActive);
+    } catch {
+      // 静默失败，下次轮询重试
+    }
+  };
+
   // 自动轮询非终态任务
   useEffect(() => {
     if (!hasActive) return;
-    const timer = setInterval(() => actionRef.current?.reload(), POLL_INTERVAL);
+    const timer = setInterval(pollActiveTasks, POLL_INTERVAL);
     return () => clearInterval(timer);
-  }, [hasActive]);
+  }, [hasActive, pagination.current, pagination.pageSize]);
 
   // 基本信息：应用、环境选择
   const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
@@ -334,7 +400,7 @@ export default function PublishTasks() {
             try {
               await api.triggerBuild(row.id);
               message.success('构建已触发');
-              actionRef.current?.reload();
+              loadTasks({ current: pagination.current, pageSize: pagination.pageSize });
             } catch (e: any) {
               if (!isHandledError(e)) message.error(e?.message || '触发失败');
             }
@@ -347,7 +413,7 @@ export default function PublishTasks() {
             try {
               await api.triggerDeploy(row.id);
               message.success('部署已触发');
-              actionRef.current?.reload();
+              loadTasks({ current: pagination.current, pageSize: pagination.pageSize });
             } catch (e: any) {
               if (!isHandledError(e)) message.error(e?.message || '触发失败');
             }
@@ -361,7 +427,7 @@ export default function PublishTasks() {
             try {
               await api.cancelSchedule(row.id);
               message.success('定时任务已取消');
-              actionRef.current?.reload();
+              loadTasks({ current: pagination.current, pageSize: pagination.pageSize });
             } catch (e: any) {
               if (!isHandledError(e)) message.error(e?.message || '取消失败');
             }
@@ -379,14 +445,14 @@ export default function PublishTasks() {
           try {
             await api.retryDeployTask(row.id);
             message.success('任务已重试');
-            actionRef.current?.reload();
+            loadTasks({ current: pagination.current, pageSize: pagination.pageSize });
           } catch (e: any) {
             if (!isHandledError(e)) message.error(e?.message || '重试失败');
           }
         }}>
           <Button type="link" size="small" icon={<RedoOutlined />}>重试</Button>
         </Popconfirm>,
-        hasComp('publish_task_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { try { await api.deleteDeployTask(row.id); message.success('已删除'); actionRef.current?.reload(); } catch (e: any) { if (!isHandledError(e)) message.error('删除失败'); } }}>
+        hasComp('publish_task_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { try { await api.deleteDeployTask(row.id); message.success('已删除'); loadTasks({ current: pagination.current, pageSize: pagination.pageSize }); } catch (e: any) { if (!isHandledError(e)) message.error('删除失败'); } }}>
           <Button type="link" size="small" danger icon={<DeleteOutlined />} />
         </Popconfirm>,
       ].filter(Boolean),
@@ -398,40 +464,42 @@ export default function PublishTasks() {
       <ProTable<DeployTask>
         rowKey="id" actionRef={actionRef} columns={columns}
         headerTitle={t('route.publish_tasks', { defaultValue: '发布任务' })}
+        dataSource={dataSource} loading={loading}
         rowSelection={hasComp('publish_task_batch_delete') ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys) } : undefined}
         tableAlertOptionRender={hasComp('publish_task_batch_delete') ? () => (
           <Popconfirm title={`确认删除选中的 ${selectedRowKeys.length} 条任务？`} onConfirm={async () => {
             await api.batchDeleteDeployTasks(selectedRowKeys as number[]);
             message.success(`已删除 ${selectedRowKeys.length} 条`);
-            setSelectedRowKeys([]); actionRef.current?.reload();
+            setSelectedRowKeys([]);
+            loadTasks({ current: pagination.current, pageSize: pagination.pageSize });
           }}>
             <Button danger size="small" icon={<DeleteOutlined />}>批量删除 ({selectedRowKeys.length})</Button>
           </Popconfirm>
         ) : undefined}
+        onChange={async (paginationConfig, filters, sorter) => {
+          const { current, pageSize } = paginationConfig;
+          loadTasks({ current, pageSize });
+        }}
         request={async (params) => {
-          try {
-            const res = await api.listDeployTasks({
-              status: params.status as string | undefined,
-              project_id: params.project_id as number | undefined,
-              env_id: params.env_id as number | undefined,
-              department: params.department as string | undefined,
-              page: params.current ?? 1, size: params.pageSize ?? 20,
-            });
-            const data = (res as any)?.data ?? res;
-            const records: DeployTask[] = data?.records ?? [];
-            setHasActive(records.some((t) => !TERMINAL_STATUSES.has(String(t.status ?? 'PENDING').toUpperCase())));
-            return { data: records, total: data?.total ?? 0, success: true };
-          } catch { return { data: [], total: 0, success: false }; }
+          const res = await loadTasks({
+            current: params.current,
+            pageSize: params.pageSize,
+            status: params.status as string | undefined,
+            project_id: params.project_id as number | undefined,
+            env_id: params.env_id as number | undefined,
+            department: params.department as string | undefined,
+          });
+          return res;
         }}
         toolBarRender={() => [
-          <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reload()}>
+          <Button key="refresh" icon={<ReloadOutlined />} onClick={() => loadTasks({ current: pagination.current, pageSize: pagination.pageSize })}>
             刷新
           </Button>,
           hasComp('publish_task_add') && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
             {t('common.add', { defaultValue: '创建发布任务' })}
           </Button>
         ]}
-        scroll={{ x: 'max-content' }} pagination={{ pageSize: 20, showSizeChanger: true }} search={{ labelWidth: 'auto' }}
+        scroll={{ x: 'max-content' }} pagination={{ ...pagination, showSizeChanger: true }} search={{ labelWidth: 'auto' }}
       />
 
       <ModalForm<CreateDeployTaskRequest>
@@ -529,7 +597,7 @@ export default function PublishTasks() {
             const taskId = (res as any)?.task_id;
             if (!taskId) { message.warning('任务已提交，但未返回任务ID'); return true; }
             message.success(`任务创建成功，任务ID: ${taskId}`);
-            actionRef.current?.reload();
+            loadTasks({ current: pagination.current, pageSize: pagination.pageSize });
             return true;
           } catch (e: any) {
             if (!isHandledError(e)) message.error(e?.message || '创建失败');
