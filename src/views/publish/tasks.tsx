@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ProTable, ModalForm, ProFormText, ProFormSelect, ProFormTreeSelect, ProFormDependency, ProFormInstance,
+  ProFormDatePicker, ProFormTimePicker, ProForm,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
 import { Button, Tag, message, Popconfirm, Card, Tooltip } from 'antd';
 import { isHandledError } from '@/service/request';
-import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined, ReloadOutlined, HistoryOutlined, RollbackOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined, ReloadOutlined, HistoryOutlined, RollbackOutlined, PlayCircleOutlined, RocketOutlined, CloseOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
+import dayjs from 'dayjs';
 import * as api from '@/service/api/publish/deploy-task';
 import type { DeployTask, CreateDeployTaskRequest } from '@/service/api/publish/deploy-task';
-import { getRollbackHistory, rollbackDeploy } from '@/service/api/publish/deploy-task';
+import { triggerBuild, triggerDeploy, cancelSchedule } from '@/service/api/publish/deploy-task';
 import * as deployApi from '@/service/api/publish/applications';
 import type { ApplicationDeployment } from '@/service/api/publish/applications';
 import { fetchRepoBranches, fetchRepoTags } from '@/service/api/publish/repos';
@@ -23,6 +25,7 @@ import { usePublishStore } from '@/store/publish';
 
 const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   PENDING:   { color: 'default',    label: '等待中' },
+  SCHEDULED: { color: 'purple',     label: '已定时' },
   BUILDING:  { color: 'processing', label: '构建中' },
   PUSHING:   { color: 'processing', label: '推送中' },
   DEPLOYING: { color: 'warning',    label: '部署中' },
@@ -32,6 +35,18 @@ const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
 
 const TARGET_LABELS: Record<string, string> = { k8s: 'K8s', docker: 'Docker', linux: 'Linux/Nginx' };
 const TARGET_COLORS: Record<string, string> = { k8s: 'blue', docker: 'cyan', linux: 'green' };
+
+// 执行模式标签渲染
+const getExecutionModeTag = (row: DeployTask) => {
+  if (row.execution_mode === 'manual') {
+    return <Tag color="orange" style={{ fontSize: 11 }}>手动</Tag>;
+  }
+  if (row.execution_mode === 'auto' && row.schedule_type === 'scheduled') {
+    return <Tag color="purple" style={{ fontSize: 11 }}>定时</Tag>;
+  }
+  // 默认自动立即执行
+  return <Tag color="blue" style={{ fontSize: 11 }}>自动</Tag>;
+};
 
 const TERMINAL_STATUSES = new Set(['SUCCESS', 'FAILED']);
 const POLL_INTERVAL = 5000;
@@ -200,6 +215,10 @@ export default function PublishTasks() {
   const columns: ProColumns<DeployTask>[] = [
     { title: '任务ID', dataIndex: 'id', width: 80, search: false },
     {
+      title: '执行模式', dataIndex: 'execution_mode', width: 80, search: false,
+      render: (_, row) => getExecutionModeTag(row),
+    },
+    {
       title: '环境', dataIndex: 'env_id', width: 100,
       render: (val) => findLabel(searchEnvOptions, val as number),
       renderFormItem: () => (
@@ -243,7 +262,7 @@ export default function PublishTasks() {
       },
     },
     {
-      title: '状态', dataIndex: 'status', width: 110,
+      title: '状态', dataIndex: 'status', width: 100,
       search: { transform: (val) => val },
       render: (val) => {
         const s = STATUS_CONFIG[String(val).toUpperCase()] ?? { color: 'default', label: String(val ?? '-') };
@@ -252,12 +271,25 @@ export default function PublishTasks() {
       renderFormItem: () => (
         <ProFormSelect name="status"
           options={[
-            { label: '等待中', value: 'PENDING' }, { label: '构建中', value: 'BUILDING' },
-            { label: '推送中', value: 'PUSHING' }, { label: '部署中', value: 'DEPLOYING' },
-            { label: '成功', value: 'SUCCESS' }, { label: '失败', value: 'FAILED' },
+            { label: '等待中', value: 'PENDING' }, { label: '已定时', value: 'SCHEDULED' },
+            { label: '构建中', value: 'BUILDING' }, { label: '推送中', value: 'PUSHING' },
+            { label: '部署中', value: 'DEPLOYING' }, { label: '成功', value: 'SUCCESS' },
+            { label: '失败', value: 'FAILED' },
           ]}
           allowClear placeholder="请选择状态" />
       ),
+    },
+    {
+      title: '计划执行时间', dataIndex: 'scheduled_at', width: 150, search: false,
+      render: (val, row) => {
+        // 只有定时任务才显示计划时间
+        if (row.schedule_type !== 'scheduled' || row.status !== 'SCHEDULED') return '-';
+        if (!val) return '-';
+        // 处理 Go 零值时间 "0001-01-01..."
+        if (typeof val === 'string' && val.startsWith('0001-01-01')) return '-';
+        const d = dayjs(val);
+        return d.isValid() ? d.format('YYYY-MM-DD HH:mm:ss') : '-';
+      },
     },
     {
       title: '部署目标', dataIndex: 'deploy_target', width: 100, search: false,
@@ -293,9 +325,50 @@ export default function PublishTasks() {
     { title: '开始时间', dataIndex: 'started_at', valueType: 'dateTime', width: 150 },
     { title: '结束时间', dataIndex: 'finished_at', valueType: 'dateTime', width: 150 },
     {
-      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 280,
+      title: '操作', key: 'actions', valueType: 'option', fixed: 'right', width: 320,
       render: (_, row) => [
         <Button key="detail" type="link" size="small" icon={<EyeOutlined />} onClick={() => navigate(`/publish/tasks/${row.id}`)}>详情</Button>,
+        // 手动执行模式的任务显示触发按钮
+        row.execution_mode === 'manual' && row.build_status === 'ready' && hasComp('publish_task_trigger') && (
+          <Popconfirm key="trigger-build" title="确认执行构建？" onConfirm={async () => {
+            try {
+              await api.triggerBuild(row.id);
+              message.success('构建已触发');
+              actionRef.current?.reload();
+            } catch (e: any) {
+              if (!isHandledError(e)) message.error(e?.message || '触发失败');
+            }
+          }}>
+            <Button type="link" size="small" icon={<PlayCircleOutlined />}>执行构建</Button>
+          </Popconfirm>
+        ),
+        row.execution_mode === 'manual' && row.build_status === 'done' && row.deploy_status === 'ready' && hasComp('publish_task_trigger') && (
+          <Popconfirm key="trigger-deploy" title="确认执行部署？" onConfirm={async () => {
+            try {
+              await api.triggerDeploy(row.id);
+              message.success('部署已触发');
+              actionRef.current?.reload();
+            } catch (e: any) {
+              if (!isHandledError(e)) message.error(e?.message || '触发失败');
+            }
+          }}>
+            <Button type="link" size="small" icon={<RocketOutlined />}>执行部署</Button>
+          </Popconfirm>
+        ),
+        // 定时任务显示取消按钮
+        row.status === 'SCHEDULED' && hasComp('publish_task_cancel') && (
+          <Popconfirm key="cancel" title="确认取消此定时任务？" onConfirm={async () => {
+            try {
+              await api.cancelSchedule(row.id);
+              message.success('定时任务已取消');
+              actionRef.current?.reload();
+            } catch (e: any) {
+              if (!isHandledError(e)) message.error(e?.message || '取消失败');
+            }
+          }}>
+            <Button type="link" size="small" danger icon={<CloseOutlined />}>取消</Button>
+          </Popconfirm>
+        ),
         // 回滚按钮：仅在 SUCCESS 或 FAILED 状态显示
         (row.status === 'SUCCESS' || row.status === 'FAILED') && hasComp('publish_task_rollback') && (
           <Tooltip key="rollback" title="跳转到详情页选择历史版本回滚">
@@ -388,7 +461,64 @@ export default function PublishTasks() {
               deploy_target: values.deploy_target || 'k8s',
               deploy_type: values.deploy_target || 'k8s',
               build_source: values.build_source || 'branch',
+              execution_mode: values.execution_mode || 'auto',
+              schedule_type: values.schedule_type || 'immediate',
             };
+            // 处理定时执行的日期时间
+            if (values.execution_mode === 'auto' && values.schedule_type === 'scheduled') {
+              // 检查是否选择了日期和时间
+              if (!values.scheduled_date || !values.scheduled_time) {
+                message.error('请选择执行日期和时间');
+                return false;
+              }
+
+              // 安全地格式化日期
+              let dateStr = '';
+              let timeStr = '';
+
+              // 处理日期
+              try {
+                if (dayjs.isDayjs(values.scheduled_date)) {
+                  dateStr = values.scheduled_date.format('YYYY-MM-DD');
+                } else if (values.scheduled_date instanceof Date) {
+                  dateStr = dayjs(values.scheduled_date).format('YYYY-MM-DD');
+                } else if (typeof values.scheduled_date === 'string') {
+                  dateStr = values.scheduled_date;
+                } else {
+                  message.error('日期格式错误，请重新选择');
+                  return false;
+                }
+              } catch (e) {
+                message.error('日期格式错误，请重新选择');
+                return false;
+              }
+
+              // 处理时间
+              try {
+                if (dayjs.isDayjs(values.scheduled_time)) {
+                  timeStr = values.scheduled_time.format('HH:mm:ss');
+                } else if (values.scheduled_time instanceof Date) {
+                  timeStr = dayjs(values.scheduled_time).format('HH:mm:ss');
+                } else if (typeof values.scheduled_time === 'string') {
+                  timeStr = values.scheduled_time;
+                  // 如果只有小时:分钟，补充秒数
+                  if (/^\d{2}:\d{2}$/.test(timeStr)) {
+                    timeStr = timeStr + ':00';
+                  }
+                } else {
+                  message.error('时间格式错误，请重新选择');
+                  return false;
+                }
+              } catch (e) {
+                message.error('时间格式错误，请重新选择');
+                return false;
+              }
+
+              // 使用 dayjs 合并日期和时间，并转换为带时区的 ISO 格式
+              // RFC3339 要求时区信息，否则 Go 解析会报错
+              const scheduledDateTime = dayjs(`${dateStr}T${timeStr}`);
+              payload.scheduled_at = scheduledDateTime.format('YYYY-MM-DDTHH:mm:ssZ');
+            }
             if (payload.deploy_target === 'docker' || payload.deploy_target === 'linux') {
               payload.k8s_cluster_id = undefined; payload.k8s_namespace = undefined;
             }
@@ -554,6 +684,67 @@ export default function PublishTasks() {
                   <ProFormText name="deployment_name" label="K8s Deployment 名称" placeholder="留空则自动按应用英文名生成" />
                 </>
               );
+            }}
+          </ProFormDependency>
+        </Card>
+
+        {/* ── 执行设置 ── */}
+        <Card title="执行设置" size="small" style={{ marginBottom: 16 }} styles={{ body: { padding: '12px 24px 0' } }}>
+          <ProFormSelect
+            name="execution_mode"
+            label="执行模式"
+            initialValue="auto"
+            options={[
+              { label: '自动执行', value: 'auto' },
+              { label: '手动执行', value: 'manual' },
+            ]}
+            tooltip="自动执行：创建后自动调度；手动执行：需要手动触发构建和部署"
+          />
+          <ProFormDependency name={['execution_mode']}>
+            {({ execution_mode }) => {
+              if (execution_mode === 'auto') {
+                return (
+                  <ProFormSelect
+                    name="schedule_type"
+                    label="调度类型"
+                    initialValue="immediate"
+                    options={[
+                      { label: '直接执行', value: 'immediate' },
+                      { label: '定时执行', value: 'scheduled' },
+                    ]}
+                    tooltip="直接执行：立即入队；定时执行：指定时间执行"
+                  />
+                );
+              }
+              return null;
+            }}
+          </ProFormDependency>
+          <ProFormDependency name={['execution_mode', 'schedule_type']}>
+            {({ execution_mode, schedule_type }) => {
+              if (execution_mode === 'auto' && schedule_type === 'scheduled') {
+                return (
+                  <ProForm.Group>
+                    <ProFormDatePicker
+                      name="scheduled_date"
+                      label="执行日期"
+                      rules={[{ required: true, message: '请选择执行日期' }]}
+                      fieldProps={{
+                        format: 'YYYY-MM-DD',
+                        disabledDate: (current: any) => current && current < new Date().setHours(0, 0, 0, 0),
+                      }}
+                    />
+                    <ProFormTimePicker
+                      name="scheduled_time"
+                      label="执行时间"
+                      rules={[{ required: true, message: '请选择执行时间' }]}
+                      fieldProps={{
+                        format: 'HH:mm',
+                      }}
+                    />
+                  </ProForm.Group>
+                );
+              }
+              return null;
             }}
           </ProFormDependency>
         </Card>

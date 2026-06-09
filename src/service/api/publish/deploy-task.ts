@@ -31,6 +31,15 @@ export interface DeployTask {
   updated_at?: string;
   is_rollback?: boolean;
   rollback_from?: number;
+  // 执行方式相关
+  execution_mode?: 'auto' | 'manual';
+  schedule_type?: 'immediate' | 'scheduled';
+  scheduled_at?: string;
+  // 手动执行状态
+  build_status?: 'pending' | 'ready' | 'executing' | 'done' | 'failed';
+  deploy_status?: 'pending' | 'ready' | 'executing' | 'done' | 'failed';
+  build_image_tag?: string;
+  build_finished_at?: string;
 }
 
 export interface CreateDeployTaskRequest {
@@ -53,6 +62,10 @@ export interface CreateDeployTaskRequest {
   deployment_name?: string;
   build_template_id?: number;
   deployment_template_id?: number;
+  // 执行方式
+  execution_mode?: 'auto' | 'manual';
+  schedule_type?: 'immediate' | 'scheduled';
+  scheduled_at?: string; // ISO datetime string
 }
 
 export interface ListDeployTasksParams {
@@ -100,3 +113,25 @@ export const rollbackDeploy = (taskId: number, historyTaskId: number) =>
     `/cicd/api/deploys/${taskId}/rollback`,
     { history_task_id: historyTaskId }
   );
+
+// 手动触发相关 API
+export const triggerBuild = (taskId: number) =>
+  http.post<{ task_id: number; status: string; build_status: string; image_tag: string }>(
+    `/cicd/api/deploys/${taskId}/trigger-build`
+  );
+
+export const triggerDeploy = (taskId: number) =>
+  http.post<{ task_id: number; status: string; deploy_status: string }>(
+    `/cicd/api/deploys/${taskId}/trigger-deploy`
+  );
+
+export const triggerAll = (taskId: number) =>
+  http.post<{ task_id: number; status: string; build_status: string; deploy_status: string }>(
+    `/cicd/api/deploys/${taskId}/trigger`
+  );
+
+export const cancelSchedule = (taskId: number) =>
+  http.delete<{ message: string }>(`/cicd/api/deploys/${taskId}/cancel-schedule`);
+
+export const listScheduledTasks = (params?: { page?: number; size?: number }) =>
+  http.get<PageResult<DeployTask>>('/cicd/api/deploys/scheduled', params as Record<string, unknown>);

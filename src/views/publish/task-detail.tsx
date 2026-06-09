@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { Card, Descriptions, Button, Tag, Space, Spin, Typography, message, Divider, Drawer, Table, Popconfirm, Tooltip } from 'antd';
-import { ArrowLeftOutlined, DeleteOutlined, RedoOutlined, DownOutlined, RightOutlined, RollbackOutlined, HistoryOutlined } from '@ant-design/icons';
-import { getDeployTask, deleteDeployTask, retryDeployTask, getTaskStages, getRollbackHistory, rollbackDeploy, type DeployTask, type StageHistory } from '@/service/api';
+import { ArrowLeftOutlined, DeleteOutlined, RedoOutlined, DownOutlined, RightOutlined, RollbackOutlined, HistoryOutlined, PlayCircleOutlined, RocketOutlined, CloseOutlined } from '@ant-design/icons';
+import { getDeployTask, deleteDeployTask, retryDeployTask, getTaskStages, getRollbackHistory, rollbackDeploy, triggerBuild, triggerDeploy, cancelSchedule, type DeployTask, type StageHistory } from '@/service/api';
 import { usePublishStore } from '@/store/publish';
 import JenkinsConsolePanel from '@/components/JenkinsConsolePanel';
 import DeploymentStatusPanel from '@/components/DeploymentStatusPanel';
@@ -262,6 +262,43 @@ const TaskDetailPage: React.FC = () => {
           )}
         </Space>
         <Space>
+          {/* 手动执行模式触发按钮 */}
+          {task?.execution_mode === 'manual' && task?.build_status === 'ready' && (
+            <Button type="primary" icon={<PlayCircleOutlined />} onClick={async () => {
+              try {
+                await triggerBuild(taskId);
+                message.success('构建已触发');
+                fetchData();
+              } catch (e: any) {
+                message.error(e?.message || '触发失败');
+              }
+            }}>执行构建</Button>
+          )}
+          {task?.execution_mode === 'manual' && task?.build_status === 'done' && task?.deploy_status === 'ready' && (
+            <Button type="primary" icon={<RocketOutlined />} onClick={async () => {
+              try {
+                await triggerDeploy(taskId);
+                message.success('部署已触发');
+                fetchData();
+              } catch (e: any) {
+                message.error(e?.message || '触发失败');
+              }
+            }}>执行部署</Button>
+          )}
+          {/* 定时任务取消按钮 */}
+          {taskStatus === 'SCHEDULED' && (
+            <Popconfirm title="确认取消此定时任务？" onConfirm={async () => {
+              try {
+                await cancelSchedule(taskId);
+                message.success('定时任务已取消');
+                navigate('/publish/tasks');
+              } catch (e: any) {
+                message.error(e?.message || '取消失败');
+              }
+            }}>
+              <Button danger icon={<CloseOutlined />}>取消任务</Button>
+            </Popconfirm>
+          )}
           {/* 回滚按钮：仅在 SUCCESS 或 FAILED 状态显示 */}
           {(taskStatus === 'SUCCESS' || taskStatus === 'FAILED') && (
             <Button icon={<HistoryOutlined />} onClick={handleOpenRollbackDrawer}>回滚</Button>
@@ -277,7 +314,7 @@ const TaskDetailPage: React.FC = () => {
       <Card
         style={{ marginBottom: 16 }}
         title="基本信息"
-        extra={<Tag color={taskStatus === 'SUCCESS' ? 'green' : taskStatus === 'FAILED' ? 'red' : 'blue'}>{taskStatus}</Tag>}
+        extra={<Tag color={taskStatus === 'SUCCESS' ? 'green' : taskStatus === 'FAILED' ? 'red' : taskStatus === 'SCHEDULED' ? 'purple' : 'blue'}>{taskStatus}</Tag>}
       >
         <Descriptions column={4} size="small">
           <Descriptions.Item label="应用名称">{appName}</Descriptions.Item>
@@ -285,6 +322,11 @@ const TaskDetailPage: React.FC = () => {
           <Descriptions.Item label="Git引用">{task.git_ref || '--'}</Descriptions.Item>
           <Descriptions.Item label="镜像标签">{task.image_tag || '--'}</Descriptions.Item>
           <Descriptions.Item label="部署目标">{TARGET_LABELS[task.deploy_target || 'k8s'] || task.deploy_target}</Descriptions.Item>
+          <Descriptions.Item label="执行模式">{task.execution_mode === 'manual' ? '手动执行' : '自动执行'}</Descriptions.Item>
+          <Descriptions.Item label="调度类型">{task.schedule_type === 'scheduled' ? '定时执行' : '立即执行'}</Descriptions.Item>
+          <Descriptions.Item label="计划执行时间">
+            {task.schedule_type === 'scheduled' && task.scheduled_at ? formatDateTime(task.scheduled_at) : '--'}
+          </Descriptions.Item>
           <Descriptions.Item label="创建时间">{formatDateTime(task.created_at)}</Descriptions.Item>
           <Descriptions.Item label="开始时间">{formatDateTime(task.started_at)}</Descriptions.Item>
           <Descriptions.Item label="结束时间">{formatDateTime(task.finished_at)}</Descriptions.Item>
