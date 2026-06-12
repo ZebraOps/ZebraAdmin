@@ -43,7 +43,6 @@ export default function RAGCollections() {
         await api.createCollection(values as CollectionCreate);
         message.success('创建成功');
       }
-      setModalOpen(false);
       actionRef.current?.reload();
       return true;
     } catch (e: unknown) {
@@ -195,7 +194,7 @@ export default function RAGCollections() {
         pagination={{ pageSize: 20 }}
       />
 
-      {/* 编辑弹窗 */}
+      {/* 编辑弹窗 — onOpenChange 只控制 open，不做其他操作（避免 key 变动导致重挂载冲突） */}
       <ModalForm<CollectionCreate | CollectionUpdate>
         key={editRecord?.collection_id ?? 'new'}
         title={editRecord ? '编辑集合' : '新建知识集合'}
@@ -203,6 +202,8 @@ export default function RAGCollections() {
         onOpenChange={setModalOpen}
         modalProps={{
           onCancel: () => setModalOpen(false),
+          transitionName: '',
+          maskTransitionName: '',
           destroyOnClose: true,
           width: 600,
         }}

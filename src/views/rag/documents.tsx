@@ -83,7 +83,6 @@ export default function RAGDocuments() {
         await api.createDocument(data as DocumentCreate);
         message.success('创建成功');
       }
-      setModalOpen(false);
       actionRef.current?.reload();
       return true;
     } catch (e: unknown) {
@@ -253,7 +252,7 @@ export default function RAGDocuments() {
         pagination={{ pageSize: 20 }}
       />
 
-      {/* 编辑弹窗 */}
+      {/* 编辑弹窗 — onOpenChange 只控制 open，不做其他操作（避免 key 变动导致重挂载冲突） */}
       <ModalForm
         key={editRecord?.doc_id ?? 'new'}
         title={editRecord ? '编辑文档' : '新增文档'}
@@ -261,8 +260,11 @@ export default function RAGDocuments() {
         onOpenChange={setModalOpen}
         modalProps={{
           onCancel: () => setModalOpen(false),
+          transitionName: '',
+          maskTransitionName: '',
           destroyOnClose: true,
           width: 800,
+          maskClosable: false,
         }}
         form={form}
         onFinish={handleSubmit}
