@@ -112,7 +112,11 @@ const enUS = {
     publish_container_linux: 'Linux Nodes',
     gateway: 'Gateway',
     gateway_routes: 'Routes',
-    gateway_whitelist: 'Whitelist'
+    gateway_whitelist: 'Whitelist',
+    rag: 'Knowledge Base',
+    rag_query: 'AI Query',
+    rag_documents: 'Documents',
+    rag_collections: 'Collections'
   },
   page: {
     login: {

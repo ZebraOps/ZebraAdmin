@@ -47,6 +47,11 @@ const PublishContainerLinux = lazy(() => import('@/views/publish/container/linux
 const GatewayRoutes = lazy(() => import('@/views/gateway/routes'));
 const GatewayWhitelist = lazy(() => import('@/views/gateway/whitelist'));
 
+// RAG module (ZebraRAG 知识库)
+const RAGDocuments = lazy(() => import('@/views/rag/documents'));
+const RAGCollections = lazy(() => import('@/views/rag/collections'));
+const RAGQuery = lazy(() => import('@/views/rag/query'));
+
 const routeConfig: RouteObject[] = [
   // Blank layout (login, error pages) — no auth required
   {
@@ -93,7 +98,11 @@ const routeConfig: RouteObject[] = [
       { path: '/publish/container/linux', element: <RouteOutlet><PublishContainerLinux /></RouteOutlet> },
       // Gateway
       { path: '/gateway/routes', element: <RouteOutlet><GatewayRoutes /></RouteOutlet> },
-      { path: '/gateway/whitelist', element: <RouteOutlet><GatewayWhitelist /></RouteOutlet> }
+      { path: '/gateway/whitelist', element: <RouteOutlet><GatewayWhitelist /></RouteOutlet> },
+      // RAG (ZebraRAG 知识库)
+      { path: '/rag/documents', element: <RouteOutlet><RAGDocuments /></RouteOutlet> },
+      { path: '/rag/collections', element: <RouteOutlet><RAGCollections /></RouteOutlet> },
+      { path: '/rag/query', element: <RouteOutlet><RAGQuery /></RouteOutlet> }
     ]
   },
   // Redirects

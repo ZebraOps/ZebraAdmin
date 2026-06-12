@@ -112,7 +112,11 @@ const zhCN = {
     publish_container_linux: 'Linux节点管理',
     gateway: '网关配置',
     gateway_routes: '路由管理',
-    gateway_whitelist: '白名单管理'
+    gateway_whitelist: '白名单管理',
+    rag: '知识库',
+    rag_query: '智能问答',
+    rag_documents: '文档管理',
+    rag_collections: '集合管理'
   },
   page: {
     login: {

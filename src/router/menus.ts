@@ -97,5 +97,17 @@ export const staticMenus: MenuNode[] = [
       { key: 'gateway_routes', label: 'route.gateway_routes', icon: 'mdi:routes', path: '/gateway/routes', order: 1 },
       { key: 'gateway_whitelist', label: 'route.gateway_whitelist', icon: 'mdi:format-list-checks', path: '/gateway/whitelist', order: 2 }
     ]
+  },
+  {
+    key: 'rag',
+    label: 'route.rag',
+    icon: 'mdi:brain',
+    path: '/rag',
+    order: 6,
+    children: [
+      { key: 'rag_query', label: 'route.rag_query', icon: 'mdi:chat-question', path: '/rag/query', order: 1 },
+      { key: 'rag_documents', label: 'route.rag_documents', icon: 'mdi:file-document-multiple', path: '/rag/documents', order: 2 },
+      { key: 'rag_collections', label: 'route.rag_collections', icon: 'mdi:folder-multiple', path: '/rag/collections', order: 3 }
+    ]
   }
 ];

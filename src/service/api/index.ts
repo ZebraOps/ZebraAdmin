@@ -24,3 +24,6 @@ export * from './publish/deploy-template';
 export * from './publish/git-repo';
 export * from './publish/jenkins-platform';
 export * from './publish/stage-history';
+export * from './rag/documents';
+export * from './rag/collections';
+export * from './rag/query';
