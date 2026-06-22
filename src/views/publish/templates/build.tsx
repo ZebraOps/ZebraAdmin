@@ -9,7 +9,7 @@ import { Button, message, Drawer, Tag, Popconfirm, Tabs } from 'antd';
 import { isHandledError } from '@/service/request';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined,
-  AppstoreOutlined, LinkOutlined, UndoOutlined,
+  AppstoreOutlined, LinkOutlined, UndoOutlined, CopyOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermission } from '@/hooks/usePermission';
@@ -135,6 +135,14 @@ export default function PublishTemplatesBuild() {
     setModalOpen(true);
   };
 
+  // 复制模板：预填原数据，名称加后缀，ID 置空走创建
+  const handleCopy = (record: BuildTemplate) => {
+    setEditRecord({ ...record, id: 0 as any, name: `${record.name} - 副本` } as BuildTemplate);
+    setDockerfileValue(record.dockerfile ?? '');
+    setPipelineValue(record.pipeline ?? '');
+    setModalOpen(true);
+  };
+
   const columns: ProColumns<BuildTemplate>[] = [
     { title: '模板名称', dataIndex: 'name', ellipsis: true },
     {
@@ -161,7 +169,7 @@ export default function PublishTemplatesBuild() {
     { title: '创建时间', dataIndex: 'created_at', valueType: 'dateTime', width: 150, search: false },
     {
       title: t('common.actions', { defaultValue: '操作' }),
-      key: 'actions', valueType: 'option', fixed: 'right', width: 200,
+      key: 'actions', valueType: 'option', fixed: 'right', width: 240,
       render: (_, row) => [
         <Button key="apps" type="link" size="small" icon={<AppstoreOutlined />}
           onClick={() => { setAppsTpl(row); setAppsOpen(true); loadLinkedApps(row); }}>
@@ -170,6 +178,10 @@ export default function PublishTemplatesBuild() {
         <Button key="history" type="link" size="small" icon={<HistoryOutlined />}
           onClick={() => { setHistoryTpl(row); setHistoryOpen(true); loadHistory(row); }}>
           历史
+        </Button>,
+        <Button key="copy" type="link" size="small" icon={<CopyOutlined />}
+          onClick={() => handleCopy(row)}>
+          复制
         </Button>,
         hasComp('publish_build_template_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}

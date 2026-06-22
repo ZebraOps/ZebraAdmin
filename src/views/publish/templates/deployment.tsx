@@ -8,7 +8,7 @@ import {
 import { Button, Tag, message, Drawer, Space, Modal, Popconfirm, Tabs } from 'antd';
 import { isHandledError } from '@/service/request';
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, LinkOutlined, AppstoreOutlined, UndoOutlined,
+  PlusOutlined, EditOutlined, DeleteOutlined, HistoryOutlined, LinkOutlined, AppstoreOutlined, UndoOutlined, CopyOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermission } from '@/hooks/usePermission';
@@ -64,6 +64,14 @@ export default function PublishTemplatesDeployment() {
     setEditRecord(record);
     setContentValue(record?.content ?? '');
     setVariablesValue(record?.variables ?? '');
+    setModalOpen(true);
+  };
+
+  // 复制模板：预填原数据，名称加后缀，ID 置空走创建
+  const handleCopy = (record: DeployTemplate) => {
+    setEditRecord({ ...record, id: 0 as any, name: `${record.name} - 副本` } as DeployTemplate);
+    setContentValue(record.content ?? '');
+    setVariablesValue(record.variables ?? '');
     setModalOpen(true);
   };
 
@@ -198,6 +206,10 @@ export default function PublishTemplatesDeployment() {
         <Button key="history" type="link" size="small" icon={<HistoryOutlined />}
           onClick={() => { setHistoryTpl(row); setHistoryOpen(true); loadHistory(row); }}
         >历史</Button>,
+        <Button key="copy" type="link" size="small" icon={<CopyOutlined />}
+          onClick={() => handleCopy(row)}>
+          复制
+        </Button>,
         hasComp('publish_deploy_template_edit') && <Button
           key="edit" type="link" size="small" icon={<EditOutlined />}
           onClick={() => handleOpenModal(row)}
