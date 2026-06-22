@@ -60,7 +60,7 @@ export default function PermissionFunctions() {
 
   const columns: ProColumns<FunctionItem>[] = [
     { title: '功能名称', dataIndex: 'func_name', ellipsis: true },
-    { title: 'URI', dataIndex: 'uri', ellipsis: true, render: (val) => val ? <Tag>{String(val)}</Tag> : '-' },
+    { title: 'URI', dataIndex: 'uri', ellipsis: true, render: (_, row) => row.uri ? <Tag>{row.uri}</Tag> : '-' },
     {
       title: '请求方法', dataIndex: 'method_type', width: 80, search: false,
       render: (_, row) => row.method_type ? <Tag color={METHOD_COLORS[row.method_type.toUpperCase()] ?? 'default'}>{row.method_type.toUpperCase()}</Tag> : '-'

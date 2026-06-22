@@ -64,7 +64,7 @@ export default function PermissionMenus() {
 
   const columns: ProColumns<MenuItem>[] = [
     { title: '菜单名称', dataIndex: 'menu_name', ellipsis: true },
-    { title: '路径', dataIndex: 'path', ellipsis: true, render: (val) => val ? <Tag>{String(val)}</Tag> : '-' },
+    { title: '路径', dataIndex: 'path', ellipsis: true, render: (_, row) => row.path ? <Tag>{row.path}</Tag> : '-' },
     { title: '图标', dataIndex: 'icon', width: 100, search: false },
     { title: '排序', dataIndex: 'order_num', width: 60, search: false },
     {
