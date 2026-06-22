@@ -110,7 +110,7 @@ export default function PublishCRUDPage<T extends { id?: number }>(config: CRUDP
               message.success('删除成功');
               actionRef.current?.reload();
             } catch (e: unknown) {
-              if (!isHandledError(e)) message.error('删除失败');
+              if (!isHandledError(e)) message.error((e as any)?.message || '删除失败');
             }
           }}>
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
@@ -133,7 +133,7 @@ export default function PublishCRUDPage<T extends { id?: number }>(config: CRUDP
       setSelectedRowKeys([]);
       actionRef.current?.reload();
     } catch (e: unknown) {
-      if (!isHandledError(e)) message.error('批量删除失败');
+      if (!isHandledError(e)) message.error((e as any)?.message || '批量删除失败');
     }
   };
 
@@ -149,7 +149,7 @@ export default function PublishCRUDPage<T extends { id?: number }>(config: CRUDP
       actionRef.current?.reload();
       return true;
     } catch (e: unknown) {
-      if (!isHandledError(e)) message.error('保存失败');
+      if (!isHandledError(e)) message.error((e as any)?.message || '保存失败');
       return false;
     }
   };

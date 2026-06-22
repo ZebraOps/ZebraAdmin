@@ -87,6 +87,13 @@ export default function PublishRepos() {
   const columns: ProColumns<Repo>[] = [
     { title: '中文名称', dataIndex: 'c_name', ellipsis: true },
     { title: '英文名称', dataIndex: 'e_name', ellipsis: true },
+    {
+      title: 'Git平台', dataIndex: 'git_platform_id', width: 100, search: false,
+      render: (_, row) => {
+        const opt = gitPlatformOptions.find(o => o.value === row.git_platform_id);
+        return opt?.label || '-';
+      },
+    },
     { title: '仓库地址', dataIndex: 'repo_url', ellipsis: true, search: false },
     {
       title: '开发语言', dataIndex: 'repo_language', width: 100,
@@ -190,27 +197,26 @@ export default function PublishRepos() {
             actionRef.current?.reload();
             return true;
           } catch (e: any) {
-            if (!isHandledError(e)) message.error('保存失败');
+            if (!isHandledError(e)) message.error(e?.message || '保存失败');
             return false;
           }
         }}
       >
-        {/* 编辑模式不显示Git平台选择 */}
-        {!editRecord && (
-          <ProFormSelect
-            name="git_platform_id"
-            label="Git平台"
-            placeholder="选择Git平台后可自动导入仓库信息"
-            options={gitPlatformOptions}
-            showSearch
-            fieldProps={{
-              optionFilterProp: 'label',
-              onChange: (val: number) => { loadProjects(val); },
-              allowClear: true,
-              onClear: () => { setProjectOptions([]); },
-            }}
-          />
-        )}
+        {/* 新增可选Git平台，编辑只读展示 */}
+        <ProFormSelect
+          name="git_platform_id"
+          label="Git平台"
+          placeholder={editRecord ? undefined : '选择Git平台后可自动导入仓库信息'}
+          options={gitPlatformOptions}
+          showSearch
+          disabled={!!editRecord}
+          fieldProps={editRecord ? {} : {
+            optionFilterProp: 'label',
+            onChange: (val: number) => { loadProjects(val); },
+            allowClear: true,
+            onClear: () => { setProjectOptions([]); },
+          }}
+        />
         <ProFormDependency name={['git_platform_id']}>
           {({ git_platform_id }) => {
             // 新增模式且选择了Git平台时，英文名称变为可搜索的下拉框

@@ -3,6 +3,7 @@ import { PageResult } from '@/service/types';
 
 export interface Repo {
   id: number;
+  git_platform_id?: number | null;
   repo_number?: string;
   c_name: string;
   e_name: string;
