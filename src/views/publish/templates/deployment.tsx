@@ -342,7 +342,7 @@ export default function PublishTemplatesDeployment() {
         <div style={{ marginBottom: 4 }}>
           <div style={{ fontWeight: 600, marginBottom: 2 }}>模板内容</div>
           <div style={{ color: '#888', fontSize: 12, lineHeight: 1.5 }}>
-            K8s YAML / Helm Chart / Docker Compose / Linux/Nginx 部署模板。支持占位符替换：<code>{'{{IMAGE_TAG}}'}</code> <code>{'{{NAMESPACE}}'}</code> <code>{'{{PROJECT_NAME}}'}</code> <code>{'{{ENV_NAME}}'}</code> <code>{'{{DEPLOYMENT_NAME}}'}</code> <code>{'{{DEPLOY_PATH}}'}</code>
+            K8s YAML / Helm Chart / Docker Compose / Linux/Nginx 部署模板。支持占位符替换：<code>{'{{IMAGE_TAG}}'}</code> <code>{'{{IMAGE_NAME}}'}</code> <code>{'{{NAMESPACE}}'}</code> <code>{'{{PROJECT_NAME}}'}</code> <code>{'{{ENV_NAME}}'}</code> 
           </div>
         </div>
         <CodeEditor
