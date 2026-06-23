@@ -16,7 +16,7 @@ const PIPELINE_STAGES = ['PENDING', 'BUILDING', 'PUSHING', 'DEPLOYING'] as const
 const STAGE_CONFIG: Record<string, { desc: string }> = {
   PENDING: { desc: '任务创建入队' },
   BUILDING: { desc: 'Jenkins构建镜像' },
-  PUSHING: { desc: '推送至Harbor' },
+  PUSHING: { desc: '推送至仓库' },
   DEPLOYING: { desc: '部署至目标环境' },
 };
 
