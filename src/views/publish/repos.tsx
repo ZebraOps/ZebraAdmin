@@ -239,6 +239,7 @@ export default function PublishRepos() {
                     if (proj && formRef.current) {
                       formRef.current.setFieldsValue({
                         e_name: proj.name,
+                        repo_number: proj.path_with_namespace || proj.full_name || '',
                         repo_url: proj.http_url_to_repo || proj.html_url || '',
                         repo_ssh_url: proj.ssh_url_to_repo || proj.ssh_url || '',
                         repo_desc: proj.description || proj.desc || '',
@@ -254,7 +255,7 @@ export default function PublishRepos() {
             return <ProFormText name="e_name" label="英文名称" rules={[{ required: true }]} placeholder="请输入英文名称" />;
           }}
         </ProFormDependency>
-        <ProFormText name="c_name" label="中文名称" rules={[{ required: true }]} placeholder="请输入中文名称" />
+        <ProFormText name="repo_number" label="项目编号" placeholder="Git平台中的项目路径，如 group/repo（自动导入时已填充）" /><ProFormText name="c_name" label="中文名称" rules={[{ required: true }]} placeholder="请输入中文名称" />
         <ProFormText name="repo_url" label="仓库HTTP地址" placeholder="https://github.com/org/repo.git" />
         <ProFormText name="repo_ssh_url" label="仓库SSH地址" placeholder="git@github.com:org/repo.git" />
         <ProFormSelect name="repo_language" label="开发语言" options={languageOptions} showSearch placeholder="请选择开发语言" fieldProps={{ optionFilterProp: 'label' }} />
