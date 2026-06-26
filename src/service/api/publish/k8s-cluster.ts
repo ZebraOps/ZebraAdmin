@@ -30,6 +30,7 @@ export interface PodInfo {
   labels?: Record<string, string>;
   restart_count?: number;
   ready?: string;
+  containers?: string[];
 }
 
 export const fetchK8sClusters = (params?: Record<string, unknown>) =>

@@ -1,17 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ProFormText, ProFormTextArea, ProFormSwitch, ProFormSelect,
   ProTable, type ProColumns,
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Drawer, Input, Space, Tooltip } from 'antd';
+import { Button, Tag, message, Drawer, Select, Space, Tooltip, Modal } from 'antd';
 import { isHandledError } from '@/service/request';
 import {
-  ApiOutlined, ContainerOutlined, ReloadOutlined,
+  ApiOutlined, ContainerOutlined, ReloadOutlined, CodeOutlined,
 } from '@ant-design/icons';
 import PublishCRUDPage from '@/components/PublishCRUDPage';
 import * as api from '@/service/api/publish/k8s-cluster';
 import type { K8sCluster, PodInfo } from '@/service/api/publish/k8s-cluster';
 import { usePublishStore } from '@/store/publish';
+import { localStg } from '@/utils/storage';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import '@xterm/xterm/css/xterm.css';
 
 export default function PublishContainerK8s() {
   const publishStore = usePublishStore();
@@ -28,6 +32,34 @@ export default function PublishContainerK8s() {
   const [pods, setPods] = useState<PodInfo[]>([]);
   const [podsLoading, setPodsLoading] = useState(false);
   const [namespace, setNamespace] = useState<string>('default');
+  const [namespaceOptions, setNamespaceOptions] = useState<{ label: string; value: string }[]>([]);
+  const [nsLoading, setNsLoading] = useState(false);
+
+  // Pod 终端状态
+  const [termOpen, setTermOpen] = useState(false);
+  const [termPod, setTermPod] = useState<PodInfo | null>(null);
+  // 容器选择：多容器 Pod 需要用户选择目标容器
+  const [selectedContainer, setSelectedContainer] = useState<string>('');
+  const [containerSelectOpen, setContainerSelectOpen] = useState(false);
+  const termRef = useRef<HTMLDivElement>(null);
+  const xtermRef = useRef<Terminal | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  const wsBaseURL = (import.meta.env.VITE_BASE_URL || '').trim().replace(/^http/, 'ws').replace(/\/$/, '');
+
+  const loadNamespaces = async (clusterId: number) => {
+    setNsLoading(true);
+    try {
+      const nsList = await api.listK8sNamespaces(clusterId);
+      const opts = (Array.isArray(nsList) ? nsList : []).map((ns: string) => ({ label: ns, value: ns }));
+      setNamespaceOptions(opts);
+    } catch {
+      setNamespaceOptions([]);
+    } finally {
+      setNsLoading(false);
+    }
+  };
 
   const loadPods = async (cluster: K8sCluster, ns?: string) => {
     setPodsLoading(true);
@@ -46,6 +78,7 @@ export default function PublishContainerK8s() {
     setPodCluster(row);
     setNamespace(row.namespace || 'default');
     setPodDrawerOpen(true);
+    loadNamespaces(row.id);
     await loadPods(row, row.namespace || 'default');
   };
 
@@ -60,6 +93,107 @@ export default function PublishContainerK8s() {
       setTestingId(null);
     }
   };
+
+  // Pod 终端相关
+  const openTerminal = (pod: PodInfo) => {
+    // 单容器 Pod：直接打开终端
+    // 多容器 Pod：先让用户选择容器
+    if (!pod.containers || pod.containers.length <= 1) {
+      setSelectedContainer(pod.containers?.[0] ?? '');
+      setTermPod(pod);
+      setTermOpen(true);
+    } else {
+      setTermPod(pod);
+      setSelectedContainer(pod.containers[0]);
+      setContainerSelectOpen(true);
+    }
+  };
+
+  const closeTerminal = () => {
+    if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
+    if (xtermRef.current) { xtermRef.current.dispose(); xtermRef.current = null; fitAddonRef.current = null; }
+    setTermOpen(false);
+    setTermPod(null);
+    setSelectedContainer('');
+  };
+
+  // 终端初始化 + WebSocket 连接（合并为一个 useEffect，消除竞态）
+  useEffect(() => {
+    if (!termOpen || !termPod || !podCluster || !termRef.current) return;
+
+    // 1. 初始化 xterm
+    const term = new Terminal({
+      theme: { background: '#1e1e1e', foreground: '#d4d4d4', cursor: '#14b8a6', cursorAccent: '#1e1e1e' },
+      fontFamily: 'JetBrains Mono, Menlo, Monaco, monospace',
+      fontSize: 14,
+      cursorBlink: true,
+      disableStdin: false,
+    });
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(termRef.current);
+    xtermRef.current = term;
+    fitAddonRef.current = fitAddon;
+
+    // 显示连接状态提示，避免黑屏
+    term.writeln('\x1b[90m正在连接 Pod 终端...\x1b[0m');
+
+    // 2. 等待 Modal 动画结束 + xterm DOM 就绪后再 fit + 连接 WebSocket
+    const fitTimer = setTimeout(() => {
+      fitAddon.fit();
+      term.focus();
+    }, 150);
+
+    // 3. 建立 WebSocket 连接（在 xterm 初始化后）
+    const wsTimer = setTimeout(() => {
+      const token = localStg.get<string>('token') || '';
+      const ns = termPod.namespace || 'default';
+      const containerParam = selectedContainer ? `&container=${encodeURIComponent(selectedContainer)}` : '';
+      const url = `${wsBaseURL}/cicd/api/k8s/clusters/${podCluster.id}/pods/${encodeURIComponent(termPod.name)}/exec?namespace=${encodeURIComponent(ns)}&token=${token}${containerParam}`;
+
+      const ws = new WebSocket(url);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        term.clear(); // 清除 "正在连接..." 提示
+        term.focus();
+        message.success('Pod 终端已连接');
+      };
+
+      ws.onmessage = (event) => {
+        if (event.data instanceof ArrayBuffer) {
+          // BinaryMessage：解码为字符串后写入 xterm
+          term.write(new TextDecoder().decode(event.data));
+        } else if (typeof event.data === 'string') {
+          term.write(event.data);
+        }
+      };
+
+      const disposeOnData = term.onData((data: string) => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(data);
+      });
+
+      ws.onerror = () => {
+        term.writeln('\x1b[31m连接失败，请检查网络或 Pod 状态\x1b[0m');
+        message.error('Pod 终端连接失败');
+      };
+      ws.onclose = (event) => {
+        wsRef.current = null;
+        disposeOnData?.dispose();
+        if (!event.wasClean) {
+          term.writeln('\x1b[31m连接异常断开\x1b[0m');
+        }
+      };
+    }, 250); // 比 fitTimer 多 100ms，确保 xterm DOM 已就绪
+
+    // 清理
+    return () => {
+      clearTimeout(fitTimer);
+      clearTimeout(wsTimer);
+      if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
+      // xterm 在 closeTerminal 中 dispose，这里不重复 dispose
+    };
+  }, [termOpen, termPod, podCluster, wsBaseURL, selectedContainer]);
 
   const columns: ProColumns<K8sCluster>[] = [
     { title: '名称', dataIndex: 'name', ellipsis: true },
@@ -103,6 +237,15 @@ export default function PublishContainerK8s() {
     { title: '命名空间', dataIndex: 'namespace', width: 100 },
     { title: '节点', dataIndex: 'node_name', ellipsis: true },
     { title: '启动时间', dataIndex: 'start_time', valueType: 'dateTime', width: 150 },
+    {
+      title: '操作', key: 'actions', width: 80, fixed: 'right',
+      render: (_, record) => (
+        <Tooltip title="进入 Pod 终端">
+          <Button type="link" size="small" icon={<CodeOutlined />}
+            onClick={() => openTerminal(record)}>终端</Button>
+        </Tooltip>
+      ),
+    },
   ];
 
   return (
@@ -167,12 +310,16 @@ export default function PublishContainerK8s() {
         destroyOnClose
       >
         <Space style={{ marginBottom: 16 }}>
-          <Input
+          <Select
             value={namespace}
-            onChange={(e) => setNamespace(e.target.value)}
-            placeholder="命名空间"
+            onChange={(val) => setNamespace(val)}
+            placeholder="选择命名空间"
             style={{ width: 220 }}
+            showSearch
+            loading={nsLoading}
+            options={namespaceOptions}
             allowClear
+            onClear={() => setNamespace('default')}
           />
           <Button
             type="primary" icon={<ReloadOutlined />}
@@ -187,6 +334,53 @@ export default function PublishContainerK8s() {
           options={false} scroll={{ x: 'max-content' }}
         />
       </Drawer>
+
+      {/* 多容器 Pod 选择框 */}
+      <Modal
+        title={`选择容器 — ${termPod?.name ?? ''}`}
+        open={containerSelectOpen}
+        onOk={() => { setContainerSelectOpen(false); setTermOpen(true); }}
+        onCancel={() => { setContainerSelectOpen(false); setTermPod(null); setSelectedContainer(''); }}
+        okText="连接"
+        cancelText="取消"
+        width={400}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <span>该 Pod 有多个容器，请选择要连接的容器：</span>
+        </div>
+        <Select
+          value={selectedContainer}
+          onChange={(val) => setSelectedContainer(val)}
+          style={{ width: '100%' }}
+          options={termPod?.containers?.map(c => ({ label: c, value: c })) ?? []}
+        />
+      </Modal>
+
+      {/* Pod 终端 Modal */}
+      <Modal
+        title={`Pod 终端 — ${termPod?.name ?? ''}${selectedContainer ? ` (${selectedContainer})` : ''}`}
+        open={termOpen}
+        onCancel={closeTerminal}
+        footer={null}
+        width="80vw"
+        style={{ top: 20 }}
+        destroyOnClose
+        maskClosable
+        keyboard
+        transitionName=""
+        maskTransitionName=""
+      >
+        <div
+          ref={termRef}
+          style={{
+            width: '100%',
+            height: 500,
+            backgroundColor: '#1e1e1e',
+            borderRadius: 4,
+            padding: 4,
+          }}
+        />
+      </Modal>
     </>
   );
 }
