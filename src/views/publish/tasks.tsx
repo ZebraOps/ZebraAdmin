@@ -242,7 +242,7 @@ export default function PublishTasks() {
       const builds = res?.build_templates ?? [];
       const deploys = res?.deployment_templates ?? [];
       const buildOpts = builds.map((t: any) => ({ label: `${t.name}${t.language ? ` (${t.language})` : ''}`, value: t.id }));
-      const deployOpts = deploys.map((t: any) => ({ label: `${t.name}${t.display_name ? ` (${t.display_name})` : ''}`, value: t.id }));
+      const deployOpts = deploys.map((t: any) => ({ label: `${t.name}${t.template_type ? ` (${t.template_type})` : ''}`, value: t.id }));
       if (buildOpts.length === 0 && deployOpts.length === 0) {
         message.info('该应用关联的仓库没有配置构建/部署模板，将使用默认模板');
       }

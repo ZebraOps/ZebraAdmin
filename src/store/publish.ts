@@ -78,7 +78,7 @@ function mapBuildTplOptions(items: BuildTemplate[]): OptionItem[] {
   return items.map(b => ({ label: b.name, value: b.id }));
 }
 function mapDeployTplOptions(items: DeployTemplate[]): OptionItem[] {
-  return items.map(d => ({ label: `${d.display_name || d.name} (${d.template_type})`, value: d.id }));
+  return items.map(d => ({ label: `${d.name} (${d.template_type})`, value: d.id }));
 }
 function mapRepoOptions(items: Repo[]): OptionItem[] {
   return items.map(r => ({ label: `${r.c_name} (${r.e_name})`, value: r.id }));

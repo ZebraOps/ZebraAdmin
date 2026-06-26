@@ -80,7 +80,7 @@ export default function PublishApplications() {
       ]);
       setEnvOptions(((envs as any)?.records ?? []).map((e: any) => ({ label: `${e.name}${e.type ? ` (${e.type})` : ''}`, value: e.id })));
       setBuildTplOptions(((builds as any)?.records ?? []).map((e: any) => ({ label: `${e.name}${e.language ? ` (${e.language})` : ''}`, value: e.id })));
-      setDeployTplOptions(((deploys as any)?.records ?? []).map((e: any) => ({ label: e.display_name || e.name, value: e.id })));
+      setDeployTplOptions(((deploys as any)?.records ?? []).map((e: any) => ({ label: `${e.name} (${e.template_type})`, value: e.id })));
       const repoList = (repos as any)?.records ?? [];
       setRepoOptions(repoList.map((e: any) => ({ label: `${e.c_name} (${e.e_name})`, value: e.id })));
       // 缓存仓库的详细信息用于自动填充
