@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
-import { Card, Descriptions, Button, Tag, Space, Spin, Typography, message, Divider, Drawer, Table, Popconfirm, Tooltip } from 'antd';
+import { Card, Descriptions, Button, Tag, Space, Spin, Typography, message, Divider, Drawer, Table, Popconfirm, Tooltip, Dropdown } from 'antd';
 import { ArrowLeftOutlined, DeleteOutlined, RedoOutlined, DownOutlined, RightOutlined, RollbackOutlined, HistoryOutlined, PlayCircleOutlined, RocketOutlined, CloseOutlined } from '@ant-design/icons';
-import { getDeployTask, deleteDeployTask, retryDeployTask, getTaskStages, getRollbackHistory, rollbackDeploy, triggerBuild, triggerDeploy, cancelSchedule, type DeployTask, type StageHistory } from '@/service/api';
+import { getDeployTask, deleteDeployTask, retryDeployTask, retryDeployTaskFromStage, getTaskStages, getRollbackHistory, rollbackDeploy, triggerBuild, triggerDeploy, cancelSchedule, type DeployTask, type StageHistory } from '@/service/api';
 import { usePublishStore } from '@/store/publish';
 import JenkinsConsolePanel from '@/components/JenkinsConsolePanel';
 import DeploymentStatusPanel from '@/components/DeploymentStatusPanel';
@@ -185,12 +185,24 @@ const TaskDetailPage: React.FC = () => {
   };
 
   const handleRetry = async () => {
+    // 全量重试（从构建阶段开始）
     try {
       await retryDeployTask(taskId);
-      message.success('重试已提交');
+      message.success('重试已提交（从构建阶段开始）');
       fetchData();
     } catch {
       message.error('重试失败');
+    }
+  };
+
+  const handleRetryFromStage = async (stage: 'BUILDING' | 'DEPLOYING') => {
+    const label = stage === 'BUILDING' ? '从构建阶段重试' : '从部署阶段重试';
+    try {
+      await retryDeployTaskFromStage(taskId, stage);
+      message.success(`${label}已提交`);
+      fetchData();
+    } catch (e: any) {
+      message.error(e?.message || `${label}失败`);
     }
   };
 
@@ -235,6 +247,24 @@ const TaskDetailPage: React.FC = () => {
   // Selected stage data
   const selectedStageData = stages.find(s => s.stage === selectedStage);
   const taskStatus = task.status || 'PENDING';
+
+  // 判断是否可以仅重试部署阶段：构建阶段必须已成功
+  const canRetryDeployOnly = taskStatus === 'FAILED' &&
+    stages.some(s => s.stage === 'BUILDING' && s.status === 'success') &&
+    stages.some(s => s.stage === 'DEPLOYING' && s.status === 'failed');
+
+  const retryMenuItems = [
+    {
+      key: 'BUILDING',
+      label: '从构建重试',
+      icon: <PlayCircleOutlined />,
+    },
+    ...(canRetryDeployOnly ? [{
+      key: 'DEPLOYING',
+      label: '从部署重试',
+      icon: <RocketOutlined />,
+    }] : []),
+  ];
 
   // Resolve display names from publish store
   const appName = (publishStore.apps || []).find(a => a.id === task.project_id)?.c_name || `#${task.project_id}`;
@@ -304,7 +334,14 @@ const TaskDetailPage: React.FC = () => {
             <Button icon={<HistoryOutlined />} onClick={handleOpenRollbackDrawer}>回滚</Button>
           )}
           {taskStatus === 'FAILED' && (
-            <Button icon={<RedoOutlined />} type="primary" onClick={handleRetry}>重试</Button>
+            <Dropdown menu={{
+              items: retryMenuItems,
+              onClick: ({ key }) => handleRetryFromStage(key as 'BUILDING' | 'DEPLOYING'),
+            }}>
+              <Button icon={<RedoOutlined />} type="primary">
+                重试 <DownOutlined style={{ fontSize: 10, marginLeft: 2 }} />
+              </Button>
+            </Dropdown>
           )}
           <Button icon={<DeleteOutlined />} danger onClick={handleDelete}>删除</Button>
         </Space>

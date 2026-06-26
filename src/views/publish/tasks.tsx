@@ -4,15 +4,15 @@ import {
   ProFormDatePicker, ProFormTimePicker, ProForm,
   type ActionType, type ProColumns
 } from '@ant-design/pro-components';
-import { Button, Tag, message, Popconfirm, Card, Tooltip } from 'antd';
+import { Button, Tag, message, Popconfirm, Card, Tooltip, Dropdown } from 'antd';
 import { isHandledError } from '@/service/request';
-import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined, ReloadOutlined, HistoryOutlined, RollbackOutlined, PlayCircleOutlined, RocketOutlined, CloseOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EyeOutlined, RedoOutlined, ReloadOutlined, HistoryOutlined, RollbackOutlined, PlayCircleOutlined, RocketOutlined, CloseOutlined, DownOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import dayjs from 'dayjs';
 import * as api from '@/service/api/publish/deploy-task';
 import type { DeployTask, CreateDeployTaskRequest } from '@/service/api/publish/deploy-task';
-import { triggerBuild, triggerDeploy, cancelSchedule } from '@/service/api/publish/deploy-task';
+import { triggerBuild, triggerDeploy, cancelSchedule, retryDeployTaskFromStage } from '@/service/api/publish/deploy-task';
 import * as deployApi from '@/service/api/publish/applications';
 import type { ApplicationDeployment } from '@/service/api/publish/applications';
 import { fetchRepoBranches, fetchRepoTags } from '@/service/api/publish/repos';
@@ -441,17 +441,29 @@ export default function PublishTasks() {
             <Button type="link" size="small" icon={<HistoryOutlined />} onClick={() => navigate(`/publish/tasks/${row.id}`)}>回滚</Button>
           </Tooltip>
         ),
-        row.status === 'FAILED' && hasComp('publish_task_retry') && <Popconfirm key="retry" title="确认重试此任务？" onConfirm={async () => {
-          try {
-            await api.retryDeployTask(row.id);
-            message.success('任务已重试');
-            loadTasks({ current: pagination.current, pageSize: pagination.pageSize });
-          } catch (e: any) {
-            if (!isHandledError(e)) message.error(e?.message || '重试失败');
-          }
-        }}>
-          <Button type="link" size="small" icon={<RedoOutlined />}>重试</Button>
-        </Popconfirm>,
+        row.status === 'FAILED' && hasComp('publish_task_retry') && (
+          <Dropdown key="retry" menu={{
+            items: [
+              { key: 'BUILDING', label: '从构建重试', icon: <PlayCircleOutlined /> },
+              { key: 'DEPLOYING', label: '从部署重试', icon: <RocketOutlined /> },
+            ],
+            onClick: async ({ key }) => {
+              const stage = key as 'BUILDING' | 'DEPLOYING';
+              const label = stage === 'BUILDING' ? '从构建重试' : '从部署重试';
+              try {
+                await retryDeployTaskFromStage(row.id, stage);
+                message.success(`${label}已提交`);
+                loadTasks({ current: pagination.current, pageSize: pagination.pageSize });
+              } catch (e: any) {
+                if (!isHandledError(e)) message.error(e?.message || `${label}失败`);
+              }
+            },
+          }}>
+            <Button type="link" size="small" icon={<RedoOutlined />}>
+              重试 <DownOutlined style={{ fontSize: 10, marginLeft: 2 }} />
+            </Button>
+          </Dropdown>
+        ),
         hasComp('publish_task_delete') && <Popconfirm key="del" title="确认删除？" onConfirm={async () => { try { await api.deleteDeployTask(row.id); message.success('已删除'); loadTasks({ current: pagination.current, pageSize: pagination.pageSize }); } catch (e: any) { if (!isHandledError(e)) message.error('删除失败'); } }}>
           <Button type="link" size="small" danger icon={<DeleteOutlined />} />
         </Popconfirm>,

@@ -104,6 +104,9 @@ export const batchDeleteDeployTasks = (ids: number[]) =>
 export const retryDeployTask = (id: number) =>
   http.post<{ task_id: number; retry_count: number }>(`/cicd/api/deploys/${id}/retry`);
 
+export const retryDeployTaskFromStage = (id: number, stage: 'BUILDING' | 'DEPLOYING') =>
+  http.post<{ task_id: number; retry_count: number; stage: string }>(`/cicd/api/deploys/${id}/retry-stage`, { stage });
+
 // 回滚相关 API
 export const getRollbackHistory = (taskId: number, params?: { page?: number; size?: number }) =>
   http.get<PageResult<DeployTask>>(`/cicd/api/deploys/${taskId}/rollback-history`, params as Record<string, unknown>);
