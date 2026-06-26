@@ -77,7 +77,7 @@ export interface ListDeployTasksParams {
 
 export interface TemplatesForTask {
   build_templates: { id: number; name: string; language?: string; department?: string }[];
-  deployment_templates: { id: number; name: string; template_type?: string; display_name?: string }[];
+  deployment_templates: { id: number; name: string; template_type?: string }[];
 }
 
 export const listDeployTasks = (params?: ListDeployTasksParams) =>

@@ -5,7 +5,6 @@ import type { LinkedApplication } from './build-template';
 export interface DeployTemplate {
   id: number;
   name: string;
-  display_name?: string;
   description?: string;
   template_type?: string;
   content?: string;

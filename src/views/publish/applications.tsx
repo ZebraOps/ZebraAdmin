@@ -295,7 +295,7 @@ export default function PublishApplications() {
     {
       title: '部署模板', dataIndex: 'deployment_template_id', ellipsis: true,
       render: (val, row) => {
-        const assocName = (row as any)?.deployment_template?.display_name || (row as any)?.deployment_template?.name;
+        const assocName = (row as any)?.deployment_template?.name;
         return assocName || findLabel(deployTplOptions, val as number);
       },
     },

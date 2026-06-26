@@ -28,7 +28,6 @@ interface DeployTemplateHistoryItem {
   deployment_template_id?: number;
   modifier?: string;
   name?: string;
-  display_name?: string;
   description?: string;
   template_type?: string;
   content?: string;
@@ -172,7 +171,6 @@ export default function PublishTemplatesDeployment() {
 
   const columns: ProColumns<DeployTemplate>[] = [
     { title: '模板名称', dataIndex: 'name', ellipsis: true },
-    { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
     {
       title: '类型', dataIndex: 'template_type', width: 100,
       valueType: 'select',
@@ -333,7 +331,6 @@ export default function PublishTemplatesDeployment() {
         }}
       >
         <ProFormText name="name" label="模板名称" rules={[{ required: true }]} placeholder="请输入模板名称" />
-        <ProFormText name="display_name" label="显示名称" placeholder="请输入显示名称" />
         <ProFormSelect name="template_type" label="模板类型" placeholder="请选择模板类型"
           options={[{ label: 'K8s YAML', value: 'k8s' }, { label: 'Helm Chart', value: 'helm' }, { label: 'Docker Compose', value: 'docker' }, { label: 'Linux/Nginx 配置', value: 'linux' }]} />
         <ProFormText name="version" label="版本" placeholder="1.0" />
