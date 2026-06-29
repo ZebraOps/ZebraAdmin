@@ -21,16 +21,30 @@ export interface K8sCluster {
 }
 
 
+export interface ContainerInfo {
+  name: string;
+  ready: boolean;
+  restart_count: number;
+  image: string;
+  state: string; // running / terminated / waiting
+}
+
 export interface PodInfo {
   name: string;
   status: string;
   node_name?: string;
   namespace: string;
+  pod_ip?: string;
   start_time?: string;
   labels?: Record<string, string>;
   restart_count?: number;
   ready?: string;
-  containers?: string[];
+  containers?: ContainerInfo[];
+}
+
+export interface PodMetric {
+  cpu: string;   // e.g. "100m" or "0.50"
+  memory: string; // e.g. "128Mi"
 }
 
 export const fetchK8sClusters = (params?: Record<string, unknown>) =>
@@ -88,3 +102,15 @@ export const getPodLogs = (
     tail: tail || 100,
     ...(container ? { container } : {}),
   });
+
+/** 获取 Pod Metrics（CPU/内存使用量） */
+export const fetchPodMetrics = (clusterId: number, namespace?: string) =>
+  http.get<Record<string, PodMetric>>(`/cicd/api/k8s/clusters/${clusterId}/pods/metrics`, {
+    namespace: namespace || 'default',
+  });
+
+/** 删除 K8s Pod */
+export const deleteK8sPod = (clusterId: number, podName: string, namespace?: string) => {
+  const qs = namespace ? `?namespace=${encodeURIComponent(namespace)}` : '';
+  return http.delete(`/cicd/api/k8s/clusters/${clusterId}/pods/${encodeURIComponent(podName)}${qs}`);
+};

@@ -3,19 +3,20 @@ import {
   ProTable, type ProColumns,
 } from '@ant-design/pro-components';
 import {
-  Button, Tag, message, Modal, Select, Space, Tabs, Tooltip,
+  Button, Tag, message, Modal, Select, Space, Tabs, Tooltip, Descriptions, Input,
 } from 'antd';
 import {
   ReloadOutlined, CodeOutlined, DeleteOutlined, FileTextOutlined,
-  RedoOutlined, ContainerOutlined,
+  RedoOutlined, ContainerOutlined, SearchOutlined,
 } from '@ant-design/icons';
 import { isHandledError } from '@/service/request';
 import * as k8sApi from '@/service/api/publish/k8s-cluster';
-import type { PodInfo } from '@/service/api/publish/k8s-cluster';
+import type { PodInfo, PodMetric } from '@/service/api/publish/k8s-cluster';
 import * as linuxApi from '@/service/api/publish/linux-machine';
 import type { DockerContainer } from '@/service/api/publish/linux-machine';
 import * as containerOps from '@/service/api/publish/container-operations';
-import type { K8sDeploymentInfo } from '@/service/api/publish/container-operations';
+import * as applicationsApi from '@/service/api/publish/applications';
+import type { ApplicationDeployment } from '@/service/api/publish/applications';
 import { usePublishStore } from '@/store/publish';
 import { usePermission } from '@/hooks/usePermission';
 import { localStg } from '@/utils/storage';
@@ -37,32 +38,76 @@ function getContainerDisplayName(container: DockerContainer): string {
   return String(name);
 }
 
-/** Group pods by the `app` label into deployment summaries */
-function groupPodsByDeployment(
-  pods: PodInfo[],
-  clusterId: number,
-  clusterName: string,
-): K8sDeploymentInfo[] {
-  const map = new Map<string, PodInfo[]>();
+/** Flatten pods + containers into rows for the container group table */
+interface K8sContainerRow {
+  podName: string;
+  podIP: string;
+  containerName: string;
+  containerReady: boolean;
+  containerState: string;
+  podStatus: string;
+  podReady: string;
+  namespace: string;
+  startTime?: string;
+  image: string;
+  restarts: number;
+  cpu?: string;
+  memory?: string;
+  _pod: PodInfo; // keep reference for actions
+  _key: string;
+}
+
+function flattenPodsToRows(pods: PodInfo[], metrics: Record<string, PodMetric>): K8sContainerRow[] {
+  const rows: K8sContainerRow[] = [];
   for (const pod of pods) {
-    const app = pod.labels?.app || pod.labels?.['app.kubernetes.io/name'] || 'unknown';
-    if (!map.has(app)) map.set(app, []);
-    map.get(app)!.push(pod);
+    const m = metrics[pod.name];
+    const containers = pod.containers && pod.containers.length > 0
+      ? pod.containers
+      : [{ name: '-', ready: false, restart_count: 0, image: '-', state: 'unknown' }];
+    for (const c of containers) {
+      rows.push({
+        podName: pod.name,
+        podIP: pod.pod_ip || '-',
+        containerName: c.name,
+        containerReady: c.ready,
+        containerState: c.state,
+        podStatus: pod.status,
+        podReady: pod.ready || '-',
+        namespace: pod.namespace,
+        startTime: pod.start_time,
+        image: c.image || '-',
+        restarts: c.restart_count ?? 0,
+        cpu: m?.cpu,
+        memory: m?.memory,
+        _pod: pod,
+        _key: `${pod.name}::${c.name}`,
+      });
+    }
   }
-  return Array.from(map.entries()).map(([name, group]) => {
-    const ready = group.filter(p => p.status === 'Running').length;
-    const first = group[0];
-    return {
-      deployment_name: name,
-      namespace: first.namespace || 'default',
-      healthy_pods: ready,
-      total_pods: group.length,
-      image: first.labels?.image || first.labels?.['app.kubernetes.io/version'] || '-',
-      status: ready === group.length ? 'Healthy' : 'Degraded',
-      cluster_id: clusterId,
-      cluster_name: clusterName,
-    };
-  });
+  return rows;
+}
+
+function getStatusColor(status: string): string {
+  const s = status.toLowerCase();
+  if (s.includes('running')) return 'success';
+  if (s.includes('pending') || s.includes('containercreating')) return 'processing';
+  if (s.includes('error') || s.includes('crash') || s.includes('backoff') || s.includes('failed')) return 'error';
+  if (s.includes('terminat') || s.includes('completed')) return 'default';
+  if (s.includes('waiting')) return 'warning';
+  return 'default';
+}
+
+function formatUptime(startTime?: string): string {
+  if (!startTime) return '-';
+  const start = new Date(startTime).getTime();
+  const diff = Date.now() - start;
+  if (diff < 0) return '-';
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
 }
 
 export default function PublishContainerList() {
@@ -74,10 +119,14 @@ export default function PublishContainerList() {
   // --- K8s Tab State ---
   const [k8sClusterId, setK8sClusterId] = useState<number | undefined>();
   const [k8sEnvId, setK8sEnvId] = useState<number | undefined>();
-  const [k8sSearch, setK8sSearch] = useState('');
-  const [k8sDeployments, setK8sDeployments] = useState<K8sDeploymentInfo[]>([]);
+  const [k8sAppId, setK8sAppId] = useState<number | undefined>();
+  const [k8sNamespace, setK8sNamespace] = useState('default');
+  const [k8sAppOptions, setK8sAppOptions] = useState<{ label: string; value: number }[]>([]);
+  const [k8sPods, setK8sPods] = useState<PodInfo[]>([]);
+  const [k8sPodMetrics, setK8sPodMetrics] = useState<Record<string, PodMetric>>({});
+  const [podNameFilter, setPodNameFilter] = useState('');
   const [k8sLoading, setK8sLoading] = useState(false);
-  const [k8sSelectedRows, setK8sSelectedRows] = useState<K8sDeploymentInfo[]>([]);
+  const [k8sDeployConfig, setK8sDeployConfig] = useState<ApplicationDeployment | null>(null);
 
   // --- Docker Tab State ---
   const [dockerServerId, setDockerServerId] = useState<number | undefined>();
@@ -113,23 +162,53 @@ export default function PublishContainerList() {
   const wsBaseURL = (import.meta.env.VITE_BASE_URL || '').trim().replace(/^http/, 'ws').replace(/\/$/, '');
 
   // --- K8s Data Fetching ---
-  const loadK8sDeployments = useCallback(async () => {
-    if (!k8sClusterId) { setK8sDeployments([]); return; }
+  // Load apps for env → filter by cluster and deploy_target=k8s
+  const loadK8sApps = useCallback(async (envId: number) => {
+    try {
+      const deployments = await applicationsApi.listDeploymentsByEnvironment(envId);
+      const k8sDeploys = (deployments ?? []).filter(
+        d => d.deploy_target === 'k8s' && d.k8s_cluster_id === k8sClusterId
+      );
+      const appMap = new Map<number, string>();
+      for (const d of k8sDeploys) {
+        const app = publishStore.apps.find(a => a.id === d.application_id);
+        if (app && !appMap.has(app.id)) appMap.set(app.id, app.c_name || `App#${app.id}`);
+      }
+      setK8sAppOptions(Array.from(appMap.entries()).map(([id, name]) => ({ label: name, value: id })));
+    } catch {
+      setK8sAppOptions([]);
+    }
+  }, [k8sClusterId, publishStore.apps]);
+
+  // Query pods by app+env → deployment config → namespace
+  const loadK8sPods = useCallback(async () => {
+    if (!k8sClusterId || !k8sEnvId || !k8sAppId) { setK8sPods([]); setK8sDeployConfig(null); return; }
     setK8sLoading(true);
     try {
-      const cluster = publishStore.clusters.find(c => c.id === k8sClusterId);
-      const ns = cluster?.namespace || 'default';
-      const list = await k8sApi.listK8sPods(k8sClusterId, ns);
-      const pods = Array.isArray(list) ? list : [];
-      const grouped = groupPodsByDeployment(pods, k8sClusterId, cluster?.name ?? '');
-      setK8sDeployments(grouped);
+      const deployments = await applicationsApi.lookupDeploymentsByAppAndEnv(k8sAppId, k8sEnvId);
+      const deploy = (deployments ?? []).find(
+        d => d.deploy_target === 'k8s' && d.k8s_cluster_id === k8sClusterId
+      );
+      if (!deploy) { message.warning('未找到匹配的部署配置'); setK8sPods([]); setK8sDeployConfig(null); return; }
+
+      const ns = deploy.k8s_namespace || 'default';
+      setK8sNamespace(ns);
+      setK8sDeployConfig(deploy);
+
+      const [podList, metrics] = await Promise.all([
+        k8sApi.listK8sPods(k8sClusterId, ns),
+        k8sApi.fetchPodMetrics(k8sClusterId, ns).catch(() => ({})),
+      ]);
+      setK8sPods(Array.isArray(podList) ? podList : []);
+      setK8sPodMetrics(metrics as Record<string, PodMetric>);
     } catch (e: unknown) {
       if (!isHandledError(e)) message.error((e as any)?.message || '获取 Pod 列表失败');
-      setK8sDeployments([]);
+      setK8sPods([]);
+      setK8sDeployConfig(null);
     } finally {
       setK8sLoading(false);
     }
-  }, [k8sClusterId, publishStore.clusters]);
+  }, [k8sClusterId, k8sEnvId, k8sAppId]);
 
   // --- Docker Data Fetching ---
   const loadDockerContainers = useCallback(async () => {
@@ -146,31 +225,19 @@ export default function PublishContainerList() {
     }
   }, [dockerServerId]);
 
-  // --- K8s Terminal ---
-  const openK8sTerminal = async (deployment: K8sDeploymentInfo) => {
+  // --- K8s Terminal (pod-level) ---
+  const openK8sTerminal = (pod: PodInfo) => {
     if (!k8sClusterId) return;
-    try {
-      const ns = deployment.namespace || 'default';
-      const pods = await k8sApi.listK8sPods(k8sClusterId, ns);
-      const matchingPods = (Array.isArray(pods) ? pods : []).filter(p => {
-        const app = p.labels?.app || p.labels?.['app.kubernetes.io/name'] || 'unknown';
-        return app === deployment.deployment_name;
-      });
-      if (matchingPods.length === 0) { message.warning('未找到运行中的 Pod'); return; }
-      const pod = matchingPods[0];
-      setK8sTermClusterId(k8sClusterId);
-      const containers = pod.containers || [];
-      if (containers.length <= 1) {
-        setSelectedContainer(containers[0] ?? '');
-        setK8sTermPod(pod);
-        setK8sTermOpen(true);
-      } else {
-        setK8sTermPod(pod);
-        setSelectedContainer(containers[0]);
-        setContainerSelectOpen(true);
-      }
-    } catch {
-      message.error('获取 Pod 信息失败');
+    setK8sTermClusterId(k8sClusterId);
+    const containers = pod.containers || [];
+    if (containers.length <= 1) {
+      setSelectedContainer(containers[0]?.name ?? '');
+      setK8sTermPod(pod);
+      setK8sTermOpen(true);
+    } else {
+      setK8sTermPod(pod);
+      setSelectedContainer(containers[0]?.name ?? '');
+      setContainerSelectOpen(true);
     }
   };
 
@@ -250,44 +317,12 @@ export default function PublishContainerList() {
     };
   }, [k8sTermOpen, k8sTermPod, k8sTermClusterId, wsBaseURL, selectedContainer]);
 
-  // --- Actions ---
-  const handleK8sBatchRestart = async () => {
-    if (k8sSelectedRows.length === 0) { message.warning('请先选择要重启的服务'); return; }
-    Modal.confirm({
-      title: '批量重启确认',
-      content: `确认重启以下 ${k8sSelectedRows.length} 个 Deployment？`,
-      okText: '确认重启',
-      cancelText: '取消',
-      transitionName: '',
-      maskTransitionName: '',
-      onOk: async () => {
-        const results = await Promise.allSettled(
-          k8sSelectedRows.map(d =>
-            containerOps.restartK8sDeployment(d.cluster_id, d.deployment_name, d.namespace).then(() => {
-              containerOps.recordContainerOperation({
-                operation_type: 'batch_restart',
-                target_type: 'k8s',
-                target_detail: `cluster: ${d.cluster_name} / deployment: ${d.deployment_name} / ns: ${d.namespace}`,
-                operator: 'admin',
-                result: 'success',
-              }).catch(() => {});
-            })
-          )
-        );
-        const ok = results.filter(r => r.status === 'fulfilled').length;
-        const fail = results.filter(r => r.status === 'rejected').length;
-        if (fail > 0) message.warning(`重启完成：${ok} 成功, ${fail} 失败`);
-        else message.success(`已成功重启 ${ok} 个 Deployment`);
-        loadK8sDeployments();
-      },
-    });
-  };
-
-  const handleK8sDeletePod = async (deployment: K8sDeploymentInfo) => {
+  // --- K8s Pod Actions ---
+  const handleK8sDeletePod = async (pod: PodInfo) => {
     if (!k8sClusterId) return;
     Modal.confirm({
       title: '删除 Pod 确认',
-      content: `确认删除 ${deployment.deployment_name} 下的 Pod？Pod 会被重建。`,
+      content: `确认删除 Pod "${pod.name}"？Pod 会被重建。`,
       okText: '确认删除',
       okType: 'danger',
       cancelText: '取消',
@@ -295,21 +330,14 @@ export default function PublishContainerList() {
       maskTransitionName: '',
       onOk: async () => {
         try {
-          const pods = await k8sApi.listK8sPods(k8sClusterId, deployment.namespace);
-          const matchingPods = (Array.isArray(pods) ? pods : []).filter(p => {
-            const app = p.labels?.app || p.labels?.['app.kubernetes.io/name'] || 'unknown';
-            return app === deployment.deployment_name;
-          });
-          for (const p of matchingPods) {
-            try { await containerOps.deleteK8sPod(k8sClusterId, p.name, p.namespace); } catch { /* skip individual pod errors */ }
-          }
-          message.success(`已删除 ${deployment.deployment_name} 的 Pod`);
+          await k8sApi.deleteK8sPod(k8sClusterId, pod.name, pod.namespace);
+          message.success(`Pod "${pod.name}" 已删除`);
           containerOps.recordContainerOperation({
             operation_type: 'delete', target_type: 'k8s',
-            target_detail: `cluster: ${deployment.cluster_name} / deployment: ${deployment.deployment_name}`,
+            target_detail: `cluster: ${k8sClusterId} / pod: ${pod.name} / ns: ${pod.namespace}`,
             operator: 'admin', result: 'success',
           }).catch(() => {});
-          loadK8sDeployments();
+          loadK8sPods();
         } catch (e: unknown) {
           if (!isHandledError(e)) message.error((e as any)?.message || '删除失败');
         }
@@ -393,53 +421,67 @@ export default function PublishContainerList() {
     });
   };
 
-  // --- K8s Table Columns ---
-  const k8sColumns: ProColumns<K8sDeploymentInfo>[] = [
-    { title: 'Service / Deployment', dataIndex: 'deployment_name', ellipsis: true },
-    { title: '命名空间', dataIndex: 'namespace', width: 110 },
+  // --- K8s Container Group Columns ---
+  const k8sColumns: ProColumns<K8sContainerRow>[] = [
     {
-      title: 'Pod 数量', dataIndex: 'pod_count', width: 100, search: false,
-      render: (_, row) => (
-        <Tag color={row.status === 'Healthy' ? 'success' : 'warning'}>
-          {row.healthy_pods}/{row.total_pods}
-        </Tag>
-      ),
-    },
-    { title: '镜像', dataIndex: 'image', ellipsis: true, search: false },
-    {
-      title: '状态', dataIndex: 'status', width: 90,
-      render: (_, row) => (
-        <Tag color={row.status === 'Healthy' ? 'success' : 'warning'}>
-          {row.status === 'Healthy' ? '健康' : '异常'}
-        </Tag>
-      ),
+      title: 'Pod 名称', dataIndex: 'podName', width: 200, ellipsis: true,
+      render: (_, row) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>{String(row.podName ?? '-')}</span>,
     },
     {
-      title: '操作', key: 'actions', width: 200, fixed: 'right', search: false,
-      render: (_, record) => (
+      title: '容器名称', dataIndex: 'containerName', width: 160, ellipsis: true,
+      render: (_, row) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>{String(row.containerName ?? '-')}</span>,
+    },
+    {
+      title: '状态', dataIndex: 'podStatus', width: 140,
+      render: (val, row) => (
+        <Space size={4}>
+          <Tag color={getStatusColor(String(val ?? ''))}>{String(val ?? '-')}</Tag>
+          {row.containerState !== 'running' && row.containerState !== 'unknown' && (
+            <Tag color="warning" style={{ fontSize: 11 }}>{row.containerState}</Tag>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: '是否就绪', dataIndex: 'containerReady', width: 80,
+      render: (_, row) => row.containerReady
+        ? <Tag color="success">✅ 就绪</Tag>
+        : <Tag color="error">❌ 未就绪</Tag>,
+    },
+    {
+      title: 'IP', dataIndex: 'podIP', width: 130,
+      render: (_, row) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>{String(row.podIP ?? '-')}</span>,
+    },
+    {
+      title: 'CPU', dataIndex: 'cpu', width: 80, search: false,
+      render: (_, row) => row.cpu ? <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>{String(row.cpu)}</span> : <span style={{ color: '#999' }}>-</span>,
+    },
+    {
+      title: '内存', dataIndex: 'memory', width: 90, search: false,
+      render: (_, row) => row.memory ? <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>{String(row.memory)}</span> : <span style={{ color: '#999' }}>-</span>,
+    },
+    {
+      title: '运行时间', dataIndex: 'startTime', width: 100, search: false,
+      render: (_, row) => <span>{formatUptime(row.startTime)}</span>,
+    },
+    {
+      title: '创建时间', dataIndex: 'startTime', width: 160, search: false,
+      render: (_, row) => <span>{row.startTime ? new Date(row.startTime).toLocaleString() : '-'}</span>,
+    },
+    {
+      title: '操作', key: 'actions', width: 130, fixed: 'right', search: false,
+      render: (_, row) => (
         <Space size="small">
           {hasComp('publish_container_k8s_terminal') && (
             <Tooltip title="进入终端">
               <Button type="link" size="small" icon={<CodeOutlined />}
-                onClick={() => openK8sTerminal(record)}>终端</Button>
-            </Tooltip>
-          )}
-          {hasComp('publish_container_k8s_logs') && (
-            <Tooltip title="查看日志">
-              <Button type="link" size="small" icon={<FileTextOutlined />}
-                onClick={() => {
-                  setLogType('k8s');
-                  setLogClusterId(record.cluster_id);
-                  setLogPodName(record.deployment_name);
-                  setLogNamespace(record.namespace);
-                  setLogOpen(true);
-                }}>日志</Button>
+                onClick={() => openK8sTerminal(row._pod)}>终端</Button>
             </Tooltip>
           )}
           {hasComp('publish_container_k8s_delete') && (
             <Tooltip title="删除 Pod">
               <Button type="link" size="small" danger icon={<DeleteOutlined />}
-                onClick={() => handleK8sDeletePod(record)}>删除</Button>
+                onClick={() => handleK8sDeletePod(row._pod)}>删除</Button>
             </Tooltip>
           )}
         </Space>
@@ -518,7 +560,7 @@ export default function PublishContainerList() {
         showSearch
         allowClear
         value={k8sClusterId}
-        onChange={(val) => setK8sClusterId(val)}
+        onChange={(val) => { setK8sClusterId(val); setK8sEnvId(undefined); setK8sAppId(undefined); setK8sAppOptions([]); setK8sPods([]); }}
         options={publishStore.clusterOptions}
         fieldNames={{ label: 'label', value: 'value' }}
         filterOption={(input, option) => (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
@@ -529,20 +571,36 @@ export default function PublishContainerList() {
         showSearch
         allowClear
         value={k8sEnvId}
-        onChange={(val) => setK8sEnvId(val)}
+        onChange={(val) => { setK8sEnvId(val); setK8sAppId(undefined); setK8sPods([]); if (val && k8sClusterId) loadK8sApps(val); }}
         options={publishStore.envOptions}
         fieldNames={{ label: 'label', value: 'value' }}
         filterOption={(input, option) => (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
       />
-      <Button type="primary" icon={<ReloadOutlined />} loading={k8sLoading} onClick={loadK8sDeployments}>
+      <Select
+        placeholder="选择应用"
+        style={{ width: 200 }}
+        showSearch
+        allowClear
+        value={k8sAppId}
+        onChange={(val) => { setK8sAppId(val); setK8sPods([]); }}
+        options={k8sAppOptions}
+        disabled={!k8sEnvId}
+        filterOption={(input, option) => (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
+      />
+      <Button type="primary" icon={<SearchOutlined />} loading={k8sLoading} onClick={loadK8sPods}
+        disabled={!k8sClusterId || !k8sEnvId || !k8sAppId}>
         查询
       </Button>
-      {hasComp('publish_container_k8s_restart') && k8sSelectedRows.length > 0 && (
-        <Button type="primary" danger icon={<RedoOutlined />} onClick={handleK8sBatchRestart}>
-          批量重启 ({k8sSelectedRows.length})
-        </Button>
-      )}
     </Space>
+  );
+
+  // Compute service overview data
+  const serviceImage = k8sPods.length > 0
+    ? (k8sPods[0].containers?.[0]?.image || '-')
+    : '-';
+  const podRows = flattenPodsToRows(
+    podNameFilter ? k8sPods.filter(p => p.name.toLowerCase().includes(podNameFilter.toLowerCase())) : k8sPods,
+    k8sPodMetrics,
   );
 
   const dockerFilterBar = (
@@ -576,32 +634,45 @@ export default function PublishContainerList() {
       children: (
         <div>
           {k8sFilterBar}
-          <ProTable<K8sDeploymentInfo>
-            rowKey="deployment_name"
+
+          {/* 服务概览 */}
+          {k8sPods.length > 0 && (
+            <Descriptions
+              bordered
+              size="small"
+              column={{ xs: 1, sm: 2, md: 4 }}
+              style={{ marginBottom: 16 }}
+              items={[
+                { key: '1', label: 'Pod 总数量', children: <strong>{k8sPods.length}</strong> },
+                { key: '2', label: '命名空间', children: <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{k8sNamespace}</span> },
+                { key: '3', label: '镜像', children: <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>{serviceImage}</span> },
+              ]}
+            />
+          )}
+
+          {/* Pod 名称过滤 */}
+          {k8sPods.length > 0 && (
+            <Input
+              placeholder="按 Pod 名称过滤"
+              prefix={<SearchOutlined />}
+              allowClear
+              style={{ width: 320, marginBottom: 16 }}
+              value={podNameFilter}
+              onChange={(e) => setPodNameFilter(e.target.value)}
+            />
+          )}
+
+          {/* 容器组 Table */}
+          <ProTable<K8sContainerRow>
+            rowKey="_key"
             columns={k8sColumns}
-            dataSource={k8sDeployments.filter(d =>
-              !k8sSearch || d.deployment_name.toLowerCase().includes(k8sSearch.toLowerCase())
-            )}
+            dataSource={podRows}
             loading={k8sLoading}
             search={false}
-            options={{ reload: loadK8sDeployments, density: true }}
+            options={{ reload: loadK8sPods, density: true }}
             pagination={{ pageSize: 20 }}
             scroll={{ x: 'max-content' }}
-            rowSelection={{
-              selectedRowKeys: k8sSelectedRows.map(r => r.deployment_name),
-              onChange: (_, rows) => setK8sSelectedRows(rows),
-            }}
-            toolbar={{
-              search: (
-                <input
-                  placeholder="搜索 Deployment 名称"
-                  style={{ width: 220, padding: '4px 11px', border: '1px solid #d9d9d9', borderRadius: 6 }}
-                  value={k8sSearch}
-                  onChange={(e) => setK8sSearch(e.target.value)}
-                />
-              ),
-            }}
-            locale={{ emptyText: '请选择集群后点击查询' }}
+            locale={{ emptyText: '请选择集群、环境和应用后点击查询' }}
           />
         </div>
       ),
@@ -672,7 +743,7 @@ export default function PublishContainerList() {
           value={selectedContainer}
           onChange={(val) => setSelectedContainer(val)}
           style={{ width: '100%' }}
-          options={k8sTermPod?.containers?.map(c => ({ label: c, value: c })) ?? []}
+          options={k8sTermPod?.containers?.map(c => ({ label: c.name, value: c.name })) ?? []}
         />
       </Modal>
 
