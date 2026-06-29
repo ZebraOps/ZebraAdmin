@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '0.0.0.0',
       port: 4120,
+      allowedHosts: ['.trycloudflare.com'],
       proxy: {
         '/rbac': {
           target: env.VITE_BASE_URL,

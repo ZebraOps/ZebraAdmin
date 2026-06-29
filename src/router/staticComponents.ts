@@ -102,6 +102,18 @@ export const staticComponents: StaticComponent[] = [
   { component_name: 'publish_linux_delete', comp_desc: '发布-删除主机', group_name: '发布管理' },
   { component_name: 'publish_linux_connect', comp_desc: '发布-测试主机连接', group_name: '发布管理' },
 
+  // 发布管理 - 容器列表 (K8s actions)
+  { component_name: 'publish_container_k8s_terminal', comp_desc: '发布-K8s容器终端', group_name: '发布管理' },
+  { component_name: 'publish_container_k8s_logs', comp_desc: '发布-K8s查看Pod日志', group_name: '发布管理' },
+  { component_name: 'publish_container_k8s_restart', comp_desc: '发布-K8s批量重启', group_name: '发布管理' },
+  { component_name: 'publish_container_k8s_delete', comp_desc: '发布-K8s删除Pod', group_name: '发布管理' },
+
+  // 发布管理 - 容器列表 (Docker actions)
+  { component_name: 'publish_container_docker_terminal', comp_desc: '发布-Docker容器终端', group_name: '发布管理' },
+  { component_name: 'publish_container_docker_logs', comp_desc: '发布-Docker查看容器日志', group_name: '发布管理' },
+  { component_name: 'publish_container_docker_restart', comp_desc: '发布-Docker重启容器', group_name: '发布管理' },
+  { component_name: 'publish_container_docker_delete', comp_desc: '发布-Docker删除容器', group_name: '发布管理' },
+
   // 发布管理 - 环境
   { component_name: 'publish_env_add', comp_desc: '发布-新增环境', group_name: '发布管理' },
   { component_name: 'publish_env_edit', comp_desc: '发布-编辑环境', group_name: '发布管理' },

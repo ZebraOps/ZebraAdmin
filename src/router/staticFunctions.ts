@@ -173,6 +173,18 @@ export const staticFunctions: StaticFunction[] = [
   { func_name: '在容器中执行命令', uri: '/cicd/api/servers/{id}/containers/{containerID}/exec', method_type: 'POST', group_name: '发布功能' },
   { func_name: '连接到容器终端', uri: '/cicd/api/servers/{id}/containers/{containerID}/attach', method_type: 'GET', group_name: '发布功能' },
 
+  // === CICD 发布管理 - K8s容器操作 ===
+  { func_name: '重启K8s Deployment', uri: '/cicd/api/k8s/clusters/{id}/deployments/{name}/restart', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '删除K8s Pod', uri: '/cicd/api/k8s/clusters/{id}/pods/{podName}', method_type: 'DELETE', group_name: '发布功能' },
+
+  // === CICD 发布管理 - Docker容器操作 ===
+  { func_name: '重启Docker容器', uri: '/cicd/api/servers/{id}/containers/{containerID}/restart', method_type: 'POST', group_name: '发布功能' },
+  { func_name: '删除Docker容器', uri: '/cicd/api/servers/{id}/containers/{containerID}', method_type: 'DELETE', group_name: '发布功能' },
+
+  // === CICD 发布管理 - 容器操作历史 ===
+  { func_name: '获取容器操作历史列表', uri: '/cicd/api/container-operations', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '记录容器操作历史', uri: '/cicd/api/container-operations', method_type: 'POST', group_name: '发布功能' },
+
   // === CICD 发布管理 - 环境 ===
   { func_name: '获取环境列表', uri: '/cicd/api/environments', method_type: 'GET', group_name: '发布功能' },
   { func_name: '创建环境', uri: '/cicd/api/environments', method_type: 'POST', group_name: '发布功能' },

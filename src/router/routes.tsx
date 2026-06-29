@@ -40,8 +40,14 @@ const PublishConfigLanguage = lazy(() => import('@/views/publish/config/language
 const PublishConfigGitRepo = lazy(() => import('@/views/publish/config/git-repo'));
 const PublishConfigJenkinsPlatform = lazy(() => import('@/views/publish/config/jenkins-platform'));
 const PublishConfigCredentials = lazy(() => import('@/views/publish/config/credentials'));
-const PublishContainerK8s = lazy(() => import('@/views/publish/container/k8s'));
-const PublishContainerLinux = lazy(() => import('@/views/publish/container/linux'));
+
+// Publish - Cluster Management (NEW)
+const PublishClusterK8s = lazy(() => import('@/views/publish/cluster/k8s'));
+const PublishClusterLinux = lazy(() => import('@/views/publish/cluster/linux'));
+
+// Publish - Container Management (NEW)
+const PublishContainerList = lazy(() => import('@/views/publish/container/list'));
+const PublishContainerHistory = lazy(() => import('@/views/publish/container/history'));
 
 // Gateway module
 const GatewayRoutes = lazy(() => import('@/views/gateway/routes'));
@@ -94,8 +100,13 @@ const routeConfig: RouteObject[] = [
       { path: '/publish/config/gitplatform', element: <RouteOutlet><PublishConfigGitRepo /></RouteOutlet> },
       { path: '/publish/config/jenkinsplatform', element: <RouteOutlet><PublishConfigJenkinsPlatform /></RouteOutlet> },
       { path: '/publish/config/credentials', element: <RouteOutlet><PublishConfigCredentials /></RouteOutlet> },
-      { path: '/publish/container/k8s', element: <RouteOutlet><PublishContainerK8s /></RouteOutlet> },
-      { path: '/publish/container/linux', element: <RouteOutlet><PublishContainerLinux /></RouteOutlet> },
+      { path: '/publish/cluster/k8s', element: <RouteOutlet><PublishClusterK8s /></RouteOutlet> },
+      { path: '/publish/cluster/linux', element: <RouteOutlet><PublishClusterLinux /></RouteOutlet> },
+      { path: '/publish/container/list', element: <RouteOutlet><PublishContainerList /></RouteOutlet> },
+      { path: '/publish/container/history', element: <RouteOutlet><PublishContainerHistory /></RouteOutlet> },
+      // Backward-compat redirects for old container paths
+      { path: '/publish/container/k8s', element: <Navigate to="/publish/cluster/k8s" replace /> },
+      { path: '/publish/container/linux', element: <Navigate to="/publish/cluster/linux" replace /> },
       // Gateway
       { path: '/gateway/routes', element: <RouteOutlet><GatewayRoutes /></RouteOutlet> },
       { path: '/gateway/whitelist', element: <RouteOutlet><GatewayWhitelist /></RouteOutlet> },

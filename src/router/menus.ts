@@ -75,14 +75,25 @@ export const staticMenus: MenuNode[] = [
         ]
       },
       {
+        key: 'publish_cluster',
+        label: 'route.publish_cluster',
+        icon: 'mdi:server-network',
+        path: '/publish/cluster',
+        order: 6,
+        children: [
+          { key: 'publish_cluster_k8s', label: 'route.publish_cluster_k8s', icon: 'mdi:kubernetes', path: '/publish/cluster/k8s' },
+          { key: 'publish_cluster_linux', label: 'route.publish_cluster_linux', icon: 'mdi:linux', path: '/publish/cluster/linux' }
+        ]
+      },
+      {
         key: 'publish_container',
         label: 'route.publish_container',
         icon: 'ic:baseline-view-in-ar',
         path: '/publish/container',
-        order: 6,
+        order: 7,
         children: [
-          { key: 'publish_container_k8s', label: 'route.publish_container_k8s', icon: 'mdi:kubernetes', path: '/publish/container/k8s' },
-          { key: 'publish_container_linux', label: 'route.publish_container_linux', icon: 'mdi:linux', path: '/publish/container/linux' }
+          { key: 'publish_container_list', label: 'route.publish_container_list', icon: 'mdi:docker', path: '/publish/container/list' },
+          { key: 'publish_container_history', label: 'route.publish_container_history', icon: 'mdi:history', path: '/publish/container/history' }
         ]
       }
     ]
