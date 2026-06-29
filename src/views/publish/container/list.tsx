@@ -612,6 +612,10 @@ export default function PublishContainerList() {
         width="80vw"
         style={{ top: 20 }}
         destroyOnClose
+        maskClosable
+        keyboard
+        transitionName=""
+        maskTransitionName=""
       >
         <div ref={termRef}
           style={{
@@ -628,6 +632,7 @@ export default function PublishContainerList() {
         onOk={() => { setContainerSelectOpen(false); setK8sTermOpen(true); }}
         onCancel={() => { setContainerSelectOpen(false); setK8sTermPod(null); setSelectedContainer(''); }}
         okText="连接" cancelText="取消" width={400}
+        transitionName="" maskTransitionName=""
       >
         <div style={{ marginBottom: 12 }}>该 Pod 有多个容器，请选择：</div>
         <Select
@@ -647,6 +652,7 @@ export default function PublishContainerList() {
         width="80vw"
         style={{ top: 20 }}
         destroyOnClose
+        transitionName="" maskTransitionName=""
       >
         <ContainerTerminal
           key={`docker-term-${dockerTermServerId}-${dockerTermContainerId}`}
@@ -665,6 +671,7 @@ export default function PublishContainerList() {
         width="80vw"
         style={{ top: 20 }}
         destroyOnClose
+        transitionName="" maskTransitionName=""
       >
         {logType === 'k8s' && (
           <ServiceLogPanel
