@@ -25,6 +25,18 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 
+/** Extract a display name from Docker container names field (handles string[], object[], string, object) */
+function getContainerDisplayName(container: DockerContainer): string {
+  const name = container.names?.[0];
+  if (!name) return container.id.slice(0, 12);
+  if (typeof name === 'string') return name;
+  if (name && typeof name === 'object') {
+    const n = name as any;
+    return n.Name || n.name || n.Names || `container-${container.id.slice(0, 8)}`;
+  }
+  return String(name);
+}
+
 /** Group pods by the `app` label into deployment summaries */
 function groupPodsByDeployment(
   pods: PodInfo[],
@@ -235,6 +247,8 @@ export default function PublishContainerList() {
       content: `确认重启以下 ${k8sSelectedRows.length} 个 Deployment？`,
       okText: '确认重启',
       cancelText: '取消',
+      transitionName: '',
+      maskTransitionName: '',
       onOk: async () => {
         const results = await Promise.allSettled(
           k8sSelectedRows.map(d =>
@@ -266,6 +280,8 @@ export default function PublishContainerList() {
       okText: '确认删除',
       okType: 'danger',
       cancelText: '取消',
+      transitionName: '',
+      maskTransitionName: '',
       onOk: async () => {
         try {
           const pods = await k8sApi.listK8sPods(k8sClusterId, deployment.namespace);
@@ -297,6 +313,8 @@ export default function PublishContainerList() {
       content: `确认重启以下 ${dockerSelectedRows.length} 个容器？`,
       okText: '确认重启',
       cancelText: '取消',
+      transitionName: '',
+      maskTransitionName: '',
       onOk: async () => {
         const results = await Promise.allSettled(
           dockerSelectedRows.map(c =>
@@ -321,14 +339,16 @@ export default function PublishContainerList() {
   const handleDockerRestart = async (container: DockerContainer) => {
     if (!dockerServerId) return;
     Modal.confirm({
-      title: '重启容器', content: `确认重启容器 ${container.names?.[0] || container.id.slice(0, 12)}？`,
-      okText: '重启', onOk: async () => {
+      title: '重启容器', content: `确认重启容器 ${getContainerDisplayName(container)}？`,
+      okText: '重启',
+      transitionName: '', maskTransitionName: '',
+      onOk: async () => {
         try {
           await containerOps.restartDockerContainer(dockerServerId, container.id);
           message.success('容器已重启');
           containerOps.recordContainerOperation({
             operation_type: 'restart', target_type: 'docker',
-            target_detail: `server: ${dockerServerId} / container: ${container.names?.[0] || container.id}`,
+            target_detail: `server: ${dockerServerId} / container: ${getContainerDisplayName(container)}`,
             operator: 'admin', result: 'success',
           }).catch(() => {});
           loadDockerContainers();
@@ -342,14 +362,16 @@ export default function PublishContainerList() {
   const handleDockerDelete = async (container: DockerContainer) => {
     if (!dockerServerId) return;
     Modal.confirm({
-      title: '删除容器', content: `确认删除容器 ${container.names?.[0] || container.id.slice(0, 12)}？此操作不可恢复。`,
-      okText: '确认删除', okType: 'danger', onOk: async () => {
+      title: '删除容器', content: `确认删除容器 ${getContainerDisplayName(container)}？此操作不可恢复。`,
+      okText: '确认删除', okType: 'danger',
+      transitionName: '', maskTransitionName: '',
+      onOk: async () => {
         try {
           await containerOps.deleteDockerContainer(dockerServerId, container.id, true);
           message.success('容器已删除');
           containerOps.recordContainerOperation({
             operation_type: 'delete', target_type: 'docker',
-            target_detail: `server: ${dockerServerId} / container: ${container.names?.[0] || container.id}`,
+            target_detail: `server: ${dockerServerId} / container: ${getContainerDisplayName(container)}`,
             operator: 'admin', result: 'success',
           }).catch(() => {});
           loadDockerContainers();
@@ -422,7 +444,7 @@ export default function PublishContainerList() {
     },
     {
       title: '名称', dataIndex: 'names', ellipsis: true,
-      render: (val) => Array.isArray(val) ? val.join(', ') : String(val ?? '-'),
+      render: (_, record) => getContainerDisplayName(record),
     },
     { title: '镜像', dataIndex: 'image', ellipsis: true, search: false },
     {

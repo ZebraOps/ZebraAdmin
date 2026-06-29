@@ -57,10 +57,10 @@ export const deleteK8sPod = (
   clusterId: number,
   podName: string,
   namespace?: string,
-) =>
-  http.delete(`/cicd/api/k8s/clusters/${clusterId}/pods/${encodeURIComponent(podName)}`, {
-    params: namespace ? { namespace } : undefined,
-  });
+) => {
+  const qs = namespace ? `?namespace=${encodeURIComponent(namespace)}` : '';
+  return http.delete(`/cicd/api/k8s/clusters/${clusterId}/pods/${encodeURIComponent(podName)}${qs}`);
+};
 
 // --- Docker Container APIs ---
 
@@ -75,10 +75,10 @@ export const deleteDockerContainer = (
   serverId: number,
   containerId: string,
   force?: boolean,
-) =>
-  http.delete(`/cicd/api/servers/${serverId}/containers/${containerId}`, {
-    params: force ? { force: 'true' } : undefined,
-  });
+) => {
+  const qs = force ? '?force=true' : '';
+  return http.delete(`/cicd/api/servers/${serverId}/containers/${containerId}${qs}`);
+};
 
 // --- History APIs ---
 
