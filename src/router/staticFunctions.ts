@@ -174,6 +174,9 @@ export const staticFunctions: StaticFunction[] = [
   { func_name: '连接到容器终端', uri: '/cicd/api/servers/{id}/containers/{containerID}/attach', method_type: 'GET', group_name: '发布功能' },
 
   // === CICD 发布管理 - K8s容器操作 ===
+  { func_name: 'K8s Pod终端', uri: '/cicd/api/k8s/clusters/{id}/pods/{podName}/exec', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '获取K8s Pod日志', uri: '/cicd/api/k8s/clusters/{id}/pods/{podName}/logs', method_type: 'GET', group_name: '发布功能' },
+  { func_name: '获取K8s Pod Metrics', uri: '/cicd/api/k8s/clusters/{id}/pods/metrics', method_type: 'GET', group_name: '发布功能' },
   { func_name: '重启K8s Deployment', uri: '/cicd/api/k8s/clusters/{id}/deployments/{name}/restart', method_type: 'POST', group_name: '发布功能' },
   { func_name: '删除K8s Pod', uri: '/cicd/api/k8s/clusters/{id}/pods/{podName}', method_type: 'DELETE', group_name: '发布功能' },
 

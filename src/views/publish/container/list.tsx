@@ -128,6 +128,12 @@ export default function PublishContainerList() {
   const [k8sLoading, setK8sLoading] = useState(false);
   const [k8sDeployConfig, setK8sDeployConfig] = useState<ApplicationDeployment | null>(null);
 
+  // Refs to avoid stale closure in ProTable action column render functions
+  const k8sClusterIdRef = useRef(k8sClusterId);
+  k8sClusterIdRef.current = k8sClusterId;
+  const k8sPodsRef = useRef(k8sPods);
+  k8sPodsRef.current = k8sPods;
+
   // --- Docker Tab State ---
   const [dockerServerId, setDockerServerId] = useState<number | undefined>();
   const [dockerContainers, setDockerContainers] = useState<DockerContainer[]>([]);
@@ -226,18 +232,29 @@ export default function PublishContainerList() {
   }, [dockerServerId]);
 
   // --- K8s Terminal (pod-level) ---
-  const openK8sTerminal = (pod: PodInfo) => {
-    if (!k8sClusterId) return;
-    setK8sTermClusterId(k8sClusterId);
+  // Uses refs (not state directly) to avoid stale closure issues when ProTable
+  // caches action-column rendered cells across re-renders.
+  const openK8sTerminal = (podName: string) => {
+    console.log('[K8sTerm] openK8sTerminal called, podName:', podName);
+    const clusterId = k8sClusterIdRef.current;
+    const pods = k8sPodsRef.current;
+    console.log('[K8sTerm] clusterId:', clusterId, 'pods count:', pods?.length);
+    if (!clusterId) { console.warn('[K8sTerm] no clusterId selected'); message.warning('请先选择 K8s 集群'); return; }
+    const pod = pods.find(p => p.name === podName);
+    if (!pod) { console.warn('[K8sTerm] pod not found in ref:', podName, 'available:', pods.map(p=>p.name)); message.warning(`Pod "${podName}" 信息未找到，请刷新后重试`); return; }
+    console.log('[K8sTerm] pod found, containers:', pod.containers?.length);
+    setK8sTermClusterId(clusterId);
     const containers = pod.containers || [];
     if (containers.length <= 1) {
       setSelectedContainer(containers[0]?.name ?? '');
       setK8sTermPod(pod);
       setK8sTermOpen(true);
+      console.log('[K8sTerm] opening terminal modal directly');
     } else {
       setK8sTermPod(pod);
       setSelectedContainer(containers[0]?.name ?? '');
       setContainerSelectOpen(true);
+      console.log('[K8sTerm] opening container selector modal');
     }
   };
 
@@ -253,8 +270,16 @@ export default function PublishContainerList() {
 
   // K8s Terminal WebSocket setup
   useEffect(() => {
+    console.log('[K8sTerm] useEffect:', { k8sTermOpen, pod: k8sTermPod?.name, k8sTermClusterId, termRef: !!termRef.current });
     if (!k8sTermOpen || !k8sTermPod || !k8sTermClusterId || !termRef.current) return;
 
+    // Dispose previous terminal if exists (Modal now stays in DOM, no destroyOnClose)
+    if (xtermRef.current) {
+      xtermRef.current.dispose();
+      xtermRef.current = null;
+    }
+
+    console.log('[K8sTerm] Creating Terminal...');
     const term = new Terminal({
       theme: { background: '#1e1e1e', foreground: '#d4d4d4', cursor: '#14b8a6', cursorAccent: '#1e1e1e' },
       fontFamily: 'JetBrains Mono, Menlo, Monaco, monospace',
@@ -277,15 +302,19 @@ export default function PublishContainerList() {
       const ns = k8sTermPod.namespace || 'default';
       const containerParam = selectedContainer ? `&container=${encodeURIComponent(selectedContainer)}` : '';
       const url = `${wsBaseURL}/cicd/api/k8s/clusters/${k8sTermClusterId}/pods/${encodeURIComponent(k8sTermPod.name)}/exec?namespace=${encodeURIComponent(ns)}&token=${token}${containerParam}`;
+      console.log('[K8sTerm] WS URL:', url.replace(/token=[^&]+/, 'token=***'));
 
       const ws = new WebSocket(url);
+      ws.binaryType = 'arraybuffer'; // 后端发送 BinaryMessage，需以此接收 ArrayBuffer
       wsRef.current = ws;
 
       ws.onopen = () => {
+        console.log('[K8sTerm] WS onopen');
         if (k8sConnIdRef.current !== connId) return;
         term.clear(); term.focus(); message.success('Pod 终端已连接');
       };
       ws.onmessage = (event) => {
+        console.log('[K8sTerm] WS recv, type:', typeof event.data, 'len:', event.data?.length);
         if (event.data instanceof ArrayBuffer) {
           term.write(new TextDecoder().decode(event.data));
         } else if (typeof event.data === 'string') {
@@ -293,8 +322,14 @@ export default function PublishContainerList() {
         }
       };
       const disposeOnData = term.onData((data: string) => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(data);
+        console.log('[K8sTerm] onData, len:', data.length, 'wsState:', ws.readyState);
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(data);
+        } else {
+          console.warn('[K8sTerm] WS not open, readyState:', ws.readyState);
+        }
       });
+      console.log('[K8sTerm] onData registered');
       ws.onerror = () => {
         if (k8sConnIdRef.current !== connId) return;
         term.writeln('\x1b[31m连接失败，请检查网络或 Pod 状态\x1b[0m');
@@ -318,8 +353,12 @@ export default function PublishContainerList() {
   }, [k8sTermOpen, k8sTermPod, k8sTermClusterId, wsBaseURL, selectedContainer]);
 
   // --- K8s Pod Actions ---
-  const handleK8sDeletePod = async (pod: PodInfo) => {
-    if (!k8sClusterId) return;
+  const handleK8sDeletePod = async (podName: string) => {
+    const clusterId = k8sClusterIdRef.current;
+    const pods = k8sPodsRef.current;
+    if (!clusterId) { message.warning('请先选择 K8s 集群'); return; }
+    const pod = pods.find(p => p.name === podName);
+    if (!pod) { message.warning(`Pod "${podName}" 信息未找到，请刷新后重试`); return; }
     Modal.confirm({
       title: '删除 Pod 确认',
       content: `确认删除 Pod "${pod.name}"？Pod 会被重建。`,
@@ -330,11 +369,11 @@ export default function PublishContainerList() {
       maskTransitionName: '',
       onOk: async () => {
         try {
-          await k8sApi.deleteK8sPod(k8sClusterId, pod.name, pod.namespace);
+          await k8sApi.deleteK8sPod(clusterId, pod.name, pod.namespace);
           message.success(`Pod "${pod.name}" 已删除`);
           containerOps.recordContainerOperation({
             operation_type: 'delete', target_type: 'k8s',
-            target_detail: `cluster: ${k8sClusterId} / pod: ${pod.name} / ns: ${pod.namespace}`,
+            target_detail: `cluster: ${clusterId} / pod: ${pod.name} / ns: ${pod.namespace}`,
             operator: 'admin', result: 'success',
           }).catch(() => {});
           loadK8sPods();
@@ -475,13 +514,13 @@ export default function PublishContainerList() {
           {hasComp('publish_container_k8s_terminal') && (
             <Tooltip title="进入终端">
               <Button type="link" size="small" icon={<CodeOutlined />}
-                onClick={() => openK8sTerminal(row._pod)}>终端</Button>
+                onClick={() => openK8sTerminal(row.podName)}>终端</Button>
             </Tooltip>
           )}
           {hasComp('publish_container_k8s_delete') && (
             <Tooltip title="删除 Pod">
               <Button type="link" size="small" danger icon={<DeleteOutlined />}
-                onClick={() => handleK8sDeletePod(row._pod)}>删除</Button>
+                onClick={() => handleK8sDeletePod(row.podName)}>删除</Button>
             </Tooltip>
           )}
         </Space>
@@ -715,13 +754,31 @@ export default function PublishContainerList() {
         footer={null}
         width="80vw"
         style={{ top: 20 }}
-        destroyOnClose
         maskClosable
-        keyboard
+        keyboard={false}
         transitionName=""
         maskTransitionName=""
+        // Ant Design Modal auto-focus steals focus from xterm; disable it
+        autoFocus={false}
+        // Force focus to xterm after Modal finishes opening
+        afterOpenChange={(open) => {
+          if (open) {
+            setTimeout(() => {
+              if (xtermRef.current) {
+                xtermRef.current.focus();
+                console.log('[K8sTerm] forced xterm focus after Modal open');
+              }
+            }, 100);
+          }
+        }}
       >
         <div ref={termRef}
+          onClick={() => {
+            // Click the terminal area → refocus xterm
+            if (xtermRef.current) {
+              setTimeout(() => xtermRef.current?.focus(), 0);
+            }
+          }}
           style={{
             width: '100%', height: 500, backgroundColor: '#1e1e1e',
             borderRadius: 4, padding: 4,

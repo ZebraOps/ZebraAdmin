@@ -31,7 +31,8 @@ export default defineConfig(({ mode }) => {
         },
         '/cicd': {
           target: env.VITE_BASE_URL,
-          changeOrigin: true
+          changeOrigin: true,
+          ws: true
         },
         '/route': {
           target: env.VITE_BASE_URL,
