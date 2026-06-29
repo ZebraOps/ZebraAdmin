@@ -95,6 +95,7 @@ export default function PublishContainerList() {
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const k8sConnIdRef = useRef(0);
 
   const [dockerTermOpen, setDockerTermOpen] = useState(false);
   const [dockerTermServerId, setDockerTermServerId] = useState<number>(0);
@@ -174,7 +175,9 @@ export default function PublishContainerList() {
   };
 
   const closeK8sTerminal = () => {
-    if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
+    const ws = wsRef.current;
+    wsRef.current = null;
+    if (ws) ws.close();
     if (xtermRef.current) { xtermRef.current.dispose(); xtermRef.current = null; fitAddonRef.current = null; }
     setK8sTermOpen(false);
     setK8sTermPod(null);
@@ -202,6 +205,7 @@ export default function PublishContainerList() {
     const fitTimer = setTimeout(() => { fitAddon.fit(); term.focus(); }, 150);
 
     const wsTimer = setTimeout(() => {
+      const connId = ++k8sConnIdRef.current;
       const token = localStg.get<string>('token') || '';
       const ns = k8sTermPod.namespace || 'default';
       const containerParam = selectedContainer ? `&container=${encodeURIComponent(selectedContainer)}` : '';
@@ -210,7 +214,10 @@ export default function PublishContainerList() {
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
-      ws.onopen = () => { term.clear(); term.focus(); message.success('Pod 终端已连接'); };
+      ws.onopen = () => {
+        if (k8sConnIdRef.current !== connId) return;
+        term.clear(); term.focus(); message.success('Pod 终端已连接');
+      };
       ws.onmessage = (event) => {
         if (event.data instanceof ArrayBuffer) {
           term.write(new TextDecoder().decode(event.data));
@@ -222,10 +229,12 @@ export default function PublishContainerList() {
         if (ws.readyState === WebSocket.OPEN) ws.send(data);
       });
       ws.onerror = () => {
+        if (k8sConnIdRef.current !== connId) return;
         term.writeln('\x1b[31m连接失败，请检查网络或 Pod 状态\x1b[0m');
         message.error('Pod 终端连接失败');
       };
       ws.onclose = (event) => {
+        if (k8sConnIdRef.current !== connId) return;
         wsRef.current = null;
         disposeOnData?.dispose();
         if (!event.wasClean) term.writeln('\x1b[31m连接异常断开\x1b[0m');
@@ -235,7 +244,9 @@ export default function PublishContainerList() {
     return () => {
       clearTimeout(fitTimer);
       clearTimeout(wsTimer);
-      if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
+      const ws = wsRef.current;
+      wsRef.current = null;
+      if (ws) ws.close();
     };
   }, [k8sTermOpen, k8sTermPod, k8sTermClusterId, wsBaseURL, selectedContainer]);
 

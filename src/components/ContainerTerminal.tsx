@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Badge, Button, Space, message } from 'antd';
-import { ReloadOutlined, ExpandOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -26,6 +26,7 @@ export default function ContainerTerminal({ serverId, containerId, autoConnect =
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const connIdRef = useRef(0);
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'closed' | 'error'>('closed');
 
   const rawBaseURL = (import.meta.env.VITE_BASE_URL || '').trim();
@@ -72,6 +73,7 @@ export default function ContainerTerminal({ serverId, containerId, autoConnect =
   const connect = useCallback(() => {
     if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
 
+    const connId = ++connIdRef.current;
     const token = localStg.get<string>('token') || '';
     const url = `${wsBaseURL}/cicd/api/servers/${serverId}/containers/${containerId}/attach?token=${token}`;
 
@@ -82,6 +84,7 @@ export default function ContainerTerminal({ serverId, containerId, autoConnect =
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (connIdRef.current !== connId) return;
       setWsStatus('connected');
       message.success('容器终端已连接');
     };
@@ -102,11 +105,13 @@ export default function ContainerTerminal({ serverId, containerId, autoConnect =
     });
 
     ws.onerror = () => {
+      if (connIdRef.current !== connId) return;
       setWsStatus('error');
       message.error('容器终端连接失败');
     };
 
     ws.onclose = () => {
+      if (connIdRef.current !== connId) return;
       setWsStatus('closed');
       wsRef.current = null;
       handleInput?.dispose();
@@ -116,7 +121,11 @@ export default function ContainerTerminal({ serverId, containerId, autoConnect =
   // 自动连接
   useEffect(() => {
     if (autoConnect) connect();
-    return () => { if (wsRef.current) wsRef.current.close(); };
+    return () => {
+      const ws = wsRef.current;
+      wsRef.current = null;
+      if (ws) ws.close();
+    };
   }, [autoConnect, connect]);
 
   // 窗口 resize 时 fit
