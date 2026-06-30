@@ -4,7 +4,6 @@ import { PageResult } from '@/service/types';
 export interface GitPlatform {
   id: number;
   name: string;
-  display_name?: string;
   platform_type?: string;
   url?: string;
   api_url?: string;

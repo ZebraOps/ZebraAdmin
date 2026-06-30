@@ -11,7 +11,6 @@ const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'de
 
 const columns: ProColumns<JenkinsPlatform>[] = [
   { title: '名称', dataIndex: 'name', ellipsis: true },
-  { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
   { title: '平台地址', dataIndex: 'url', ellipsis: true, search: false, copyable: true },
   { title: '用户名', dataIndex: 'username', width: 100, search: false },
   { title: '状态', dataIndex: 'status', width: 80, search: false,
@@ -74,7 +73,6 @@ export default function PublishConfigJenkinsPlatform() {
         <>
           <ProFormGroup title="基本信息">
             <ProFormText name="name" label="名称" rules={[{ required: true }]} placeholder="如 company-jenkins" />
-            <ProFormText name="display_name" label="显示名称" placeholder="如：公司Jenkins" />
           </ProFormGroup>
           <ProFormGroup title="连接配置">
             <ProFormText name="url" label="平台地址" rules={[{ required: true }]} placeholder="如：https://jenkins.company.com" />

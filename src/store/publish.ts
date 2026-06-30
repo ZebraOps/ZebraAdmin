@@ -72,7 +72,7 @@ function mapLinuxMachineOptions(items: LinuxMachine[]): OptionItem[] {
   return items.map(s => ({ label: `${s.name} (${s.host})`, value: s.id }));
 }
 function mapLanguageOptions(items: Language[]): OptionItem[] {
-  return items.map(l => ({ label: l.display_name || l.name, value: l.name }));
+  return items.map(l => ({ label: l.name, value: l.name }));
 }
 function mapBuildTplOptions(items: BuildTemplate[]): OptionItem[] {
   return items.map(b => ({ label: b.name, value: b.id }));
@@ -84,10 +84,10 @@ function mapRepoOptions(items: Repo[]): OptionItem[] {
   return items.map(r => ({ label: `${r.c_name} (${r.e_name})`, value: r.id }));
 }
 function mapJenkinsPlatformOptions(items: JenkinsPlatform[]): OptionItem[] {
-  return items.map(j => ({ label: `${j.display_name || j.name} (${j.url})`, value: j.id }));
+  return items.map(j => ({ label: `${j.name} (${j.url})`, value: j.id }));
 }
 function mapGitPlatformOptions(items: GitPlatform[]): OptionItem[] {
-  return items.map(g => ({ label: `${g.display_name || g.name} (${g.url})`, value: g.id }));
+  return items.map(g => ({ label: `${g.name} (${g.url})`, value: g.id }));
 }
 const registryTypeLabels: Record<string, string> = { v2: 'V2', harbor: 'Harbor', acr: 'ACR' };
 function mapImageRegistryOptions(items: ImageRegistry[]): OptionItem[] {

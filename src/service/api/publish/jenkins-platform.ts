@@ -4,7 +4,6 @@ import { PageResult } from '@/service/types';
 export interface JenkinsPlatform {
   id: number;
   name: string;
-  display_name?: string;
   url?: string;
   username?: string;
   password?: string;

@@ -99,7 +99,7 @@ export default function PublishTemplatesDeployment() {
   useEffect(() => {
     fetchLanguages({ size: 200 }).then((res) => {
       setLanguageOptions(((res as any)?.records ?? []).map((e: any) => ({
-        label: e.display_name || e.name,
+        label: e.name,
         value: e.name,
       })));
     }).catch(() => {});

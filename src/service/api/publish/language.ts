@@ -4,7 +4,6 @@ import { PageResult } from '@/service/types';
 export interface Language {
   id: number;
   name: string;
-  display_name?: string;
   icon?: string;
   status?: string;
   sort_order?: number;

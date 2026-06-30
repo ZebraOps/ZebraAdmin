@@ -8,7 +8,6 @@ const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'de
 
 const columns: ProColumns<Language>[] = [
   { title: '语言名称', dataIndex: 'name', ellipsis: true },
-  { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
   { title: '图标', dataIndex: 'icon', width: 80, search: false,
     render: (val) => val ? <Tag color="blue">{String(val)}</Tag> : '-'
   },
@@ -45,7 +44,6 @@ export default function PublishConfigLanguage() {
       formFields={
         <>
           <ProFormText name="name" label="语言名称" rules={[{ required: true }]} placeholder="Go / Java / Python..." />
-          <ProFormText name="display_name" label="显示名称" placeholder="Golang / Java / Python 3" />
           <ProFormText name="icon" label="图标" placeholder="mdi:language-go / mdi:language-java" />
           <ProFormDigit name="sort_order" label="排序" min={0} fieldProps={{ precision: 0 }} />
           <ProFormSelect name="status" label="状态" placeholder="请选择状态"

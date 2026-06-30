@@ -43,7 +43,7 @@ export default function PublishRepos() {
   useEffect(() => {
     fetchLanguages({ size: 200 }).then((res) => {
       setLanguageOptions(((res as any)?.records ?? []).map((e: any) => ({
-        label: e.display_name || e.name,
+        label: e.name,
         value: e.name,
       })));
     }).catch(() => {});
@@ -54,7 +54,7 @@ export default function PublishRepos() {
     // 获取Git平台列表
     fetchGitPlatforms({ size: 100 }).then((res) => {
       setGitPlatformOptions(((res as any)?.records ?? []).map((e: any) => ({
-        label: e.display_name || e.name,
+        label: e.name,
         value: e.id,
       })));
     }).catch(() => {});

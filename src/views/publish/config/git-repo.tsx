@@ -11,7 +11,6 @@ const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'de
 
 const columns: ProColumns<GitPlatform>[] = [
   { title: '名称', dataIndex: 'name', ellipsis: true },
-  { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
   { title: '平台类型', dataIndex: 'platform_type', width: 90,
     valueEnum: { gitlab: { text: 'GitLab' }, github: { text: 'GitHub' }, gitea: { text: 'Gitea' }, gitee: { text: 'Gitee' }, custom: { text: 'Custom' } }
   },
@@ -87,7 +86,6 @@ export default function PublishConfigGitPlatform() {
         <>
           <ProFormGroup title="基本信息">
             <ProFormText name="name" label="名称" rules={[{ required: true }]} placeholder="请输入平台名称，如 company-gitlab" />
-            <ProFormText name="display_name" label="显示名称" placeholder="如：公司GitLab" />
             <ProFormSelect name="platform_type" label="平台类型" rules={[{ required: true }]} placeholder="请选择平台类型"
               options={[{ label: 'GitLab', value: 'gitlab' }, { label: 'GitHub', value: 'github' }, { label: 'Gitea', value: 'gitea' }, { label: 'Gitee', value: 'gitee' }, { label: 'Custom', value: 'custom' }]} />
           </ProFormGroup>
