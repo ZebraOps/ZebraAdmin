@@ -309,18 +309,17 @@ export default function PublishContainerList() {
       ws.binaryType = 'arraybuffer'; // 后端发送 BinaryMessage，需以此接收 ArrayBuffer
       wsRef.current = ws;
 
+      // 收集终端中输入的命令，关闭时写入操作历史
+      const k8sTermCommands: string[] = [];
+      let k8sTermCmdBuf = '';
+      let k8sTermEscaping = false; // 正在跳过 ANSI 转义序列
+
       ws.onopen = () => {
         console.log('[K8sTerm] WS onopen');
         if (k8sConnIdRef.current !== connId) return;
         term.clear(); term.focus(); message.success('Pod 终端已连接');
-        containerOps.recordContainerOperation({
-          operation_type: 'terminal', target_type: 'k8s',
-          target_detail: `cluster: ${k8sTermClusterId} / pod: ${k8sTermPod.name} / ns: ${k8sTermPod.namespace || 'default'}${selectedContainer ? ' / container: ' + selectedContainer : ''}`,
-          operator: 'admin', result: 'success',
-        }).catch(() => {});
       };
       ws.onmessage = (event) => {
-        console.log('[K8sTerm] WS recv, type:', typeof event.data, 'len:', event.data?.length);
         if (event.data instanceof ArrayBuffer) {
           term.write(new TextDecoder().decode(event.data));
         } else if (typeof event.data === 'string') {
@@ -328,9 +327,26 @@ export default function PublishContainerList() {
         }
       };
       const disposeOnData = term.onData((data: string) => {
-        console.log('[K8sTerm] onData, len:', data.length, 'wsState:', ws.readyState);
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(data);
+          // 收集输入的命令，过滤 ANSI/CSI 控制序列
+          for (const ch of data) {
+            if (ch === '\x1b') {
+              k8sTermEscaping = true; // 进入转义序列
+              continue;
+            }
+            if (k8sTermEscaping) {
+              if (/[A-Za-z]/.test(ch)) k8sTermEscaping = false; // 转义序列终止
+              continue;
+            }
+            if (ch === '\r') {
+              const cmd = k8sTermCmdBuf.trim();
+              if (cmd) k8sTermCommands.push(cmd);
+              k8sTermCmdBuf = '';
+            } else if (ch !== '\n') {
+              k8sTermCmdBuf += ch;
+            }
+          }
         } else {
           console.warn('[K8sTerm] WS not open, readyState:', ws.readyState);
         }
@@ -346,6 +362,16 @@ export default function PublishContainerList() {
         wsRef.current = null;
         disposeOnData?.dispose();
         if (!event.wasClean) term.writeln('\x1b[31m连接异常断开\x1b[0m');
+        // 终端关闭时记录操作历史，包含所有输入的命令
+        const details = k8sTermCommands.length > 0
+          ? `commands: ${k8sTermCommands.join(', ')}`
+          : undefined;
+        containerOps.recordContainerOperation({
+          operation_type: 'terminal', target_type: 'k8s',
+          target_detail: `cluster: ${k8sTermClusterId} / pod: ${k8sTermPod.name} / ns: ${k8sTermPod.namespace || 'default'}${selectedContainer ? ' / container: ' + selectedContainer : ''}`,
+          operator: 'admin', result: 'success',
+          ...(details ? { details } : {}),
+        }).catch(() => {});
       };
     }, 250);
 
@@ -839,11 +865,15 @@ export default function PublishContainerList() {
           serverId={dockerTermServerId}
           containerId={dockerTermContainerId}
           autoConnect
-          onConnect={() => {
+          onClose={(commands) => {
+            const details = commands.length > 0
+              ? `commands: ${commands.join(', ')}`
+              : undefined;
             containerOps.recordContainerOperation({
               operation_type: 'terminal', target_type: 'docker',
               target_detail: `server: ${dockerTermServerId} / container: ${dockerTermContainerNameRef.current || dockerTermContainerId}`,
               operator: 'admin', result: 'success',
+              ...(details ? { details } : {}),
             }).catch(() => {});
           }}
         />

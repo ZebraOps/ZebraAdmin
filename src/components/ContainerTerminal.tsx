@@ -12,8 +12,10 @@ interface ContainerTerminalProps {
   containerId: string;
   /** 是否自动连接 */
   autoConnect?: boolean;
-  /** 连接成功后回调，用于记录操作历史等 */
+  /** 连接成功后回调 */
   onConnect?: () => void;
+  /** 终端关闭时回调，传入本次会话中收集到的命令列表 */
+  onClose?: (commands: string[]) => void;
 }
 
 const STATUS_MAP: Record<string, { status: 'default' | 'processing' | 'success' | 'error'; label: string }> = {
@@ -23,7 +25,7 @@ const STATUS_MAP: Record<string, { status: 'default' | 'processing' | 'success' 
   error:      { status: 'error',      label: '连接错误' },
 };
 
-export default function ContainerTerminal({ serverId, containerId, autoConnect = true, onConnect }: ContainerTerminalProps) {
+export default function ContainerTerminal({ serverId, containerId, autoConnect = true, onConnect, onClose }: ContainerTerminalProps) {
   const termRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -82,6 +84,11 @@ export default function ContainerTerminal({ serverId, containerId, autoConnect =
     setWsStatus('connecting');
     if (xtermRef.current) xtermRef.current.clear();
 
+    // 收集终端中输入的命令，过滤 ANSI/CSI 控制序列
+    const commands: string[] = [];
+    let cmdBuf = '';
+    let escaping = false;
+
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -100,10 +107,27 @@ export default function ContainerTerminal({ serverId, containerId, autoConnect =
       }
     };
 
-    // 键盘输入 → WebSocket → 容器 stdin
+    // 键盘输入 → WebSocket → 容器 stdin，同时收集命令
     const handleInput = xtermRef.current?.onData((data: string) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(data);
+        for (const ch of data) {
+          if (ch === '\x1b') {
+            escaping = true; // 进入 ANSI 转义序列
+            continue;
+          }
+          if (escaping) {
+            if (/[A-Za-z]/.test(ch)) escaping = false; // 转义序列终止
+            continue;
+          }
+          if (ch === '\r') {
+            const cmd = cmdBuf.trim();
+            if (cmd) commands.push(cmd);
+            cmdBuf = '';
+          } else if (ch !== '\n') {
+            cmdBuf += ch;
+          }
+        }
       }
     });
 
@@ -118,8 +142,9 @@ export default function ContainerTerminal({ serverId, containerId, autoConnect =
       setWsStatus('closed');
       wsRef.current = null;
       handleInput?.dispose();
+      onClose?.(commands);
     };
-  }, [serverId, containerId, wsBaseURL, onConnect]);
+  }, [serverId, containerId, wsBaseURL, onConnect, onClose]);
 
   // 自动连接
   useEffect(() => {
