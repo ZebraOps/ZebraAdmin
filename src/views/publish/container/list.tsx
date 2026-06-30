@@ -508,13 +508,25 @@ export default function PublishContainerList() {
       render: (_, row) => <span>{row.startTime ? new Date(row.startTime).toLocaleString() : '-'}</span>,
     },
     {
-      title: '操作', key: 'actions', width: 130, fixed: 'right', search: false,
+      title: '操作', key: 'actions', width: 180, fixed: 'right', search: false,
       render: (_, row) => (
         <Space size="small">
           {hasComp('publish_container_k8s_terminal') && (
             <Tooltip title="进入终端">
               <Button type="link" size="small" icon={<CodeOutlined />}
                 onClick={() => openK8sTerminal(row.podName)}>终端</Button>
+            </Tooltip>
+          )}
+          {hasComp('publish_container_k8s_logs') && (
+            <Tooltip title="查看日志">
+              <Button type="link" size="small" icon={<FileTextOutlined />}
+                onClick={() => {
+                  setLogType('k8s');
+                  setLogClusterId(k8sClusterIdRef.current!);
+                  setLogPodName(row.podName);
+                  setLogNamespace(row.namespace || 'default');
+                  setLogOpen(true);
+                }}>日志</Button>
             </Tooltip>
           )}
           {hasComp('publish_container_k8s_delete') && (
