@@ -155,6 +155,7 @@ export default function PublishContainerList() {
   const [dockerTermOpen, setDockerTermOpen] = useState(false);
   const [dockerTermServerId, setDockerTermServerId] = useState<number>(0);
   const [dockerTermContainerId, setDockerTermContainerId] = useState('');
+  const dockerTermContainerNameRef = useRef(''); // 用于操作记录
 
   // --- Log State ---
   const [logOpen, setLogOpen] = useState(false);
@@ -312,6 +313,11 @@ export default function PublishContainerList() {
         console.log('[K8sTerm] WS onopen');
         if (k8sConnIdRef.current !== connId) return;
         term.clear(); term.focus(); message.success('Pod 终端已连接');
+        containerOps.recordContainerOperation({
+          operation_type: 'terminal', target_type: 'k8s',
+          target_detail: `cluster: ${k8sTermClusterId} / pod: ${k8sTermPod.name} / ns: ${k8sTermPod.namespace || 'default'}${selectedContainer ? ' / container: ' + selectedContainer : ''}`,
+          operator: 'admin', result: 'success',
+        }).catch(() => {});
       };
       ws.onmessage = (event) => {
         console.log('[K8sTerm] WS recv, type:', typeof event.data, 'len:', event.data?.length);
@@ -570,6 +576,7 @@ export default function PublishContainerList() {
                 onClick={() => {
                   setDockerTermServerId(dockerServerId!);
                   setDockerTermContainerId(record.id);
+                  dockerTermContainerNameRef.current = record.names?.[0]?.replace(/^\//, '') || record.id;
                   setDockerTermOpen(true);
                 }}>终端</Button>
             </Tooltip>
@@ -832,6 +839,13 @@ export default function PublishContainerList() {
           serverId={dockerTermServerId}
           containerId={dockerTermContainerId}
           autoConnect
+          onConnect={() => {
+            containerOps.recordContainerOperation({
+              operation_type: 'terminal', target_type: 'docker',
+              target_detail: `server: ${dockerTermServerId} / container: ${dockerTermContainerNameRef.current || dockerTermContainerId}`,
+              operator: 'admin', result: 'success',
+            }).catch(() => {});
+          }}
         />
       </Modal>
 

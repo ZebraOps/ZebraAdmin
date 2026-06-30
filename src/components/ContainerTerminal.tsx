@@ -12,6 +12,8 @@ interface ContainerTerminalProps {
   containerId: string;
   /** 是否自动连接 */
   autoConnect?: boolean;
+  /** 连接成功后回调，用于记录操作历史等 */
+  onConnect?: () => void;
 }
 
 const STATUS_MAP: Record<string, { status: 'default' | 'processing' | 'success' | 'error'; label: string }> = {
@@ -21,7 +23,7 @@ const STATUS_MAP: Record<string, { status: 'default' | 'processing' | 'success' 
   error:      { status: 'error',      label: '连接错误' },
 };
 
-export default function ContainerTerminal({ serverId, containerId, autoConnect = true }: ContainerTerminalProps) {
+export default function ContainerTerminal({ serverId, containerId, autoConnect = true, onConnect }: ContainerTerminalProps) {
   const termRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -87,6 +89,7 @@ export default function ContainerTerminal({ serverId, containerId, autoConnect =
       if (connIdRef.current !== connId) return;
       setWsStatus('connected');
       message.success('容器终端已连接');
+      onConnect?.();
     };
 
     ws.onmessage = (event) => {
@@ -116,7 +119,7 @@ export default function ContainerTerminal({ serverId, containerId, autoConnect =
       wsRef.current = null;
       handleInput?.dispose();
     };
-  }, [serverId, containerId, wsBaseURL]);
+  }, [serverId, containerId, wsBaseURL, onConnect]);
 
   // 自动连接
   useEffect(() => {
