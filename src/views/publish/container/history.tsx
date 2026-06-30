@@ -27,7 +27,7 @@ export default function PublishContainerHistory() {
 
   const columns: ProColumns<ContainerOperation>[] = [
     {
-      title: '时间', dataIndex: 'timestamp', width: 170, valueType: 'dateTime',
+      title: '时间', dataIndex: 'created_at', width: 170, valueType: 'dateTime',
     },
     {
       title: '操作类型', dataIndex: 'operation_type', width: 120,
@@ -45,7 +45,7 @@ export default function PublishContainerHistory() {
       title: '目标类型', dataIndex: 'target_type', width: 110,
       valueType: 'select',
       valueEnum: { k8s: { text: 'K8s 集群' }, docker: { text: 'Docker 主机' } },
-      render: (val) => <Tag>{TARGET_TYPE_MAP[String(val)] || String(val) || '-'}</Tag>,
+      render: (_, row) => <Tag>{TARGET_TYPE_MAP[row.target_type] || row.target_type || '-'}</Tag>,
     },
     { title: '目标', dataIndex: 'target_detail', ellipsis: true, search: false },
     { title: '操作人', dataIndex: 'operator', width: 100 },

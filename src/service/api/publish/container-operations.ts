@@ -30,7 +30,7 @@ export interface DockerContainerInfo {
 /** Operation history record */
 export interface ContainerOperation {
   id: number;
-  timestamp: string;
+  created_at: string;
   operation_type: string;
   target_type: string;
   target_detail: string;
