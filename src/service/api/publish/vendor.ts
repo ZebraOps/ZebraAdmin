@@ -4,7 +4,6 @@ import { PageResult } from '@/service/types';
 export interface Vendor {
   id: number;
   name: string;
-  display_name?: string;
   description?: string;
   provider?: string;
   region?: string;

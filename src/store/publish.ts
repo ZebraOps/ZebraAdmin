@@ -94,7 +94,7 @@ function mapImageRegistryOptions(items: ImageRegistry[]): OptionItem[] {
   return items.map(i => ({ label: `${i.name} (${i.url}) [${registryTypeLabels[i.type] || i.type}]`, value: i.id }));
 }
 function mapVendorOptions(items: Vendor[]): OptionItem[] {
-  return items.map(v => ({ label: v.display_name || v.name, value: v.provider || v.name }));
+  return items.map(v => ({ label: v.name, value: v.provider || v.name }));
 }
 
 /** 解析分页结果，提取 records */

@@ -8,7 +8,6 @@ const STATUS_COLORS: Record<string, string> = { active: 'success', inactive: 'de
 
 const columns: ProColumns<Vendor>[] = [
   { title: '名称', dataIndex: 'name', ellipsis: true },
-  { title: '显示名称', dataIndex: 'display_name', ellipsis: true, search: false },
   { title: '提供商', dataIndex: 'provider', width: 90, search: false, render: (val) => val ? <Tag>{String(val).toUpperCase()}</Tag> : '-' },
   { title: '区域', dataIndex: 'region', width: 100, search: false },
   { title: '状态', dataIndex: 'status', width: 80, search: false, render: (val) => val ? <Tag color={STATUS_COLORS[String(val)] ?? 'default'}>{String(val)}</Tag> : '-' },
@@ -36,7 +35,6 @@ export default function PublishConfigVendor() {
       formFields={
         <>
           <ProFormText name="name" label="名称" rules={[{ required: true }]} placeholder="请输入云厂商名称" />
-          <ProFormText name="display_name" label="显示名称" placeholder="请输入显示名称" />
           <ProFormSelect name="provider" label="提供商" rules={[{ required: true }]} placeholder="请选择云提供商"
             options={[{ label: '阿里云 (Aliyun)', value: 'aliyun' }, 
             { label: '亚马逊云 (AWS)', value: 'aws' }, 

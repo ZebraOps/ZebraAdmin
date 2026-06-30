@@ -9,12 +9,25 @@ import PublishCRUDPage from '@/components/PublishCRUDPage';
 import * as api from '@/service/api/publish/k8s-cluster';
 import type { K8sCluster } from '@/service/api/publish/k8s-cluster';
 import { usePublishStore } from '@/store/publish';
+import { fetchVendors, type Vendor } from '@/service/api/publish/vendor';
 
 export default function PublishClusterK8s() {
   const publishStore = usePublishStore();
   const [testingId, setTestingId] = useState<number | null>(null);
+  const [vendorOptions, setVendorOptions] = useState<{ label: string; value: string }[]>([]);
 
   useEffect(() => { publishStore.loadAll(); }, [publishStore]);
+
+  // 动态获取所有云厂商（直接从 API 获取，确保数据最新）
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchVendors({ page: 1, size: 200 }) as any;
+        const records: Vendor[] = res?.records ?? [];
+        setVendorOptions(records.map(v => ({ label: v.name, value: v.provider || v.name })));
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const handleTestConnection = async (row: K8sCluster) => {
     setTestingId(row.id);
@@ -35,8 +48,8 @@ export default function PublishClusterK8s() {
     {
       title: '云厂商', dataIndex: 'vendor', width: 90,
       valueType: 'select',
-      valueEnum: (publishStore.vendorOptions || []).reduce((acc, o) => {
-        acc[o.value as string] = { text: o.label };
+      valueEnum: vendorOptions.reduce((acc, o) => {
+        acc[o.value] = { text: o.label };
         return acc;
       }, {} as Record<string, { text: string }>),
     },
@@ -93,7 +106,7 @@ export default function PublishClusterK8s() {
           <ProFormTextArea name="client_key" label="客户端私钥" fieldProps={{ rows: 4, placeholder: '-----BEGIN RSA PRIVATE KEY-----\n...' }} />
           <ProFormSwitch name="skip_verify" label="跳过证书验证" />
           <ProFormSelect name="vendor" label="云厂商" placeholder="请选择云厂商"
-            options={publishStore.vendorOptions || []} showSearch fieldProps={{ optionFilterProp: 'label' }} />
+            options={vendorOptions} showSearch fieldProps={{ optionFilterProp: 'label' }} />
           <ProFormSelect name="environment" label="所属环境" placeholder="请选择所属环境"
             options={(publishStore.envOptions || []).map(e => ({ label: e.label, value: e.value }))} showSearch fieldProps={{ optionFilterProp: 'label' }} />
           <ProFormSwitch name="enabled" label="启用" />
