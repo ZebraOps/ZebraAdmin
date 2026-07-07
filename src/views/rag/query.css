@@ -239,6 +239,27 @@
   background: #1A1A1A;
   color: #E5E5E5;
   border-top-right-radius: 6px;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.zb-msg-bubble.user-bubble:hover {
+  background: #2A2A2A;
+}
+
+/* edit hint — hidden until hover */
+.zb-edit-hint {
+  margin-top: 6px;
+  font-size: 10px;
+  color: rgb(255 255 255 / 0.30);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.zb-msg-bubble.user-bubble:hover .zb-edit-hint {
+  opacity: 1;
 }
 
 .zb-msg-bubble.assistant-bubble {
@@ -410,23 +431,31 @@
 /* ── Retry Button ────────────────────────── */
 .zb-retry-btn {
   flex-shrink: 0;
-  width: 32px;
   height: 32px;
+  padding: 0 10px;
   border-radius: 5px;
   border: 1px solid rgb(0 0 0 / 0.08);
   background: var(--zb-surface);
   color: var(--zb-text-2);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
   transition: all 0.18s ease;
   margin-bottom: 4px;
+  white-space: nowrap;
 }
 
-.zb-retry-btn:hover {
+.zb-retry-btn:hover:not(:disabled) {
   border-color: var(--zb-accent);
   color: var(--zb-accent);
+}
+
+.zb-retry-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* ── Loading Dot ─────────────────────────── */

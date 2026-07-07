@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Input, Select, Card, Tag, Space, Spin, Empty, message, Tooltip, Rate, Drawer, List, Descriptions, Typography } from 'antd';
-import { SendOutlined, ClearOutlined, ReloadOutlined, HistoryOutlined, StopOutlined } from '@ant-design/icons';
+import { Input, Select, Card, Tag, Space, Spin, Empty, message, Rate, Drawer, List, Descriptions, Typography } from 'antd';
+import { SendOutlined, ClearOutlined, ReloadOutlined, HistoryOutlined, StopOutlined, EditOutlined } from '@ant-design/icons';
 import { ragQueryStream, submitFeedback, fetchQueryHistory } from '@/service/api/rag/query';
 import { fetchCollections } from '@/service/api/rag/collections';
 import type { QuerySource, QueryHistory, TokenUsage } from '@/service/api/rag/query';
@@ -159,13 +159,17 @@ export default function RAGQuery() {
     message.success('对话已清空');
   };
 
-  // 重新发送最后一个问题
-  const handleRetry = async () => {
-    const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-    if (lastUserMessage) {
-      setInput(lastUserMessage.content);
-      setMessages(prev => prev.slice(0, -1));
-    }
+  // 点击用户消息 → 复制到输入框，保留聊天历史
+  const handleEditQuestion = (msgId: string) => {
+    const userMsg = messages.find(m => m.id === msgId);
+    if (!userMsg || userMsg.role !== 'user') return;
+    setInput(userMsg.content);
+    setTimeout(() => {
+      inputRef.current?.focus();
+      // 把光标移到末尾
+      const len = userMsg.content.length;
+      inputRef.current?.setSelectionRange?.(len, len);
+    }, 0);
   };
 
   // 快捷问题
@@ -284,6 +288,8 @@ export default function RAGQuery() {
                   {/* 消息气泡 */}
                   <div
                     className={`zb-msg-bubble ${msg.role === 'user' ? 'user-bubble' : 'assistant-bubble'}${msg.streaming ? ' streaming' : ''}`}
+                    onClick={msg.role === 'user' ? () => handleEditQuestion(msg.id) : undefined}
+                    title={msg.role === 'user' ? '点击编辑并重新发送' : undefined}
                   >
                     {msg.loading ? (
                       <div className="zb-loading-dots">
@@ -295,6 +301,13 @@ export default function RAGQuery() {
                           {msg.content}
                           {msg.streaming && <span className="zb-stream-cursor" />}
                         </div>
+
+                        {/* 用户消息编辑提示 */}
+                        {msg.role === 'user' && (
+                          <div className="zb-edit-hint">
+                            <EditOutlined style={{ fontSize: 10 }} /> 点击编辑
+                          </div>
+                        )}
 
                         {/* 知识来源引用 */}
                         {msg.sources && msg.sources.length > 0 && (
@@ -385,13 +398,6 @@ export default function RAGQuery() {
             >
               {loading && streamAbortRef.current ? <StopOutlined /> : <SendOutlined />}
             </button>
-            {messages.length > 0 && !loading && (
-              <Tooltip title="重新发送">
-                <button className="zb-retry-btn" onClick={handleRetry} aria-label="重新发送">
-                  <ReloadOutlined style={{ fontSize: 13 }} />
-                </button>
-              </Tooltip>
-            )}
           </div>
           <div className="zb-input-hint">
             Enter 发送 · Shift+Enter 换行
