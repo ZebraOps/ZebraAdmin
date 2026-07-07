@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Card, Input, Button, Select, Space, Tag, Divider, Spin, Empty, message, Tooltip } from 'antd';
-import { SendOutlined, ClearOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons';
-import { ragQuery } from '@/service/api/rag/query';
+import { Card, Input, Button, Select, Space, Tag, Divider, Spin, Empty, message, Tooltip, Rate, Drawer, List, Descriptions, Typography } from 'antd';
+import { SendOutlined, ClearOutlined, FileTextOutlined, ReloadOutlined, HistoryOutlined } from '@ant-design/icons';
+import { ragQuery, submitFeedback, fetchQueryHistory } from '@/service/api/rag/query';
 import { fetchCollections } from '@/service/api/rag/collections';
-import type { QueryResponse, QuerySource } from '@/service/api/rag/query';
+import type { QueryResponse, QuerySource, QueryHistory } from '@/service/api/rag/query';
+import dayjs from 'dayjs';
 import SourceReference from './components/SourceReference';
 
 const { TextArea } = Input;
@@ -13,6 +14,9 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   sources?: QuerySource[];
+  queryId?: number;
+  feedbackRating?: number;
+  feedbackSubmitted?: boolean;
   timestamp: Date;
   loading?: boolean;
 }
@@ -26,6 +30,14 @@ export default function RAGQuery() {
   const [docTypes, setDocTypes] = useState<string[]>([]);
   const [topK, setTopK] = useState(5);
   const [collectionOptions, setCollectionOptions] = useState<{ label: string; value: number }[]>([]);
+
+  // History state
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<QueryHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [selectedHistory, setSelectedHistory] = useState<QueryHistory | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -43,6 +55,30 @@ export default function RAGQuery() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // 打开历史面板时自动加载
+  useEffect(() => {
+    if (historyDrawerOpen) {
+      loadHistory(1);
+    }
+  }, [historyDrawerOpen]);
+
+  // 加载查询历史
+  const loadHistory = async (page = 1) => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetchQueryHistory({ page, size: 15 });
+      if (res) {
+        setHistoryRecords(res.records);
+        setHistoryTotal(res.total);
+        setHistoryPage(page);
+      }
+    } catch {
+      message.error('加载历史记录失败');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   // 发送消息
   const handleSend = async () => {
@@ -75,7 +111,7 @@ export default function RAGQuery() {
       // 更新 AI 消息
       setMessages(prev => prev.map(m =>
         m.id === aiMessageId
-          ? { ...m, content: response.answer, sources: response.sources, loading: false }
+          ? { ...m, content: response.answer, sources: response.sources, queryId: response.query_id, loading: false }
           : m
       ));
     } catch {
@@ -116,6 +152,7 @@ export default function RAGQuery() {
   ];
 
   return (
+    <>
     <div className="rag-query-container" style={{ height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* 顶部配置区域 */}
       <Card size="small" style={{ flexShrink: 0 }}>
@@ -158,6 +195,9 @@ export default function RAGQuery() {
             />
           </Tooltip>
 
+          <Button icon={<HistoryOutlined />} onClick={() => setHistoryDrawerOpen(true)}>
+            历史记录
+          </Button>
           <Button icon={<ClearOutlined />} onClick={handleClear} disabled={messages.length === 0}>
             清空对话
           </Button>
@@ -248,6 +288,36 @@ export default function RAGQuery() {
                           </div>
                         </div>
                       )}
+
+                      {/* 反馈评分 */}
+                      {msg.role === 'assistant' && msg.queryId && (
+                        <div style={{ marginTop: 12 }}>
+                          <Divider style={{ margin: '8px 0' }} />
+                          <Space align="center">
+                            <span style={{ fontSize: 13, color: 'var(--zb-text-2)' }}>评分：</span>
+                            <Rate
+                              count={5}
+                              value={msg.feedbackRating || 0}
+                              disabled={msg.feedbackSubmitted}
+                              onChange={async (value) => {
+                                try {
+                                  await submitFeedback(msg.queryId!, { rating: value });
+                                  setMessages(prev => prev.map(m =>
+                                    m.id === msg.id ? { ...m, feedbackRating: value, feedbackSubmitted: true } : m
+                                  ));
+                                  message.success('感谢您的反馈！');
+                                } catch {
+                                  message.error('反馈提交失败');
+                                }
+                              }}
+                              style={{ fontSize: 16, color: '#14b8a6' }}
+                            />
+                            {msg.feedbackSubmitted && (
+                              <span style={{ fontSize: 12, color: 'var(--zb-text-3)' }}>已评价</span>
+                            )}
+                          </Space>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -296,5 +366,108 @@ export default function RAGQuery() {
         </div>
       </Card>
     </div>
+
+      {/* 查询历史面板 */}
+      <Drawer
+        title="查询历史"
+        placement="right"
+        width={480}
+        open={historyDrawerOpen}
+        onClose={() => { setHistoryDrawerOpen(false); setSelectedHistory(null); }}
+        extra={
+          !selectedHistory && (
+            <Button
+              type="text"
+              icon={<ReloadOutlined />}
+              onClick={() => loadHistory(historyPage)}
+              loading={historyLoading}
+            />
+          )
+        }
+      >
+        {selectedHistory ? (
+          // 单条历史详情
+          <div>
+            <Button
+              type="link"
+              onClick={() => setSelectedHistory(null)}
+              style={{ padding: 0, marginBottom: 16 }}
+            >
+              &larr; 返回列表
+            </Button>
+            <Card size="small" title="问题" style={{ marginBottom: 12 }}>
+              <div style={{ whiteSpace: 'pre-wrap' }}>{selectedHistory.query_text}</div>
+            </Card>
+            <Card size="small" title="回答" style={{ marginBottom: 12 }}>
+              <div style={{ whiteSpace: 'pre-wrap' }}>{selectedHistory.answer_text || '(无回答)'}</div>
+            </Card>
+            {selectedHistory.source_docs && selectedHistory.source_docs.length > 0 && (
+              <Card size="small" title="参考文档" style={{ marginBottom: 12 }}>
+                <Space wrap>
+                  {selectedHistory.source_docs.map(docId => (
+                    <Tag key={docId} color="#14b8a6">Doc #{docId}</Tag>
+                  ))}
+                </Space>
+              </Card>
+            )}
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="评分">
+                {selectedHistory.rating ? (
+                  <Rate count={5} value={selectedHistory.rating} disabled style={{ fontSize: 14 }} />
+                ) : '未评分'}
+              </Descriptions.Item>
+              {selectedHistory.feedback && (
+                <Descriptions.Item label="反馈">{selectedHistory.feedback}</Descriptions.Item>
+              )}
+              <Descriptions.Item label="时间">
+                {dayjs(selectedHistory.ctime).format('YYYY-MM-DD HH:mm:ss')}
+              </Descriptions.Item>
+            </Descriptions>
+          </div>
+        ) : (
+          // 历史列表
+          <Spin spinning={historyLoading}>
+            {historyRecords.length === 0 && !historyLoading ? (
+              <Empty description="暂无查询历史" />
+            ) : (
+              <List
+                dataSource={historyRecords}
+                pagination={{
+                  current: historyPage,
+                  total: historyTotal,
+                  pageSize: 15,
+                  onChange: (page) => loadHistory(page),
+                  size: 'small',
+                }}
+                renderItem={(item) => (
+                  <List.Item
+                    onClick={() => setSelectedHistory(item)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <List.Item.Meta
+                      title={
+                        <Typography.Text ellipsis style={{ maxWidth: 360 }}>
+                          {item.query_text}
+                        </Typography.Text>
+                      }
+                      description={
+                        <Space size="small">
+                          <span style={{ fontSize: 12, color: 'var(--zb-text-3)' }}>
+                            {dayjs(item.ctime).format('MM-DD HH:mm')}
+                          </span>
+                          {item.rating && (
+                            <Rate count={5} value={item.rating} disabled style={{ fontSize: 12 }} />
+                          )}
+                        </Space>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            )}
+          </Spin>
+        )}
+      </Drawer>
+    </>
   );
 }

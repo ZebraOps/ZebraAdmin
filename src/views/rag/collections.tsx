@@ -207,7 +207,7 @@ export default function RAGCollections() {
           destroyOnClose: true,
           width: 600,
         }}
-        initialValues={editRecord ?? { embedding_model: 'text-embedding-3-small', chunk_size: 500, chunk_overlap: 50 }}
+        initialValues={editRecord ?? { embedding_model: 'BAAI/bge-small-zh-v1.5', chunk_size: 500, chunk_overlap: 50 }}
         onFinish={handleSubmit}
       >
         <ProFormText

@@ -40,9 +40,10 @@ export interface CollectionListParams {
 
 /** Embedding 模型选项 */
 export const EMBEDDING_MODEL_OPTIONS = [
+  { label: 'BAAI/bge-small-zh-v1.5 (本地 ONNX)', value: 'BAAI/bge-small-zh-v1.5' },
+  { label: '腾讯 CodingPlan glm-5', value: 'glm-5' },
   { label: 'OpenAI text-embedding-3-small', value: 'text-embedding-3-small' },
   { label: 'OpenAI text-embedding-3-large', value: 'text-embedding-3-large' },
-  { label: '腾讯 CodingPlan glm-5', value: 'glm-5' }
 ];
 
 // API 方法
