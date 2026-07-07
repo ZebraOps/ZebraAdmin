@@ -3,8 +3,9 @@ import { Input, Select, Card, Tag, Space, Spin, Empty, message, Rate, Drawer, Li
 import { SendOutlined, ClearOutlined, ReloadOutlined, HistoryOutlined, StopOutlined, EditOutlined } from '@ant-design/icons';
 import { ragQueryStream, submitFeedback, fetchQueryHistory } from '@/service/api/rag/query';
 import { fetchCollections } from '@/service/api/rag/collections';
-import type { QuerySource, QueryHistory, TokenUsage } from '@/service/api/rag/query';
+import type { QueryHistory } from '@/service/api/rag/query';
 import { useAuthStore } from '@/store/auth';
+import { useChatStore, type ChatMessage } from '@/store/chat';
 import multiavatar from '@multiavatar/multiavatar';
 import dayjs from 'dayjs';
 import SourceReference from './components/SourceReference';
@@ -12,25 +13,14 @@ import './query.css';
 
 const { TextArea } = Input;
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  sources?: QuerySource[];
-  queryId?: number;
-  model?: string;
-  usage?: TokenUsage;
-  feedbackRating?: number;
-  feedbackSubmitted?: boolean;
-  timestamp: Date;
-  loading?: boolean;
-  streaming?: boolean;
-}
-
 /** 智能问答 —— ZEBRA INK 设计 */
 export default function RAGQuery() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const messages = useChatStore(s => s.messages);
+  const setMessages = useChatStore(s => s.setMessages);
+  const input = useChatStore(s => s.input);
+  const setInput = useChatStore(s => s.setInput);
+  const clearChat = useChatStore(s => s.clearChat);
+
   const [loading, setLoading] = useState(false);
   const [collectionIds, setCollectionIds] = useState<number[]>([]);
   const [docTypes, setDocTypes] = useState<string[]>([]);
@@ -110,7 +100,7 @@ export default function RAGQuery() {
     setInput('');
 
     // 添加用户消息
-    const userMessage: Message = {
+    const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: question,
@@ -164,7 +154,7 @@ export default function RAGQuery() {
 
   // 清空对话
   const handleClear = () => {
-    setMessages([]);
+    clearChat();
     message.success('对话已清空');
   };
 
