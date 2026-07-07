@@ -43,10 +43,16 @@ export interface FeedbackRequest {
 }
 
 // SSE 事件类型
+export interface TokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 export type StreamEvent =
   | { type: 'retrieval_done'; sources: QuerySource[] }
   | { type: 'token'; content: string }
-  | { type: 'done'; query_id: number }
+  | { type: 'done'; query_id: number; model?: string; usage?: TokenUsage }
   | { type: 'error'; message: string };
 
 // API 方法

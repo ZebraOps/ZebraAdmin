@@ -3,7 +3,7 @@ import { Card, Input, Button, Select, Space, Tag, Divider, Spin, Empty, message,
 import { SendOutlined, ClearOutlined, FileTextOutlined, ReloadOutlined, HistoryOutlined, StopOutlined } from '@ant-design/icons';
 import { ragQueryStream, submitFeedback, fetchQueryHistory } from '@/service/api/rag/query';
 import { fetchCollections } from '@/service/api/rag/collections';
-import type { QuerySource, QueryHistory } from '@/service/api/rag/query';
+import type { QuerySource, QueryHistory, TokenUsage } from '@/service/api/rag/query';
 import dayjs from 'dayjs';
 import SourceReference from './components/SourceReference';
 
@@ -15,6 +15,8 @@ interface Message {
   content: string;
   sources?: QuerySource[];
   queryId?: number;
+  model?: string;
+  usage?: TokenUsage;
   feedbackRating?: number;
   feedbackSubmitted?: boolean;
   timestamp: Date;
@@ -131,7 +133,7 @@ export default function RAGQuery() {
             case 'token':
               return { ...m, content: m.content + event.content, loading: false };
             case 'done':
-              return { ...m, queryId: event.query_id, streaming: false, loading: false };
+              return { ...m, queryId: event.query_id, model: event.model, usage: event.usage, streaming: false, loading: false };
             case 'error':
               return { ...m, content: m.content || event.message, streaming: false, loading: false };
             default:
@@ -311,6 +313,28 @@ export default function RAGQuery() {
                               <SourceReference key={`${source.doc_id}-${source.chunk_index}`} source={source} index={idx} />
                             ))}
                           </div>
+                        </div>
+                      )}
+
+                      {/* 模型和 Token 用量 */}
+                      {msg.role === 'assistant' && !msg.streaming && (msg.model || msg.usage) && (
+                        <div style={{ marginTop: 12 }}>
+                          <Divider style={{ margin: '8px 0' }} />
+                          <Space size="small" style={{ fontSize: 12, color: 'var(--zb-text-3)' }}>
+                            {msg.model && (
+                              <span>
+                                🧠 模型：<strong style={{ color: 'var(--zb-accent)' }}>{msg.model}</strong>
+                              </span>
+                            )}
+                            {msg.usage && (
+                              <>
+                                {msg.model && <span>|</span>}
+                                <span>
+                                  Tokens：输入 {msg.usage.prompt_tokens} + 输出 {msg.usage.completion_tokens} = {msg.usage.total_tokens}
+                                </span>
+                              </>
+                            )}
+                          </Space>
                         </div>
                       )}
 
