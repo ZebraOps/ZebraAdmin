@@ -34,6 +34,10 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           ws: true
         },
+        '/rag': {
+          target: env.VITE_BASE_URL,
+          changeOrigin: true
+        },
         '/route': {
           target: env.VITE_BASE_URL,
           changeOrigin: true

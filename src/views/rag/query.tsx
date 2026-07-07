@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Card, Input, Button, Select, Space, Tag, Divider, Spin, Empty, message, Tooltip, Rate, Drawer, List, Descriptions, Typography } from 'antd';
-import { SendOutlined, ClearOutlined, FileTextOutlined, ReloadOutlined, HistoryOutlined } from '@ant-design/icons';
-import { ragQuery, submitFeedback, fetchQueryHistory } from '@/service/api/rag/query';
+import { SendOutlined, ClearOutlined, FileTextOutlined, ReloadOutlined, HistoryOutlined, StopOutlined } from '@ant-design/icons';
+import { ragQueryStream, submitFeedback, fetchQueryHistory } from '@/service/api/rag/query';
 import { fetchCollections } from '@/service/api/rag/collections';
-import type { QueryResponse, QuerySource, QueryHistory } from '@/service/api/rag/query';
+import type { QuerySource, QueryHistory } from '@/service/api/rag/query';
 import dayjs from 'dayjs';
 import SourceReference from './components/SourceReference';
 
@@ -19,6 +19,7 @@ interface Message {
   feedbackSubmitted?: boolean;
   timestamp: Date;
   loading?: boolean;
+  streaming?: boolean;
 }
 
 /** 智能问答页面 */
@@ -41,6 +42,7 @@ export default function RAGQuery() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const streamAbortRef = useRef<(() => void) | null>(null);
 
   // 加载集合选项
   useEffect(() => {
@@ -80,8 +82,17 @@ export default function RAGQuery() {
     }
   };
 
-  // 发送消息
+  // 发送消息（流式）
   const handleSend = async () => {
+    // 如果正在流式输出，停止当前流（允许空输入）
+    if (streamAbortRef.current) {
+      streamAbortRef.current();
+      streamAbortRef.current = null;
+      setLoading(false);
+      return;
+    }
+
+    // 正常发送需要非空输入
     if (!input.trim() || loading) return;
 
     const question = input.trim();
@@ -95,35 +106,48 @@ export default function RAGQuery() {
       timestamp: new Date(),
     };
 
-    // 添加加载中的 AI 消息
+    // 添加加载中的 AI 消息（空占位）
     const aiMessageId = `ai-${Date.now()}`;
-    setMessages(prev => [...prev, userMessage, { id: aiMessageId, role: 'assistant', content: '', timestamp: new Date(), loading: true }]);
+    setMessages(prev => [...prev, userMessage, { id: aiMessageId, role: 'assistant', content: '', timestamp: new Date(), loading: true, streaming: true }]);
     setLoading(true);
 
-    try {
-      const response: QueryResponse = await ragQuery({
-        question,
-        collection_ids: collectionIds.length > 0 ? collectionIds : undefined,
-        doc_types: docTypes.length > 0 ? docTypes : undefined,
-        top_k: topK,
-      });
+    // 启动流式查询
+    const stream = ragQueryStream({
+      question,
+      collection_ids: collectionIds.length > 0 ? collectionIds : undefined,
+      doc_types: docTypes.length > 0 ? docTypes : undefined,
+      top_k: topK,
+    });
+    streamAbortRef.current = () => stream.abort();
 
-      // 更新 AI 消息
-      setMessages(prev => prev.map(m =>
-        m.id === aiMessageId
-          ? { ...m, content: response.answer, sources: response.sources, queryId: response.query_id, loading: false }
-          : m
-      ));
+    try {
+      for await (const event of stream) {
+        setMessages(prev => prev.map(m => {
+          if (m.id !== aiMessageId) return m;
+
+          switch (event.type) {
+            case 'retrieval_done':
+              return { ...m, sources: event.sources, loading: false };
+            case 'token':
+              return { ...m, content: m.content + event.content, loading: false };
+            case 'done':
+              return { ...m, queryId: event.query_id, streaming: false, loading: false };
+            case 'error':
+              return { ...m, content: m.content || event.message, streaming: false, loading: false };
+            default:
+              return m;
+          }
+        }));
+      }
     } catch {
-      // 更新错误消息
       setMessages(prev => prev.map(m =>
         m.id === aiMessageId
-          ? { ...m, content: '查询失败，请稍后重试', loading: false }
+          ? { ...m, content: m.content || '查询失败，请稍后重试', streaming: false, loading: false }
           : m
       ));
-      message.error('查询失败，请稍后重试');
     } finally {
       setLoading(false);
+      streamAbortRef.current = null;
       inputRef.current?.focus();
     }
   };
@@ -271,6 +295,7 @@ export default function RAGQuery() {
                     <>
                       <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
                         {msg.content}
+                        {msg.streaming && <span className="zb-cursor-blink" style={{ color: 'var(--zb-accent)' }}>▍</span>}
                       </div>
 
                       {/* 知识来源引用 */}
@@ -348,14 +373,14 @@ export default function RAGQuery() {
           />
           <Button
             type="primary"
-            icon={<SendOutlined />}
+            icon={loading && streamAbortRef.current ? <StopOutlined /> : <SendOutlined />}
             onClick={handleSend}
-            loading={loading}
-            style={{ background: '#14b8a6', borderColor: '#14b8a6' }}
+            danger={loading && !!streamAbortRef.current}
+            style={loading && streamAbortRef.current ? {} : { background: '#14b8a6', borderColor: '#14b8a6' }}
           >
-            发送
+            {loading && streamAbortRef.current ? '停止' : '发送'}
           </Button>
-          {messages.length > 0 && loading === false && (
+          {messages.length > 0 && !loading && (
             <Tooltip title="重试">
               <Button icon={<ReloadOutlined />} onClick={handleRetry} />
             </Tooltip>
