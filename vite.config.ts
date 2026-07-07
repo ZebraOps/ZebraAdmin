@@ -36,7 +36,15 @@ export default defineConfig(({ mode }) => {
         },
         '/rag': {
           target: env.VITE_BASE_URL,
-          changeOrigin: true
+          changeOrigin: true,
+          bypass(req) {
+            // Don't proxy browser page navigations — let the SPA handle routing.
+            // Otherwise typing /rag/query in the address bar hits Gateway directly
+            // and shows raw JSON instead of the app.
+            if (req.headers?.accept?.includes('text/html')) {
+              return '/index.html';
+            }
+          }
         },
         '/route': {
           target: env.VITE_BASE_URL,
