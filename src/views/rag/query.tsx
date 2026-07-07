@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Input, Select, Card, Tag, Space, Spin, Empty, message, Rate, Drawer, List, Descriptions, Typography } from 'antd';
 import { SendOutlined, ClearOutlined, ReloadOutlined, HistoryOutlined, StopOutlined, EditOutlined } from '@ant-design/icons';
 import { ragQueryStream, submitFeedback, fetchQueryHistory } from '@/service/api/rag/query';
 import { fetchCollections } from '@/service/api/rag/collections';
 import type { QuerySource, QueryHistory, TokenUsage } from '@/service/api/rag/query';
+import { useAuthStore } from '@/store/auth';
+import multiavatar from '@multiavatar/multiavatar';
 import dayjs from 'dayjs';
 import SourceReference from './components/SourceReference';
 import './query.css';
@@ -46,6 +48,13 @@ export default function RAGQuery() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const streamAbortRef = useRef<(() => void) | null>(null);
+
+  // 用户头像
+  const userInfo = useAuthStore(s => s.userInfo);
+  const userAvatar = useMemo(
+    () => multiavatar((userInfo?.userName || 'Admin') + (userInfo?.avatar || '')),
+    [userInfo?.userName, userInfo?.avatar],
+  );
 
   // 加载集合选项
   useEffect(() => {
@@ -282,7 +291,9 @@ export default function RAGQuery() {
                 <div key={msg.id} className={`zb-msg-row ${msg.role}`}>
                   {/* 头像 */}
                   <div className={`zb-msg-avatar ${msg.role === 'user' ? 'user-avatar' : 'assistant-avatar'}`}>
-                    {msg.role === 'user' ? 'U' : 'ZB'}
+                    {msg.role === 'user' ? (
+                      <span dangerouslySetInnerHTML={{ __html: userAvatar }} style={{ width: 28, height: 28, display: 'flex' }} />
+                    ) : 'ZB'}
                   </div>
 
                   {/* 消息气泡 */}
@@ -394,9 +405,13 @@ export default function RAGQuery() {
             <button
               className={`zb-send-btn${loading && streamAbortRef.current ? ' stop' : ''}`}
               onClick={handleSend}
-              aria-label={loading && streamAbortRef.current ? '停止' : '发送'}
+              aria-label={loading && streamAbortRef.current ? '停止生成' : '发送'}
             >
-              {loading && streamAbortRef.current ? <StopOutlined /> : <SendOutlined />}
+              {loading && streamAbortRef.current ? (
+                <><StopOutlined style={{ fontSize: 13 }} /> 停止</>
+              ) : (
+                <><SendOutlined style={{ fontSize: 13 }} /> 发送</>
+              )}
             </button>
           </div>
           <div className="zb-input-hint">
