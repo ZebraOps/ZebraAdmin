@@ -4,15 +4,18 @@ import { UserOutlined, LockOutlined, BulbOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { useAuthStore } from '@/store/auth';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import { useThemeStore } from '@/store/theme';
+import './login.css';
 
 interface LoginFormValues {
   userName: string;
   password: string;
   remember?: boolean;
 }
+
+type LoginStage = 'idle' | 'authenticating' | 'success' | 'error';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -21,206 +24,219 @@ export default function LoginPage() {
   const { themeScheme, setThemeScheme } = useThemeStore();
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(true);
+  const [loginStage, setLoginStage] = useState<LoginStage>('idle');
   const isDark = themeScheme === 'dark';
   const formRef = useRef<ProFormInstance>(null);
 
+  // ── Capability carousel state ──────────────────────────────
+  const capabilities = useMemo(() => [
+    { keyword: t('page.login.capabilities.automation'),    desc: t('page.login.capabilities.automationDesc') },
+    { keyword: t('page.login.capabilities.observability'), desc: t('page.login.capabilities.observabilityDesc') },
+    { keyword: t('page.login.capabilities.intelligence'),  desc: t('page.login.capabilities.intelligenceDesc') },
+  ], [t]);
+
+  const [carouselIdx, setCarouselIdx] = useState(0);
+  const [displayText, setDisplayText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+  const [charIdx, setCharIdx] = useState(0);
+
+  // ── Grid parallax — mouse offset drives background-position ────
+  const [gridOffset, setGridOffset] = useState({ x: 0, y: 0 });
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const { clientX, clientY } = e;
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    // Map to [-20, 20] px offset — subtle parallax
+    const x = ((clientX - cx) / cx) * 20;
+    const y = ((clientY - cy) / cy) * 20;
+    setGridOffset({ x, y });
+  }, []);
+
+  // ── Typewriter carousel effect ──────────────────────────────
+  useEffect(() => {
+    const current = capabilities[carouselIdx];
+    if (!current) return;
+    let timer: ReturnType<typeof window.setTimeout>;
+
+    if (isTyping) {
+      if (charIdx < current.keyword.length) {
+        timer = setTimeout(() => {
+          setDisplayText(current.keyword.slice(0, charIdx + 1));
+          setCharIdx(charIdx + 1);
+        }, 80);
+      } else {
+        timer = setTimeout(() => setIsTyping(false), 2200);
+      }
+    } else {
+      if (charIdx > 0) {
+        timer = setTimeout(() => {
+          setDisplayText(current.keyword.slice(0, charIdx - 1));
+          setCharIdx(charIdx - 1);
+        }, 40);
+      } else {
+        timer = setTimeout(() => {
+          setCarouselIdx((prev) => (prev + 1) % capabilities.length);
+          setIsTyping(true);
+          setCharIdx(0);
+        }, 60);
+      }
+    }
+
+    return () => clearTimeout(timer);
+  }, [charIdx, isTyping, carouselIdx, capabilities]);
+
+  // ── Login handler with state machine ────────────────────────
   const handleSubmit = async (values: LoginFormValues) => {
+    setLoginStage('authenticating');
     setLoading(true);
+
     const success = await login(values.userName, values.password);
     setLoading(false);
+
     if (success) {
-      message.success(t('page.login.loginSuccess', { defaultValue: '登录成功' }));
-      navigate('/home', { replace: true });
+      setLoginStage('success');
+      message.success(t('page.login.loginSuccess'));
+      setTimeout(() => {
+        navigate('/home', { replace: true });
+      }, 800);
     } else {
-      message.error(t('page.login.loginFailed', { defaultValue: '登录失败，请检查用户名和密码' }));
+      setLoginStage('error');
+      message.error(t('page.login.loginFailed'));
+      setTimeout(() => setLoginStage('idle'), 600);
     }
   };
 
+  // ── Dynamic button content ─────────────────────────────────
+  const buttonContent = (() => {
+    switch (loginStage) {
+      case 'authenticating':
+        return (
+          <>
+            {t('page.login.authenticating')}
+            <span className="zb-login-carousel-cursor" />
+          </>
+        );
+      case 'success':
+        return (
+          <span className="zb-success-pop" style={{ display: 'inline-block' }}>
+            ✓ {t('page.login.authSuccess')}
+          </span>
+        );
+      case 'error':
+      default:
+        return t('page.login.login');
+    }
+  })();
+
+  const buttonClass = [
+    'zb-login-submit',
+    loginStage === 'authenticating' && 'zb-login-submit--loading',
+    loginStage === 'success' && 'zb-login-submit--success',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: isDark ? '#09090b' : '#f8f8f8',
-        position: 'relative',
-        overflow: 'hidden',
-        fontFamily: 'var(--zb-font-sans)',
-      }}
-    >
-      {/* Grid texture */}
+    <div className="zb-login-shell" onMouseMove={handleMouseMove}>
+      {/* Grid — follows mouse with parallax */}
       <div
-        aria-hidden
+        className="zb-login-grid"
         style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          backgroundImage: `linear-gradient(${isDark ? 'rgba(255,255,255,.025)' : 'rgba(0,0,0,.04)'} 1px, transparent 1px),
-                            linear-gradient(90deg, ${isDark ? 'rgba(255,255,255,.025)' : 'rgba(0,0,0,.04)'} 1px, transparent 1px)`,
-          backgroundSize: '40px 40px'
-        }}
-      />
-
-      {/* Teal glow orb — floating */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute', top: '0%', left: '50%', transform: 'translateX(-50%)',
-          width: 640, height: 360,
-          background: 'radial-gradient(ellipse, rgba(20,184,166,.10) 0%, transparent 70%)',
-          pointerEvents: 'none',
-          animation: 'zb-float 6s ease-in-out infinite',
-        }}
-      />
-
-      {/* Secondary glow — bottom right */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute', bottom: '-10%', right: '10%',
-          width: 400, height: 300,
-          background: 'radial-gradient(ellipse, rgba(45,212,191,.05) 0%, transparent 70%)',
-          pointerEvents: 'none',
-          animation: 'zb-float 8s ease-in-out infinite 2s',
+          backgroundPosition: `${gridOffset.x}px ${gridOffset.y}px`,
         }}
       />
 
       {/* Theme toggle */}
-      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}>
+      <div className="zb-login-theme-toggle">
         <Button
           type="text"
           icon={<BulbOutlined />}
           onClick={() => setThemeScheme(isDark ? 'light' : 'dark')}
-          style={{ color: isDark ? 'rgba(255,255,255,.4)' : 'rgba(0,0,0,.4)', borderRadius: 6 }}
         />
       </div>
 
       {/* Card */}
-      <div
-        className="zb-animate-blur"
-        style={{
-          width: '100%', maxWidth: 400, margin: '0 16px',
-          background: isDark ? 'rgba(15,15,17,0.92)' : 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: `1px solid ${isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.06)'}`,
-          borderRadius: 10,
-          boxShadow: isDark
-            ? '0 0 0 1px rgba(20,184,166,.06), 0 24px 48px rgba(0,0,0,.6)'
-            : '0 24px 48px rgba(0,0,0,.06)',
-          padding: '40px 36px',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Noise overlay */}
+      <div className="zb-login-card zb-animate-blur">
         <div className="zb-noise" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
 
-        {/* Top accent stripe */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-          background: 'linear-gradient(90deg, transparent, #14b8a6, transparent)',
-          opacity: 0.5,
-        }} />
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 32, position: 'relative' }}>
-          <div
-            className="zb-animate-scale zb-pulse-glow"
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 48, height: 48, borderRadius: 10,
-              background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
-              boxShadow: '0 6px 24px rgba(20,184,166,.35)',
-              fontFamily: 'var(--zb-font-mono)',
-              fontSize: 17, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px',
-              marginBottom: 16,
-            }}
-          >
-            ZB
+        {/* Logo section */}
+        <div className="zb-login-logo">
+          <div className="zb-login-logo-block zb-animate-scale zb-pulse-glow">ZB</div>
+          <h1 className="zb-login-title zb-animate-in zb-delay-1">ZEBRAOPS</h1>
+          <p className="zb-login-tagline zb-animate-in zb-delay-2">
+            {t('page.login.tagline')}
+          </p>
+        </div>
+
+        {/* Capability carousel */}
+        <div className="zb-login-carousel zb-animate-in zb-delay-3">
+          <div className="zb-login-carousel-keyword">
+            {displayText || capabilities[carouselIdx]?.keyword?.charAt(0)}
+            <span className="zb-login-carousel-cursor" />
           </div>
-          <h1 className="zb-animate-in zb-delay-1" style={{
-            margin: 0, fontSize: 20, fontWeight: 700, letterSpacing: '0.1em',
-            fontFamily: 'var(--zb-font-mono)',
-            color: isDark ? '#f0f0f0' : '#111',
-            textTransform: 'uppercase',
-          }}>
-            ZEBRAOPS
-          </h1>
-          <p className="zb-animate-in zb-delay-2" style={{
-            margin: '6px 0 0', fontSize: 10,
-            fontFamily: 'var(--zb-font-mono)',
-            color: isDark ? 'rgba(255,255,255,.25)' : 'rgba(0,0,0,.30)',
-            letterSpacing: '0.18em',
-          }}>
-            黑白分明，运维有道
-          </p>
-          <p className="zb-animate-in zb-delay-3" style={{
-            margin: '8px 0 0', fontSize: 11,
-            fontFamily: 'var(--zb-font-mono)',
-            color: isDark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.35)',
-            letterSpacing: '0.12em',
-          }}>
-            {t('page.login.welcomeBack', { defaultValue: 'SIGN IN TO YOUR ACCOUNT' })}
-          </p>
+          <div className="zb-login-carousel-desc" key={carouselIdx}>
+            {capabilities[carouselIdx]?.desc}
+          </div>
         </div>
 
         {/* Form */}
         <div className="zb-animate-in zb-delay-4">
-        <ProForm<LoginFormValues>
-          formRef={formRef}
-          submitter={{
-            render: (_, dom) => dom[1],
-            submitButtonProps: {
-              type: 'primary',
-              size: 'large',
-              loading,
-              block: true,
-              className: 'zb-btn-glow',
-              style: {
-                borderRadius: 8, height: 44,
-                fontFamily: 'var(--zb-font-mono)', fontSize: 12, fontWeight: 600,
-                letterSpacing: '0.1em',
-                background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
-                border: 'none',
-                boxShadow: loading ? 'none' : '0 4px 20px rgba(20,184,166,.30)',
-                transition: 'all 200ms ease',
+          <ProForm<LoginFormValues>
+            formRef={formRef}
+            submitter={{
+              render: (_, dom) => dom[1],
+              submitButtonProps: {
+                type: 'primary',
+                size: 'large',
+                loading,
+                block: true,
+                disabled: loginStage === 'success',
+                className: buttonClass,
+                style: {
+                  border: 'none',
+                  boxShadow: loginStage === 'authenticating' ? 'none' : undefined,
+                },
+                children: buttonContent,
               },
-              children: t('page.login.login', { defaultValue: 'SIGN IN' }),
-            },
-          }}
-          onFinish={handleSubmit}
-        >
-          <ProFormText
-            name="userName"
-            fieldProps={{
-              size: 'large',
-              prefix: <UserOutlined style={{ color: '#14b8a6' }} />,
-              style: { borderRadius: 6, fontFamily: 'var(--zb-font-mono)', fontSize: 13 },
-              onPressEnter: () => formRef.current?.submit(),
             }}
-            placeholder={t('page.login.usernamePlaceholder', { defaultValue: '请输入用户名' })}
-            rules={[{ required: true, message: t('page.login.usernameRequired', { defaultValue: '请输入用户名' }) }]}
-          />
-          <ProFormText.Password
-            name="password"
-            fieldProps={{
-              size: 'large',
-              prefix: <LockOutlined style={{ color: '#14b8a6' }} />,
-              style: { borderRadius: 6, fontFamily: 'var(--zb-font-mono)', fontSize: 13 },
-              onPressEnter: () => formRef.current?.submit(),
-            }}
-            placeholder={t('page.login.passwordPlaceholder', { defaultValue: '请输入密码' })}
-            rules={[{ required: true, message: t('page.login.passwordRequired', { defaultValue: '请输入密码' }) }]}
-          />
-          <div style={{ marginBottom: 16 }}>
-            <Checkbox
-              checked={remember}
-              onChange={e => setRemember(e.target.checked)}
-              style={{ fontFamily: 'var(--zb-font-mono)', fontSize: 11, color: isDark ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.4)' }}
-            >
-              {t('page.login.rememberMe', { defaultValue: '记住我' })}
-            </Checkbox>
-          </div>
-        </ProForm>
+            onFinish={handleSubmit}
+          >
+            <ProFormText
+              name="userName"
+              fieldProps={{
+                size: 'large',
+                prefix: <UserOutlined style={{ color: 'var(--zb-accent)' }} />,
+                className: 'zb-login-input',
+                onPressEnter: () => formRef.current?.submit(),
+              }}
+              placeholder={t('page.login.usernamePlaceholder')}
+              rules={[{ required: true, message: t('page.login.usernameRequired') }]}
+            />
+            <ProFormText.Password
+              name="password"
+              fieldProps={{
+                size: 'large',
+                prefix: <LockOutlined style={{ color: 'var(--zb-accent)' }} />,
+                className: 'zb-login-input',
+                onPressEnter: () => formRef.current?.submit(),
+              }}
+              placeholder={t('page.login.passwordPlaceholder')}
+              rules={[{ required: true, message: t('page.login.passwordRequired') }]}
+            />
+            <div style={{ marginBottom: 16 }}>
+              <Checkbox
+                checked={remember}
+                onChange={e => setRemember(e.target.checked)}
+                style={{
+                  fontFamily: 'var(--zb-font-mono)',
+                  fontSize: 11,
+                  color: 'var(--zb-text-3)',
+                }}
+              >
+                {t('page.login.rememberMe')}
+              </Checkbox>
+            </div>
+          </ProForm>
         </div>
       </div>
     </div>

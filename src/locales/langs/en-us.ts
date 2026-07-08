@@ -125,6 +125,43 @@ const enUS = {
   },
   page: {
     login: {
+      // Flat keys — used directly by login page
+      login: 'SIGN IN',
+      loginSuccess: 'Login successful',
+      loginFailed: 'Login failed, please check your credentials',
+      usernamePlaceholder: 'Enter username',
+      usernameRequired: 'Username is required',
+      passwordPlaceholder: 'Enter password',
+      passwordRequired: 'Password is required',
+      rememberMe: 'Remember me',
+      welcomeBack: 'Welcome back',
+      tagline: 'Clear Black & White, Structured Ops',
+      authenticating: 'Authenticating...',
+      authSuccess: 'Verified',
+      // Capability carousel
+      capabilities: {
+        automation: 'Automation',
+        automationDesc: 'CI/CD Pipeline · One-Click Deploy',
+        observability: 'Observability',
+        observabilityDesc: 'Real-Time Monitor · Tracing',
+        intelligence: 'Intelligence',
+        intelligenceDesc: 'AI Q&A · Knowledge Retrieval',
+      },
+      // System status indicators
+      status: {
+        gateway: 'Gateway',
+        rbac: 'RBAC',
+        cicd: 'CICD',
+        rag: 'RAG',
+      },
+      // Time-aware greetings
+      greeting: {
+        morning: 'Good morning',
+        afternoon: 'Good afternoon',
+        evening: 'Good evening',
+        night: 'Good night',
+      },
+      // Legacy nested keys (preserved for other consumers)
       common: {
         loginOrRegister: 'Login / Register',
         userNamePlaceholder: 'Enter username',

@@ -125,6 +125,43 @@ const zhCN = {
   },
   page: {
     login: {
+      // Flat keys — used directly by login page
+      login: '登录',
+      loginSuccess: '登录成功',
+      loginFailed: '登录失败，请检查用户名和密码',
+      usernamePlaceholder: '请输入用户名',
+      usernameRequired: '请输入用户名',
+      passwordPlaceholder: '请输入密码',
+      passwordRequired: '请输入密码',
+      rememberMe: '记住我',
+      welcomeBack: '欢迎回来',
+      tagline: '黑白分明，运维有道',
+      authenticating: '验证中...',
+      authSuccess: '验证通过',
+      // Capability carousel
+      capabilities: {
+        automation: '自动化',
+        automationDesc: 'CI/CD Pipeline · 一键部署',
+        observability: '可观测性',
+        observabilityDesc: '实时监控 · 链路追踪',
+        intelligence: '智能化',
+        intelligenceDesc: '智能问答 · 知识检索',
+      },
+      // System status indicators
+      status: {
+        gateway: 'Gateway',
+        rbac: 'RBAC',
+        cicd: 'CICD',
+        rag: 'RAG',
+      },
+      // Time-aware greetings
+      greeting: {
+        morning: '早上好',
+        afternoon: '下午好',
+        evening: '晚上好',
+        night: '夜深了，注意休息',
+      },
+      // Legacy nested keys (preserved for other consumers)
       common: {
         loginOrRegister: '登录 / 注册',
         userNamePlaceholder: '请输入用户名',
